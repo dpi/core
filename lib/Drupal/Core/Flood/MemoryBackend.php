@@ -41,7 +41,7 @@ class MemoryBackend implements FloodInterface {
     // We can't use REQUEST_TIME here, because that would not guarantee
     // uniqueness.
     $time = microtime(TRUE);
-    $this->events[$name][$identifier][$time + $window] = $time;
+    $this->events[$name][$identifier][strval($time + $window)] = $time;
   }
 
   /**

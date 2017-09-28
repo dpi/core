@@ -57,7 +57,7 @@ class FloodTest extends WebTestBase {
    * Test flood control memory backend.
    */
   public function testMemoryBackend() {
-    $threshold = 1;
+    $threshold = 2;
     $window_expired = -1;
     $name = 'flood_test_cleanup';
 
@@ -66,12 +66,24 @@ class FloodTest extends WebTestBase {
     $this->assertTrue($flood->isAllowed($name, $threshold));
     // Register expired event.
     $flood->register($name, $window_expired);
+    // Verify event is allowed.
+    $this->assertTrue($flood->isAllowed($name, $threshold));
+    // Sleep for a while.
+    usleep(100);
+    // Register expired event.
+    $flood->register($name, $window_expired);
     // Verify event is not allowed.
     $this->assertFalse($flood->isAllowed($name, $threshold));
     // Run cron and verify event is now allowed.
     $flood->garbageCollection();
     $this->assertTrue($flood->isAllowed($name, $threshold));
 
+    // Register unexpired event.
+    $flood->register($name);
+    // Verify event is allowed.
+    $this->assertTrue($flood->isAllowed($name, $threshold));
+    // Sleep for a while.
+    usleep(100);
     // Register unexpired event.
     $flood->register($name);
     // Verify event is not allowed.
