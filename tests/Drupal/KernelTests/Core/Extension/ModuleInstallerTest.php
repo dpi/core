@@ -77,8 +77,8 @@ class ModuleInstallerTest extends KernelTestBase {
     $cache_bin = $this->container->get('module_cachebin.cache_bin');
     $cache_bin->set('foo', 'bar');
 
-    // A database backend is used so there is a conventient way check whether
-    // the backend is uninstalled.
+    // A database backend is used so there is a convenient way check whether the
+    // backend is uninstalled.
     $this->assertTrue($schema->tableExists($table));
 
     $module_installer->uninstall(['module_cachebin']);
