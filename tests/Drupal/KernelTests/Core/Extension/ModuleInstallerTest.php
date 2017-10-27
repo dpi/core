@@ -61,12 +61,12 @@ class ModuleInstallerTest extends KernelTestBase {
   }
 
   /**
-   * Tests cache bins defined by removed when modules are uninstalled.
+   * Tests cache bins defined by modules are removed when uninstalled.
    *
    * @covers ::removeCacheBins
    */
   public function testCacheBinCleanup() {
-    $schema = $this->container->get('database');
+    $schema = $this->container->get('database')->schema();
     $table = 'cache_module_cachebin';
 
     $module_installer = $this->container->get('module_installer');

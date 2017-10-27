@@ -507,7 +507,7 @@ class ModuleInstaller implements ModuleInstallerInterface {
 
     $cache_bin_services = array_filter(
       isset($definitions['services']) ? $definitions['services'] : [],
-      function($definition) {
+      function ($definition) {
         $tags = isset($definition['tags']) ? $definition['tags'] : [];
         foreach ($tags as $tag) {
           if (isset($tag['name']) && ($tag['name'] == 'cache.bin')) {
