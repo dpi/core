@@ -505,7 +505,8 @@ class ModuleInstaller implements ModuleInstallerInterface {
 
     $definitions = Yaml::decode(file_get_contents($service_yaml_file));
 
-    $cache_bin_services_ids = array_filter(array_map(
+    $cache_bin_services = array_filter(
+      isset($definitions['services']) ? $definitions['services'] : [],
       function($definition) {
         $tags = isset($definition['tags']) ? $definition['tags'] : [];
         foreach ($tags as $tag) {
@@ -514,11 +515,10 @@ class ModuleInstaller implements ModuleInstallerInterface {
           }
         }
         return FALSE;
-      },
-      isset($definitions['services']) ? $definitions['services'] : []
-    ));
+      }
+    );
 
-    foreach (array_keys($cache_bin_services_ids) as $service_id) {
+    foreach (array_keys($cache_bin_services) as $service_id) {
       $backend = $this->kernel->getContainer()->get($service_id);
       if ($backend instanceof CacheBackendInterface) {
         $backend->removeBin();
