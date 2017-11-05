@@ -14,13 +14,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 abstract class ActionFormBase extends EntityForm {
 
   /**
-   * The action plugin being configured.
-   *
-   * @var \Drupal\Core\Action\ActionInterface
-   */
-  protected $plugin;
-
-  /**
    * The action storage.
    *
    * @var \Drupal\Core\Entity\EntityStorageInterface
@@ -50,7 +43,6 @@ abstract class ActionFormBase extends EntityForm {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $this->plugin = $this->entity->getPlugin();
     return parent::buildForm($form, $form_state);
   }
 
@@ -85,8 +77,8 @@ abstract class ActionFormBase extends EntityForm {
       '#value' => $this->entity->getType(),
     ];
 
-    if ($this->plugin instanceof PluginFormInterface) {
-      $form += $this->plugin->buildConfigurationForm($form, $form_state);
+    if ($this->entity->getPlugin() instanceof PluginFormInterface) {
+      $form += $this->entity->getPlugin()->buildConfigurationForm($form, $form_state);
     }
 
     return parent::form($form, $form_state);
@@ -121,8 +113,8 @@ abstract class ActionFormBase extends EntityForm {
   public function validateForm(array &$form, FormStateInterface $form_state) {
     parent::validateForm($form, $form_state);
 
-    if ($this->plugin instanceof PluginFormInterface) {
-      $this->plugin->validateConfigurationForm($form, $form_state);
+    if ($this->entity->getPlugin() instanceof PluginFormInterface) {
+      $this->entity->getPlugin()->validateConfigurationForm($form, $form_state);
     }
   }
 
@@ -132,8 +124,8 @@ abstract class ActionFormBase extends EntityForm {
   public function submitForm(array &$form, FormStateInterface $form_state) {
     parent::submitForm($form, $form_state);
 
-    if ($this->plugin instanceof PluginFormInterface) {
-      $this->plugin->submitConfigurationForm($form, $form_state);
+    if ($this->entity->getPlugin() instanceof PluginFormInterface) {
+      $this->entity->getPlugin()->submitConfigurationForm($form, $form_state);
     }
   }
 
