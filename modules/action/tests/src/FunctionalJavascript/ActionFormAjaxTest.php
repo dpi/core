@@ -30,7 +30,7 @@ class ActionFormAjaxTest extends JavascriptTestBase {
   /**
    * Tests action plugins with AJAX save their configuration.
    */
-  function testActionConfigurationWithAjax() {
+  public function testActionConfigurationWithAjax() {
     $url = Url::fromRoute('action.admin_add', ['action_id' => 'action_form_ajax_test']);
     $this->drupalGet($url);
     $this->assertSession()->statusCodeEquals(200);
