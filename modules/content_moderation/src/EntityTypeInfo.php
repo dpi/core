@@ -345,12 +345,6 @@ class EntityTypeInfo implements ContainerInjectionInterface {
         // Submit handler to redirect to the latest version, if available.
         $form['actions']['submit']['#submit'][] = [EntityTypeInfo::class, 'bundleFormRedirect'];
 
-        // Move the 'moderation_state' field widget to the footer region, if
-        // available.
-        if (isset($form['footer'])) {
-          $form['moderation_state']['#group'] = 'footer';
-        }
-
         // Duplicate the label of the current moderation state to the meta
         // region, if available.
         if (isset($form['meta']['published'])) {
