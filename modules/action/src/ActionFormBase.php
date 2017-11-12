@@ -21,6 +21,13 @@ abstract class ActionFormBase extends EntityForm {
   protected $storage;
 
   /**
+   * The action entity.
+   *
+   * @var \Drupal\system\ActionConfigEntityInterface
+   */
+  protected $entity;
+
+  /**
    * Constructs a new action form.
    *
    * @param \Drupal\Core\Entity\EntityStorageInterface $storage
@@ -77,8 +84,9 @@ abstract class ActionFormBase extends EntityForm {
       '#value' => $this->entity->getType(),
     ];
 
-    if ($this->entity->getPlugin() instanceof PluginFormInterface) {
-      $form += $this->entity->getPlugin()->buildConfigurationForm($form, $form_state);
+    if ($plugin = $this->getPlugin()) {
+      $form += $plugin->buildConfigurationForm($form, $form_state);
+      $plugin->submitConfigurationForm($form, $form_state);
     }
 
     return parent::form($form, $form_state);
@@ -112,9 +120,8 @@ abstract class ActionFormBase extends EntityForm {
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
     parent::validateForm($form, $form_state);
-
-    if ($this->entity->getPlugin() instanceof PluginFormInterface) {
-      $this->entity->getPlugin()->validateConfigurationForm($form, $form_state);
+    if ($plugin = $this->getPlugin()) {
+      $plugin->validateConfigurationForm($form, $form_state);
     }
   }
 
@@ -123,9 +130,8 @@ abstract class ActionFormBase extends EntityForm {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     parent::submitForm($form, $form_state);
-
-    if ($this->entity->getPlugin() instanceof PluginFormInterface) {
-      $this->entity->getPlugin()->submitConfigurationForm($form, $form_state);
+    if ($plugin = $this->getPlugin()) {
+      $plugin->submitConfigurationForm($form, $form_state);
     }
   }
 
@@ -137,6 +143,19 @@ abstract class ActionFormBase extends EntityForm {
     drupal_set_message($this->t('The action has been successfully saved.'));
 
     $form_state->setRedirect('entity.action.collection');
+  }
+
+  /**
+   * Gets the action plugin while ensuring it implements configuration forms.
+   *
+   * @return \Drupal\Core\Action\ActionInterface|\Drupal\Core\Plugin\PluginFormInterface|NULL
+   *   The action plugin, or NULL if it does not implement configuration forms.
+   */
+  protected function getPlugin() {
+    if ($this->entity->getPlugin() instanceof PluginFormInterface) {
+      return $this->entity->getPlugin();
+    }
+    return NULL;
   }
 
 }
