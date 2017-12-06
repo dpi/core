@@ -1,0 +1,8 @@
+name: "Entity Reference Selection plugin test"
+type: module
+description: "Support module for testing entity reference selection plugins."
+core: 8.x
+package: Testing
+version: VERSION
+dependencies:
+  - entity_test
