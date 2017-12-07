@@ -808,6 +808,9 @@ entity_reference_selection.default:
     auto_create_bundle:
       type: string
       label: 'Bundle assigned to the auto-created entities.'
+    allow_self_reference:
+      type: boolean
+      label: 'Allow an entity to reference itself'
 
 # Schema for all entity reference 'default:*' selection handlers that are not
 # providing a specific schema.
