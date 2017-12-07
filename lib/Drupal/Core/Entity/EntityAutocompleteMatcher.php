@@ -39,6 +39,8 @@ class EntityAutocompleteMatcher {
    *   An array of settings that will be passed to the selection handler.
    * @param string $string
    *   (optional) The label of the entity to query by.
+   * @param \Drupal\Core\Entity\EntityInterface $host_entity
+   *   (optional) The referencing entity, if any. Defaults to NULL.
    *
    * @return array
    *   An array of matched entity labels, in the format required by the AJAX
@@ -49,12 +51,13 @@ class EntityAutocompleteMatcher {
    *
    * @see \Drupal\system\Controller\EntityAutocompleteController
    */
-  public function getMatches($target_type, $selection_handler, $selection_settings, $string = '') {
+  public function getMatches($target_type, $selection_handler, $selection_settings, $string = '', EntityInterface $host_entity = NULL) {
     $matches = [];
 
     $options = $selection_settings + [
       'target_type' => $target_type,
       'handler' => $selection_handler,
+      'entity' => $host_entity,
     ];
     $handler = $this->selectionManager->getInstance($options);
 

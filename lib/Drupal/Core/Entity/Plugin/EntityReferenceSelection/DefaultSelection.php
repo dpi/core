@@ -68,6 +68,7 @@ class DefaultSelection extends SelectionPluginBase implements ContainerFactoryPl
       ],
       'auto_create' => FALSE,
       'auto_create_bundle' => NULL,
+      'allow_self_reference' => TRUE,
     ] + parent::defaultConfiguration();
   }
 
@@ -196,6 +197,12 @@ class DefaultSelection extends SelectionPluginBase implements ContainerFactoryPl
         '#weight' => -1,
       ];
     }
+
+    $form['allow_self_reference'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Allow an entity to reference itself'),
+      '#default_value' => $selection_handler_settings['allow_self_reference'],
+    ];
 
     return $form;
   }
@@ -350,6 +357,11 @@ class DefaultSelection extends SelectionPluginBase implements ContainerFactoryPl
 
     if (isset($match) && $label_key = $entity_type->getKey('label')) {
       $query->condition($label_key, $match, $match_operator);
+    }
+
+    // Disallow self-references if possible.
+    if (isset($this->configuration['entity']) && $this->configuration['entity']->id() && isset($handler_settings['allow_self_reference']) && !$handler_settings['allow_self_reference']) {
+      $query->condition($entity_type->getKey('id'), $this->configuration['entity']->id(), '<>');
     }
 
     // Add entity-access tag.

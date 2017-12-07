@@ -4,6 +4,7 @@ namespace Drupal\Tests\system\Kernel\Entity;
 
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Unicode;
+use Drupal\entity_test\Entity\EntityTest;
 use Drupal\field\Tests\EntityReference\EntityReferenceTestTrait;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\node\Entity\NodeType;
@@ -50,6 +51,7 @@ class EntityReferenceSelectionReferenceableTest extends KernelTestBase {
   protected function setUp() {
     parent::setUp();
 
+    $this->installEntitySchema('entity_test');
     $this->installEntitySchema('entity_test_no_label');
 
     /** @var \Drupal\Core\Entity\EntityStorageInterface $storage */
@@ -80,6 +82,32 @@ class EntityReferenceSelectionReferenceableTest extends KernelTestBase {
         'type' => $this->bundle,
       ])->save();
     }
+  }
+
+  /**
+   * Tests the 'allow_self_reference' selection handler setting.
+   */
+  public function testAllowSelfReference() {
+    $field_name = 'field_test';
+    $this->createEntityReferenceField('entity_test', 'entity_test', $field_name, 'Test entity reference', 'entity_test');
+
+    // Create a test entity and check that it cannot reference itself.
+    $host_entity = EntityTest::create(['name' => $this->randomMachineName()]);
+    $host_entity->save();
+
+    $field_config = FieldConfig::loadByName('entity_test', 'entity_test', $field_name);
+    $this->selectionHandler = $this->container->get('plugin.manager.entity_reference_selection')->getSelectionHandler($field_config, $host_entity);
+
+    $referenceables = $this->selectionHandler->getReferenceableEntities();
+    $this->assertTrue(isset($referenceables['entity_test'][$host_entity->id()]));
+
+    $selection_setttings = $field_config->getSetting('handler_settings');
+    $selection_setttings['allow_self_reference'] = FALSE;
+    $field_config->setSetting('handler_settings', $selection_setttings)->save();
+
+    $this->selectionHandler = $this->container->get('plugin.manager.entity_reference_selection')->getSelectionHandler($field_config, $host_entity);
+    $referenceables = $this->selectionHandler->getReferenceableEntities();
+    $this->assertTrue(!isset($referenceables['entity_test'][$host_entity->id()]));
   }
 
   /**
