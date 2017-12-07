@@ -131,14 +131,7 @@ class EntityAutocomplete extends Textfield {
     $entity = isset($selection_settings['entity']) ? $selection_settings['entity'] : NULL;
     if ($entity instanceof EntityInterface) {
       // Don't serialise the entity, just pack the ID's.
-      $entity_info = [
-        'uuid' => $entity->uuid(),
-        'entity_type' => $entity->getEntityTypeId(),
-      ];
-      if (!$entity_info['uuid']) {
-        $entity_info['id'] = $entity->id();
-      }
-      $selection_settings['entity'] = $entity_info;
+      $selection_settings['entity'] = static::createIdsFromEntity($entity);
     }
 
     $data = serialize($selection_settings) . $element['#target_type'] . $element['#selection_handler'];
@@ -260,6 +253,36 @@ class EntityAutocomplete extends Textfield {
     }
 
     $form_state->setValueForElement($element, $value);
+  }
+
+  /**
+   * Creates an array of entity information given an entity.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   An entity to generate entity information from.
+   *
+   * @return array
+   *   If the entity is saved, then an array containing the following structure.
+   *   Otherwise an empty array is returned.
+   *   - 'entity_type': An entity type ID.
+   *   - 'uuid': An entity UUID.
+   *   - 'id': An entity ID.
+   */
+  static protected function createIdsFromEntity(EntityInterface $entity) {
+    $entity_info = [];
+
+    if (!$entity->isNew()) {
+      $entity_info['entity_type'] = $entity->getEntityTypeId();
+      $uuid = $entity->uuid();
+      if ($uuid) {
+        $entity_info['uuid'] = $uuid;
+      }
+      else {
+        $entity_info['id'] = $entity->id();
+      }
+    }
+
+    return $entity_info;
   }
 
   /**
