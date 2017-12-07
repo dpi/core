@@ -127,6 +127,20 @@ class EntityAutocomplete extends Textfield {
     // Store the selection settings in the key/value store and pass a hashed key
     // in the route parameters.
     $selection_settings = isset($element['#selection_settings']) ? $element['#selection_settings'] : [];
+
+    $entity = isset($selection_settings['entity']) ? $selection_settings['entity'] : NULL;
+    if ($entity instanceof EntityInterface) {
+      // Don't serialise the entity, just pack the ID's.
+      $entity_info = [
+        'uuid' => $entity->uuid(),
+        'entity_type' => $entity->getEntityTypeId(),
+      ];
+      if (!$entity_info['uuid']) {
+        $entity_info['id'] = $entity->id();
+      }
+      $selection_settings['entity'] = $entity_info;
+    }
+
     $data = serialize($selection_settings) . $element['#target_type'] . $element['#selection_handler'];
     $selection_settings_key = Crypt::hmacBase64($data, Settings::getHashSalt());
 
