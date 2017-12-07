@@ -78,7 +78,6 @@ class EntityAutocompleteController extends ControllerBase {
    */
   public function handleAutocomplete(Request $request, $target_type, $selection_handler, $selection_settings_key) {
     $matches = [];
-
     // Get the typed string from the URL, if it exists.
     if ($input = $request->query->get('q')) {
       $typed_string = Tags::explode($input);
@@ -101,12 +100,7 @@ class EntityAutocompleteController extends ControllerBase {
         throw new AccessDeniedHttpException();
       }
 
-      // The host entity was not passed in the selection settings. Set to NULL.
-      if (empty($selection_settings['entity'])) {
-        $selection_settings['entity'] = NULL;
-      }
-
-      $matches = $this->matcher->getMatches($target_type, $selection_handler, $selection_settings, $typed_string, $selection_settings['entity']);
+      $matches = $this->matcher->getMatches($target_type, $selection_handler, $selection_settings, $typed_string);
     }
 
     return new JsonResponse($matches);

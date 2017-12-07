@@ -501,10 +501,9 @@ system.admin_content:
     _permission: 'access administration pages'
 
 system.entity_autocomplete:
-  path: '/entity_reference_autocomplete/{target_type}/{selection_handler}/{selection_settings_key}/{host_entity_id}'
+  path: '/entity_reference_autocomplete/{target_type}/{selection_handler}/{selection_settings_key}'
   defaults:
     _controller: '\Drupal\system\Controller\EntityAutocompleteController::handleAutocomplete'
-    host_entity_id: ''
   requirements:
     _access: 'TRUE'
 

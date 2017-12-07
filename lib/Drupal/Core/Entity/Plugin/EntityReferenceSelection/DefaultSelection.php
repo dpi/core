@@ -4,6 +4,7 @@ namespace Drupal\Core\Entity\Plugin\EntityReferenceSelection;
 
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Database\Query\AlterableInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\Core\Entity\EntityReferenceSelection\SelectionPluginBase;
 use Drupal\Core\Entity\EntityReferenceSelection\SelectionTrait;
@@ -201,7 +202,7 @@ class DefaultSelection extends SelectionPluginBase implements ContainerFactoryPl
     $form['allow_self_reference'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Allow an entity to reference itself'),
-      '#default_value' => $selection_handler_settings['allow_self_reference'],
+      '#default_value' => $configuration['allow_self_reference'],
     ];
 
     return $form;
@@ -359,9 +360,18 @@ class DefaultSelection extends SelectionPluginBase implements ContainerFactoryPl
       $query->condition($label_key, $match, $match_operator);
     }
 
-    // Disallow self-references if possible.
-    if (isset($this->configuration['entity']) && $this->configuration['entity']->id() && isset($handler_settings['allow_self_reference']) && !$handler_settings['allow_self_reference']) {
-      $query->condition($entity_type->getKey('id'), $this->configuration['entity']->id(), '<>');
+    // Disallow references to the referencing entity.
+    $entity = $this->configuration['entity'] ? $this->configuration['entity'] : NULL;
+    if ($entity instanceof EntityInterface) {
+      // To maintain backwards compatibility: if the setting is not set, then
+      // allow referencing self.
+      $allow_self_reference = isset($configuration['handler_settings']['allow_self_reference']) ? !empty($configuration['handler_settings']['allow_self_reference']) : TRUE;
+      if (!$allow_self_reference) {
+        // Referencing entity must be the same entity type as the query.
+        if ($entity->getEntityTypeId() == $entity_type->id()) {
+          $query->condition($entity_type->getKey('id'), $entity->id(), '<>');
+        }
+      }
     }
 
     // Add entity-access tag.
