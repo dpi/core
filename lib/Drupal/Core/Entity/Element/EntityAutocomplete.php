@@ -261,17 +261,16 @@ class EntityAutocomplete extends Textfield {
    * @param \Drupal\Core\Entity\EntityInterface $entity
    *   An entity to generate entity information from.
    *
-   * @return array
+   * @return array|null
    *   If the entity is saved, then an array containing the following structure.
-   *   Otherwise an empty array is returned.
+   *   Or NULL if the entity does not yet have ID's.
    *   - 'entity_type': An entity type ID.
    *   - 'uuid': An entity UUID.
    *   - 'id': An entity ID.
    */
   static protected function createIdsFromEntity(EntityInterface $entity) {
-    $entity_info = [];
-
     if (!$entity->isNew()) {
+      $entity_info = [];
       $entity_info['entity_type'] = $entity->getEntityTypeId();
       $uuid = $entity->uuid();
       if ($uuid) {
@@ -280,9 +279,10 @@ class EntityAutocomplete extends Textfield {
       else {
         $entity_info['id'] = $entity->id();
       }
+      return $entity_info;
     }
 
-    return $entity_info;
+    return NULL;
   }
 
   /**
