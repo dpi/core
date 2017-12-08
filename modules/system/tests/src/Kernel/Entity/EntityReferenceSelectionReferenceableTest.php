@@ -117,10 +117,6 @@ class EntityReferenceSelectionReferenceableTest extends KernelTestBase {
    */
   public function providerAllowSelfReference() {
     return [
-      'when setting is omitted, referencing entity is referencable' => [
-        NULL,
-        TRUE,
-      ],
       'when setting is true, referencing entity is referencable' => [
         TRUE,
         TRUE,

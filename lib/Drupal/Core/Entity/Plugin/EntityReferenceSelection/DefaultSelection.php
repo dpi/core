@@ -363,9 +363,7 @@ class DefaultSelection extends SelectionPluginBase implements ContainerFactoryPl
     // Disallow references to the referencing entity.
     $entity = $this->configuration['entity'] ? $this->configuration['entity'] : NULL;
     if ($entity instanceof EntityInterface) {
-      // To maintain backwards compatibility: if the setting is not set, then
-      // allow referencing self.
-      $allow_self_reference = isset($configuration['handler_settings']['allow_self_reference']) ? !empty($configuration['handler_settings']['allow_self_reference']) : TRUE;
+      $allow_self_reference = !empty($configuration['handler_settings']['allow_self_reference']);
       if (!$allow_self_reference) {
         // Referencing entity must be the same entity type as the query.
         if ($entity->getEntityTypeId() == $entity_type->id()) {
