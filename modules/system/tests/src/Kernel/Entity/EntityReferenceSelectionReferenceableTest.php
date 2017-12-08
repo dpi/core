@@ -92,7 +92,7 @@ class EntityReferenceSelectionReferenceableTest extends KernelTestBase {
       ->setSetting('handler_settings', $handler_settings)
       ->save();
 
-    $entity = EntityTestNoLabel::create(['name' => $this->randomMachineName()]);
+    $entity = EntityTest::create(['name' => $this->randomMachineName()]);
     $entity->save();
     $other = EntityTest::create(['name' => $this->randomMachineName()]);
     $other->save();
@@ -136,7 +136,7 @@ class EntityReferenceSelectionReferenceableTest extends KernelTestBase {
    */
   public function testPreventSelfReferenceDifferentEntityType() {
     $field_name = 'field_test';
-    $this->createEntityReferenceField('entity_test', 'entity_test', $field_name, 'Test entity reference', 'entity_test');
+    $this->createEntityReferenceField('entity_test', 'entity_test', $field_name, 'Test entity reference', 'entity_test_no_label');
     $field_config = FieldConfig::loadByName('entity_test', 'entity_test', $field_name);
     $handler_settings = $field_config->getSetting('handler_settings');
     $handler_settings['allow_self_reference'] = FALSE;
@@ -144,9 +144,9 @@ class EntityReferenceSelectionReferenceableTest extends KernelTestBase {
       ->setSetting('handler_settings', $handler_settings)
       ->save();
 
-    $entity = EntityTestNoLabel::create(['name' => $this->randomMachineName()]);
+    $entity = EntityTest::create(['name' => $this->randomMachineName()]);
     $entity->save();
-    $other = EntityTest::create(['name' => $this->randomMachineName()]);
+    $other = EntityTestNoLabel::create(['name' => $this->randomMachineName()]);
     $other->save();
 
     // The entity type doesn't matter, so long as it is a different type to the
@@ -159,7 +159,7 @@ class EntityReferenceSelectionReferenceableTest extends KernelTestBase {
       ->get('plugin.manager.entity_reference_selection')
       ->getSelectionHandler($field_config, $entity);
 
-    $referenceable = $handler->getReferenceableEntities()['entity_test'];
+    $referenceable = $handler->getReferenceableEntities()['entity_test_no_label'];
     $this->assertArrayHasKey($entity->id(), $referenceable, 'Can reference entity even though the IDs are the same.');
   }
 
