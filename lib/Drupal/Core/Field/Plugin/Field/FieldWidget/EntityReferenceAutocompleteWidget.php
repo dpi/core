@@ -2,6 +2,7 @@
 
 namespace Drupal\Core\Field\Plugin\Field\FieldWidget;
 
+use Drupal\Core\Field\FieldConfigInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
@@ -92,6 +93,10 @@ class EntityReferenceAutocompleteWidget extends WidgetBase {
       'match_operator' => $this->getSetting('match_operator'),
       'entity' => $entity,
     ];
+
+    if ($this->fieldDefinition instanceof FieldConfigInterface) {
+      $selection_settings['field'] = $this->fieldDefinition->id();
+    }
 
     $element += [
       '#type' => 'entity_autocomplete',

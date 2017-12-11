@@ -11,6 +11,7 @@ use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\KeyValueStore\KeyValueStoreInterface;
 use Drupal\Core\Site\Settings;
+use Drupal\field\Entity\FieldConfig;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -102,39 +103,47 @@ class EntityAutocompleteController extends ControllerBase {
         throw new AccessDeniedHttpException();
       }
 
-      $entity_info = isset($selection_settings['entity']) ? $selection_settings['entity'] : NULL;
-      if (is_array($entity_info)) {
-        $selection_settings['entity'] = $this->loadEntityFromIds($entity_info);
-      }
-
       $matches = $this->matcher->getMatches($target_type, $selection_handler, $selection_settings, $typed_string);
     }
 
     return new JsonResponse($matches);
   }
 
-  /**
-   * Loads an entity from storage given entity ID's.
-   *
-   * @param array $entity_info
-   *   An array containing keys, where either uuid or ID is required:
-   *   - 'entity_type': Required. An entity type ID.
-   *   - 'uuid': Optional. An entity UUID.
-   *   - 'id': Optional. An entity ID.
-   *
-   * @return \Drupal\Core\Entity\EntityInterface|null
-   *   The entity loaded from provided ID's, or null if it does not exist.
-   */
-  protected function loadEntityFromIds(array $entity_info) {
-    $entity_type = $entity_info['entity_type'];
-    $uuid = !empty($entity_info['uuid']) ? $entity_info['uuid'] : NULL;
-    if ($uuid) {
-      return $this->entityManager()->loadEntityByUuid($entity_type, $uuid);
+  public function handleFieldAutocomplete(Request $request, $field_config, $entity_id = NULL) {
+    $input = $request->query->get('q');
+    if (!$input) {
+      return [];
     }
-    else {
-      return $this->entityManager()->getStorage($entity_type)
-        ->load($entity_info['id']);
+    $typed_string = Tags::explode($input);
+    $typed_string = Unicode::strtolower(array_pop($typed_string));
+
+    /** @var \Drupal\field\FieldConfigInterface $field */
+    $field = FieldConfig::load($field_config);
+    $field_name = $field->getName();
+    $host_entity_type = $field->getTargetEntityTypeId();
+
+    $host = \Drupal::entityTypeManager()
+      ->getStorage($host_entity_type)
+      ->load($entity_id);
+    if (!$host) {
+      // Triggers on field setting form.
+      return [];
     }
+
+    if (!$host->{$field_name}->access('edit')) {
+      // User should be able to edit this field.
+      throw new AccessDeniedHttpException();
+    }
+
+    $target_type = $field->getSetting('target_type');
+    $selection_handler = $field->getSetting('handler');
+    $selection_settings = $field->getSetting('handler_settings') + [
+      'match_operator' => $field->getSetting('match_operator'),
+      'entity' => $host,
+    ];
+
+    $matches = $this->matcher->getMatches($target_type, $selection_handler, $selection_settings, $typed_string);
+    return new JsonResponse($matches);
   }
 
 }
