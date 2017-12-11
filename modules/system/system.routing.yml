@@ -507,6 +507,14 @@ system.entity_autocomplete:
   requirements:
     _access: 'TRUE'
 
+system.entity_autocomplete.field:
+  path: '/entity_reference_autocomplete/{field_config}/{entity_id}'
+  defaults:
+    _controller: '\Drupal\system\Controller\EntityAutocompleteController::handleFieldAutocomplete'
+    entity_id: NULL
+  requirements:
+    _access: 'TRUE'
+
 system.csrftoken:
   path: '/session/token'
   defaults:
