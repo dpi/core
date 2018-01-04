@@ -68,6 +68,7 @@ abstract class BrowserTestBase extends TestCase {
     createUser as drupalCreateUserParent;
   }
   use XdebugRequestTrait;
+  use PhpunitCompatibilityTrait;
 
   /**
    * Entities to clean up.
