@@ -572,69 +572,104 @@ trait FunctionalTestSetupTrait {
     // Bootstrap Drupal so we can use Drupal's built in functions.
     $this->classLoader = require __DIR__ . '/../../../../../autoload.php';
     $request = Request::createFromGlobals();
-    $kernel = TestRunnerKernel::createFromRequest($request, $this->classLoader);
-    // TestRunnerKernel expects the working directory to be DRUPAL_ROOT.
-    chdir(DRUPAL_ROOT);
-    $kernel->prepareLegacyRequest($request);
-    $this->prepareDatabasePrefix();
 
-    $this->originalSite = $kernel->findSitePath($request);
+    if (!$this->runAgainstInstalledSite) {
+      $kernel = TestRunnerKernel::createFromRequest($request, $this->classLoader);
+      // TestRunnerKernel expects the working directory to be DRUPAL_ROOT.
+      chdir(DRUPAL_ROOT);
+      $kernel->prepareLegacyRequest($request);
+      $this->prepareDatabasePrefix();
 
-    // Create test directory ahead of installation so fatal errors and debug
-    // information can be logged during installation process.
-    file_prepare_directory($this->siteDirectory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+      $this->originalSite = $kernel->findSitePath($request);
 
-    // Prepare filesystem directory paths.
-    $this->publicFilesDirectory = $this->siteDirectory . '/files';
-    $this->privateFilesDirectory = $this->siteDirectory . '/private';
-    $this->tempFilesDirectory = $this->siteDirectory . '/temp';
-    $this->translationFilesDirectory = $this->siteDirectory . '/translations';
+      // Create test directory ahead of installation so fatal errors and debug
+      // information can be logged during installation process.
+      file_prepare_directory($this->siteDirectory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
 
-    // Ensure the configImporter is refreshed for each test.
-    $this->configImporter = NULL;
+      // Prepare filesystem directory paths.
+      $this->publicFilesDirectory = $this->siteDirectory . '/files';
+      $this->privateFilesDirectory = $this->siteDirectory . '/private';
+      $this->tempFilesDirectory = $this->siteDirectory . '/temp';
+      $this->translationFilesDirectory = $this->siteDirectory . '/translations';
 
-    // Unregister all custom stream wrappers of the parent site.
-    $wrappers = \Drupal::service('stream_wrapper_manager')->getWrappers(StreamWrapperInterface::ALL);
-    foreach ($wrappers as $scheme => $info) {
-      stream_wrapper_unregister($scheme);
+      // Ensure the configImporter is refreshed for each test.
+      $this->configImporter = NULL;
+
+      // Unregister all custom stream wrappers of the parent site.
+      $wrappers = \Drupal::service('stream_wrapper_manager')
+        ->getWrappers(StreamWrapperInterface::ALL);
+      foreach ($wrappers as $scheme => $info) {
+        stream_wrapper_unregister($scheme);
+      }
+
+      // Reset statics.
+      drupal_static_reset();
+
+      $this->container = NULL;
+
+      // Unset globals.
+      unset($GLOBALS['config_directories']);
+      unset($GLOBALS['config']);
+      unset($GLOBALS['conf']);
+
+      // Log fatal errors.
+      ini_set('log_errors', 1);
+      ini_set('error_log', DRUPAL_ROOT . '/' . $this->siteDirectory . '/error.log');
+
+      // Change the database prefix.
+      $this->changeDatabasePrefix();
+
+      // After preparing the environment and changing the database prefix, we
+      // are in a valid test environment.
+      drupal_valid_test_ua($this->databasePrefix);
+
+      // Reset settings.
+      new Settings([
+        // For performance, simply use the database prefix as hash salt.
+        'hash_salt' => $this->databasePrefix,
+      ]);
+
+      drupal_set_time_limit($this->timeLimit);
+
+      // Save and clean the shutdown callbacks array because it is static cached
+      // and will be changed by the test run. Otherwise it will contain
+      // callbacks from both environments and the testing environment will try
+      // to call the handlers defined by the original one.
+      $callbacks = &drupal_register_shutdown_function();
+      $this->originalShutdownCallbacks = $callbacks;
+      $callbacks = [];
     }
+    else {
+      $kernel = DrupalKernel::createFromRequest($request, $this->classLoader, 'testing');
+      chdir(DRUPAL_ROOT);
+      $kernel->prepareLegacyRequest($request);
+      $this->container = $kernel->getContainer();
 
-    // Reset statics.
-    drupal_static_reset();
+      // Set some debugging defaults.
+      $config_values = [
+        'system.mail' => [
+          'interface.default' => 'test_mail_collector',
+        ],
+        'system.logging' => [
+          'error_level' => 'verbose',
+        ],
+        'system.performance' => [
+          'css.preprocess' => FALSE,
+          'js.preprocess' => FALSE,
+        ],
+      ];
+      $this->setConfigValues($config_values);
 
-    $this->container = NULL;
-
-    // Unset globals.
-    unset($GLOBALS['config_directories']);
-    unset($GLOBALS['config']);
-    unset($GLOBALS['conf']);
-
-    // Log fatal errors.
-    ini_set('log_errors', 1);
-    ini_set('error_log', DRUPAL_ROOT . '/' . $this->siteDirectory . '/error.log');
-
-    // Change the database prefix.
-    $this->changeDatabasePrefix();
-
-    // After preparing the environment and changing the database prefix, we are
-    // in a valid test environment.
-    drupal_valid_test_ua($this->databasePrefix);
-
-    // Reset settings.
-    new Settings([
-      // For performance, simply use the database prefix as hash salt.
-      'hash_salt' => $this->databasePrefix,
-    ]);
-
-    drupal_set_time_limit($this->timeLimit);
-
-    // Save and clean the shutdown callbacks array because it is static cached
-    // and will be changed by the test run. Otherwise it will contain callbacks
-    // from both environments and the testing environment will try to call the
-    // handlers defined by the original one.
-    $callbacks = &drupal_register_shutdown_function();
-    $this->originalShutdownCallbacks = $callbacks;
-    $callbacks = [];
+      chdir(DRUPAL_ROOT);
+      $this->originalSite = 'sites/default';
+      $this->siteDirectory = 'sites/default';
+      file_prepare_directory($this->siteDirectory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+      $this->publicFilesDirectory = $this->siteDirectory . '/files';
+      $this->privateFilesDirectory = $this->siteDirectory . '/private';
+      $this->tempFilesDirectory = $this->siteDirectory . '/temp';
+      $this->translationFilesDirectory = $this->siteDirectory . '/translations';
+      file_prepare_directory($this->tempFilesDirectory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+    }
   }
 
   /**

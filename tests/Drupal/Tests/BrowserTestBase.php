@@ -12,6 +12,7 @@ use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Database\Database;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Session\AnonymousUserSession;
 use Drupal\Core\Test\FunctionalTestSetupTrait;
@@ -23,6 +24,7 @@ use Drupal\Tests\block\Traits\BlockCreationTrait;
 use Drupal\Tests\node\Traits\ContentTypeCreationTrait;
 use Drupal\Tests\node\Traits\NodeCreationTrait;
 use Drupal\Tests\user\Traits\UserCreationTrait;
+use Drupal\user\Entity\Role;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -47,25 +49,56 @@ abstract class BrowserTestBase extends TestCase {
   use TestSetupTrait;
   use AssertHelperTrait;
   use BlockCreationTrait {
-    placeBlock as drupalPlaceBlock;
+    placeBlock as drupalPlaceBlockParent;
   }
   use AssertLegacyTrait;
   use RandomGeneratorTrait;
   use SessionTestTrait;
   use NodeCreationTrait {
     getNodeByTitle as drupalGetNodeByTitle;
-    createNode as drupalCreateNode;
+    createNode as drupalCreateNodeParent;
   }
   use ContentTypeCreationTrait {
-    createContentType as drupalCreateContentType;
+    createContentType as drupalCreateContentTypeParent;
   }
   use ConfigTestTrait;
   use TestRequirementsTrait;
   use UserCreationTrait {
-    createRole as drupalCreateRole;
-    createUser as drupalCreateUser;
+    createRole as drupalCreateRoleParent;
+    createUser as drupalCreateUserParent;
   }
   use XdebugRequestTrait;
+
+  /**
+   * Entities to clean up.
+   *
+   * @var \Drupal\Core\Entity\EntityInterface[]
+   */
+  protected $cleanupEntities = [];
+
+  /**
+   * Config to reset.
+   *
+   * @var array
+   */
+  protected $resetConfig = [];
+
+  /**
+   * Set this to TRUE to run the tests against the installed site.
+   *
+   * There are scenarios when building sites with Drupal where you may want to
+   * run functional tests against the installed site, instead of setting up a
+   * new site for each test method (the default behavior).
+   *
+   * Note that you must take care to cleanup entities created and reset any
+   * configuration changes.
+   *
+   * @see ::markEntityForCleanup
+   * @see ::setConfigValues
+   *
+   * @var bool
+   */
+  protected $runAgainstInstalledSite = FALSE;
 
   /**
    * The database prefix of this test run.
@@ -387,7 +420,7 @@ abstract class BrowserTestBase extends TestCase {
         file_put_contents($this->htmlOutputDirectory . '/.htaccess', "<IfModule mod_expires.c>\nExpiresActive Off\n</IfModule>\n");
       }
       $this->htmlOutputCounterStorage = $this->htmlOutputDirectory . '/' . $this->htmlOutputClassName . '.counter';
-      $this->htmlOutputTestId = str_replace('sites/simpletest/', '', $this->siteDirectory);
+      $this->htmlOutputTestId = $this->databasePrefix;
       if (is_file($this->htmlOutputCounterStorage)) {
         $this->htmlOutputCounter = max(1, (int) file_get_contents($this->htmlOutputCounterStorage)) + 1;
       }
@@ -465,7 +498,9 @@ abstract class BrowserTestBase extends TestCase {
 
     // Install Drupal test site.
     $this->prepareEnvironment();
-    $this->installDrupal();
+    if (!$this->runAgainstInstalledSite) {
+      $this->installDrupal();
+    }
 
     // Setup Mink.
     $session = $this->initMink();
@@ -532,9 +567,19 @@ abstract class BrowserTestBase extends TestCase {
   protected function tearDown() {
     parent::tearDown();
 
+    if ($this->runAgainstInstalledSite) {
+      $this->setConfigValues($this->resetConfig, FALSE);
+      foreach ($this->cleanupEntities as $entity) {
+        if ($entity instanceof EntityInterface) {
+          $entity->delete();
+        }
+      }
+    }
     // Destroy the testing kernel.
     if (isset($this->kernel)) {
-      $this->cleanupEnvironment();
+      if (!$this->runAgainstInstalledSite) {
+        $this->cleanupEnvironment();
+      }
       $this->kernel->shutdown();
     }
 
@@ -547,8 +592,14 @@ abstract class BrowserTestBase extends TestCase {
 
     // Restore original shutdown callbacks.
     if (function_exists('drupal_register_shutdown_function')) {
-      $callbacks = &drupal_register_shutdown_function();
-      $callbacks = $this->originalShutdownCallbacks;
+      if (!$this->runAgainstInstalledSite) {
+        $callbacks = &drupal_register_shutdown_function();
+        $callbacks = $this->originalShutdownCallbacks;
+      }
+      else {
+        $f = &drupal_register_shutdown_function();
+        $f = [];
+      }
     }
   }
 
@@ -757,7 +808,7 @@ abstract class BrowserTestBase extends TestCase {
     ], t('Log in'));
 
     // @see BrowserTestBase::drupalUserIsLoggedIn()
-    $account->sessionId = $this->getSession()->getCookie($this->getSessionName());
+    $account->sessionId = $this->getSession()->getCookie(\Drupal::service('session_configuration')->getOptions(\Drupal::request())['name']);
     $this->assertTrue($this->drupalUserIsLoggedIn($account), new FormattableMarkup('User %name successfully logged in.', ['%name' => $account->getAccountName()]));
 
     $this->loggedInUser = $account;
@@ -1309,6 +1360,93 @@ abstract class BrowserTestBase extends TestCase {
       }
     }
     return FALSE;
+  }
+
+  /**
+   * Set config values noting future values if required.
+   *
+   * @param array[] $config_values
+   *   Array of array values keyed by config object key.
+   * @param bool $mark
+   *   TRUE to record value for resetting later.
+   */
+  protected function setConfigValues($config_values, $mark = TRUE) {
+    $config = $this->container->get('config.factory');
+    foreach ($config_values as $key => $values) {
+      /** @var \Drupal\Core\Config\ImmutableConfig $entry */
+      $entry = $config->getEditable($key);
+      if ($mark && !isset($this->resetConfig[$key])) {
+        $this->resetConfig[$key] = [];
+      }
+      foreach ($values as $value_key => $value) {
+        if ($mark) {
+          $this->resetConfig[$key][$value_key] = $entry->get($value_key);
+        }
+        $entry->set($value_key, $value);
+      }
+      $entry->save();
+    }
+  }
+
+  /**
+   * When running against an installed site, mark an entity for deletion.
+   *
+   * Any entities you create when running against an installed site should be
+   * flagged for deletion to ensure isolation between tests.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   Entity to delete.
+   */
+  protected function markEntityForCleanup(EntityInterface $entity) {
+    $this->cleanupEntities[] = $entity;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function drupalPlaceBlock($plugin_id, array $settings = array()) {
+    $block = $this->drupalPlaceBlockParent($plugin_id, $settings);
+    $this->markEntityForCleanup($block);
+    return $block;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function drupalCreateContentType(array $values = array()) {
+    $type = $this->drupalCreateContentTypeParent($values);
+    $this->markEntityForCleanup($type);
+    return $type;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function drupalCreateNode(array $settings = array()) {
+    $node = $this->drupalCreateNodeParent($settings);
+    $this->markEntityForCleanup($node);
+    return $node;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function drupalCreateUser(array $permissions = array(), $name = NULL, $admin = FALSE) {
+    $user = $this->drupalCreateUserParent($permissions, $name, $admin);
+    $this->markEntityForCleanup($user);
+    foreach ($user->getRoles(TRUE) as $rid) {
+      $this->markEntityForCleanup(Role::load($rid));
+    }
+    return $user;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function drupalCreateRole(array $permissions, $rid = NULL, $name = NULL, $weight = NULL) {
+    $rid = $this->drupalCreateRoleParent($permissions, $rid, $name, $weight);
+    $this->markEntityForCleanup(Role::load($rid));
+    return $rid;
   }
 
 }

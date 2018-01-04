@@ -23,7 +23,7 @@ abstract class JavascriptTestBase extends BrowserTestBase {
    */
   protected function initMink() {
     // Set up the template cache used by the PhantomJS mink driver.
-    $path = $this->tempFilesDirectory . DIRECTORY_SEPARATOR . 'browsertestbase-templatecache';
+    $path = DRUPAL_ROOT . '/' . $this->tempFilesDirectory . DIRECTORY_SEPARATOR . 'browsertestbase-templatecache';
     $this->minkDefaultDriverArgs = [
       'http://127.0.0.1:8510',
       $path,
