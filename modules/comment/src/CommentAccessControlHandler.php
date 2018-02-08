@@ -36,6 +36,28 @@ class CommentAccessControlHandler extends EntityAccessControlHandler {
 
     switch ($operation) {
       case 'view':
+        /**
+         * Generator to traverse the parent chain of a comment.
+         *
+         * @todo move to comment entity?
+         * @todo add reverse param? default to true
+         * @return \Generator|\Drupal\comment\CommentInterface[]
+         */
+        $parents = function (CommentInterface $comment) {
+          while ($parentComment = $comment->getParentComment()) {
+            yield $parentComment->id() => $parentComment;
+            $comment = $parentComment;
+          }
+        };
+
+        // Deny access if parents not visible.
+        foreach ($parents($entity) as $parentComment) {
+          $parentAccess = $parentComment->access($operation, $account, TRUE);
+          if (!$parentAccess->isAllowed()) {
+            return $parentAccess->setReason('Access denied comment parents.');
+          }
+        }
+
         $access_result = AccessResult::allowedIf($account->hasPermission('access comments') && $entity->isPublished())->cachePerPermissions()->addCacheableDependency($entity)
           ->andIf($entity->getCommentedEntity()->access($operation, $account, TRUE));
         if (!$access_result->isAllowed()) {
