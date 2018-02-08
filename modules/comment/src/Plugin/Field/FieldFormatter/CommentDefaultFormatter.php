@@ -2,7 +2,9 @@
 
 namespace Drupal\comment\Plugin\Field\FieldFormatter;
 
+use Drupal\comment\CommentInterface;
 use Drupal\comment\Plugin\Field\FieldType\CommentItemInterface;
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Entity\Entity\EntityViewDisplay;
 use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\Core\Entity\EntityFormBuilderInterface;
@@ -168,6 +170,17 @@ class CommentDefaultFormatter extends FormatterBase implements ContainerFactoryP
           $mode = $comment_settings['default_mode'];
           $comments_per_page = $comment_settings['per_page'];
           $comments = $this->storage->loadThread($entity, $field_name, $mode, $comments_per_page, $this->getSetting('pager_id'));
+
+          // Filter out inaccessible comments, and apply access cachability data
+          // to rendered output.
+          $cacheability = CacheableMetadata::createFromRenderArray($output['comments']);
+          $comments = array_filter($comments, function(CommentInterface $comment) use (&$cacheability) {
+            $access = $comment->access('view', $this->currentUser, TRUE);
+            $cacheability = $cacheability->merge(CacheableMetadata::createFromObject($access));
+            return $access->isAllowed();
+          });
+          $cacheability->applyTo($output['comments']);
+
           if ($comments) {
             $build = $this->viewBuilder->viewMultiple($comments, $this->getSetting('view_mode'));
             $build['pager']['#type'] = 'pager';
