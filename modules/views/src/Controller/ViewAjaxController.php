@@ -190,7 +190,14 @@ class ViewAjaxController implements ContainerInjectionInterface {
             ->merge($bubbleable_metadata)
             ->applyTo($preview);
         }
-        $response->addCommand(new ReplaceCommand(".js-view-dom-id-$dom_id", $preview));
+
+        $selector = ".js-view-dom-id-$dom_id";
+        $response->addCommand(new ReplaceCommand($selector, $preview));
+        $status_messages = ['#type' => 'status_messages'];
+        $output =  \Drupal::service('renderer')->renderRoot($status_messages);
+        if (!empty($output)) {
+          $response->addCommand(new \Drupal\Core\Ajax\PrependCommand($selector, $output));
+        }
 
         return $response;
       }
