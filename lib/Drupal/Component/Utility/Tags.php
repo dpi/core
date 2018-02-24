@@ -2,8 +2,6 @@
 
 namespace Drupal\Component\Utility;
 
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-
 /**
  * Defines a class that can explode and implode tags.
  *
