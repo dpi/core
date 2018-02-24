@@ -165,6 +165,11 @@ class TagsTest extends UnitTestCase {
       ['Hello'],
       TRUE,
     ];
+    $tests['quoted, spaces within quotes'] = [
+      '"  hello  "',
+      ['hello'],
+      FALSE,
+    ];
     $tests['quoted, missing comma, unquoted'] = [
       '"Hello" World',
       ['Hello'],
