@@ -20,7 +20,9 @@ class Tags {
    * @param string $string
    *   A string to explode.
    * @param array $errors
-   *   (optional) A reference to an array to fill with error messages, if any.
+   *   (optional) A reference to an array to fill with error messages. The array
+   *   contains arrays with keys 'message' and 'arguments' suitable for
+   *   translation.
    *
    * @return array
    *   An array of tags.
@@ -40,7 +42,10 @@ class Tags {
         preg_match('/(?:^|[^"])(?:"")*(")(?:[^"]|$)/', $string, $matches, PREG_OFFSET_CAPTURE);
         $end_quote_position = isset($matches[1][1]) ? $matches[1][1] : NULL;
         if (!isset($end_quote_position)) {
-          $errors[] = new TranslatableMarkup('No ending quote character found.');
+          $errors[] = [
+            'message' => 'No ending quote character found.',
+            'arguments' => [],
+          ];
           break;
         }
 
@@ -60,10 +65,13 @@ class Tags {
           break;
         }
         else {
-          $errors[] = new TranslatableMarkup('Unexpected text after "@tag". Expected comma or end of text. Found "@unexpected".', [
-            '@tag' => $tag,
-            '@unexpected' => substr($string, 0, 10),
-          ]);
+          $errors[] = [
+            'message' => 'Unexpected text after "@tag". Expected comma or end of text. Found "@unexpected".',
+            'arguments' => [
+              '@tag' => $tag,
+              '@unexpected' => substr($string, 0, 10),
+            ],
+          ];
           break;
         }
       }
@@ -75,15 +83,18 @@ class Tags {
         // Determine if there are any single quote characters.
         preg_match('/[^"](?:"")*(")(?:[^"]|$)/', $tag, $matches, PREG_OFFSET_CAPTURE);
         if (!count($matches)) {
-          $tags[] = trim($tag);
+          $tags[] = $tag;
         }
         else {
           $sample_end = $matches[1][1];
           $sample_start = max($sample_end - 10, 0);
           $string_to_quote = substr($tag, $sample_start, $sample_end);
-          $errors[] = new TranslatableMarkup('Unexpected quote character found after "@tag"', [
-            '@tag' => $string_to_quote,
-          ]);
+          $errors[] = [
+            'message' => 'Unexpected quote character found after "@tag"',
+            'arguments' => [
+              '@tag' => $string_to_quote,
+            ],
+          ];
           break;
         }
       }
@@ -91,8 +102,9 @@ class Tags {
 
     // Replace escaped quotes with singles.
     $tags = array_map(
-      function ($item) {
-        return str_replace('""', '"', $item);
+      function ($tag) {
+        $tag = trim($tag);
+        return str_replace('""', '"', $tag);
       },
       $tags
     );

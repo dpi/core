@@ -166,11 +166,10 @@ class EntityAutocomplete extends Textfield {
         $value = $element['#value'];
       }
       else {
-        /** @var \Drupal\Core\StringTranslation\TranslatableMarkup $errors */
         $errors = [];
         $input_values = $element['#tags'] ? Tags::explode($element['#value'], $errors) : [$element['#value']];
         foreach ($errors as $error) {
-          $form_state->setError($element, $error);
+          $form_state->setError($element, t($error['message'], $error['arguments']));
         }
 
         foreach ($input_values as $input) {
