@@ -72,6 +72,10 @@ class TagsTest extends UnitTestCase {
     $tags = Tags::explode($string, $errors);
     $this->assertEquals($tagsExpected, $tags);
     $this->assertEquals($hasError, count($errors) > 0);
+
+    // Convert back to string to test explosion is compatible with implosion.
+    $imploded = Tags::implode($tags);
+    $this->assertEquals($tags, Tags::explode($imploded));
   }
 
   /**
@@ -158,7 +162,7 @@ class TagsTest extends UnitTestCase {
     ];
     $tests['quoted, unexpected quote'] = [
       '"Hello "Foo bar" World, baz"',
-      ['Hello '],
+      ['Hello'],
       TRUE,
     ];
     $tests['quoted, missing comma, unquoted'] = [
@@ -212,9 +216,14 @@ class TagsTest extends UnitTestCase {
       [],
       TRUE,
     ];
-    $tests['quoted, starts with quoted'] = [
+    $tests['quoted, starts with escaped'] = [
       '"""Hello"',
       ['"Hello'],
+      FALSE,
+    ];
+    $tests['quoted, ends with escaped'] = [
+      '"Hello"""',
+      ['Hello"'],
       FALSE,
     ];
     $tests['quoted, escaped, missing comma'] = [
@@ -222,7 +231,7 @@ class TagsTest extends UnitTestCase {
       ['"'],
       TRUE,
     ];
-    $tests['Escaped quote, tag'] = [
+    $tests['quoted, escaped, tag'] = [
       '"""",hello',
       ['"', 'hello'],
       FALSE,
