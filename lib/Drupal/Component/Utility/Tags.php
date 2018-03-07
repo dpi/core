@@ -31,8 +31,8 @@ class Tags {
 
     while (strlen($string) > 0) {
       preg_match('/^\s*(")/', $string, $matches, PREG_OFFSET_CAPTURE);
-      $inQuotes = count($matches) != 0;
-      if ($inQuotes) {
+      $in_quotes = count($matches) != 0;
+      if ($in_quotes) {
         $first_quote_position = $matches[1][1];
         $string = substr($string, $first_quote_position + 1);
 
@@ -53,12 +53,12 @@ class Tags {
 
         // Next char should be whitespace then comma or end of string.
         preg_match('/^\s*([,]|$)/', $string, $matches, PREG_OFFSET_CAPTURE);
-        $nextChar = isset($matches[1][0]) ? $matches[1][0] : NULL;
-        if ($nextChar === ',') {
+        $next_char = isset($matches[1][0]) ? $matches[1][0] : NULL;
+        if ($next_char === ',') {
           // Take off the comma.
           $string = substr($string, 1);
         }
-        elseif ($nextChar === '') {
+        elseif ($next_char === '') {
           // End of string. Finish.
           break;
         }
