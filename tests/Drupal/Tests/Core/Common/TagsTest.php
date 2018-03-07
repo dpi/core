@@ -66,9 +66,9 @@ class TagsTest extends UnitTestCase {
    * @param bool $hasError
    *   Whether errors are logged.
    *
-   * @dataProvider providerTestExplode
+   * @dataProvider providerTestSafeExplode
    */
-  public function testExplode($string, $tagsExpected, $hasError) {
+  public function testSafeExplode($string, $tagsExpected, $hasError) {
     $tags = Tags::safeExplode($string, $errors);
     $this->assertEquals($tagsExpected, $tags);
     $this->assertEquals($hasError, count($errors) > 0);
@@ -79,10 +79,11 @@ class TagsTest extends UnitTestCase {
   }
 
   /**
-   * Provides test data for testExplode().
+   * Provides test data for ::testSafeExplode().
+   *
    * @return array
    */
-  public function providerTestExplode() {
+  public function providerTestSafeExplode() {
     $tests = [];
 
     $tests['unquoted'] = [
