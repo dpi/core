@@ -2,6 +2,7 @@ id: d6_field_formatter_settings
 label: Field formatter configuration
 migration_tags:
   - Drupal 6
+  - Configuration
 class: Drupal\migrate_drupal\Plugin\migrate\FieldMigration
 field_plugin_method: processFieldFormatter
 source:
@@ -172,7 +173,7 @@ process:
             default: entity_reference_label
             plain: entity_reference_label
       -
-        plugin: field_type_defaults
+        plugin: d6_field_type_defaults
   "options/settings":
     -
       plugin: static_map
