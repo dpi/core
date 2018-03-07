@@ -61,8 +61,9 @@ class Tags {
 
     while (strlen($string) > 0) {
       preg_match('/^\s*(")/', $string, $matches, PREG_OFFSET_CAPTURE);
-      $in_quotes = count($matches) != 0;
-      if ($in_quotes) {
+
+      // Determine whether the tag is in quotes.
+      if (count($matches)) {
         $first_quote_position = $matches[1][1];
         $string = substr($string, $first_quote_position + 1);
 
