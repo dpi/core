@@ -37,8 +37,8 @@ class Tags {
         $string = substr($string, $first_quote_position + 1);
 
         // Find first single quote.
-        preg_match('/(?:^|[^"])(?:"")*(")(?:[^"]|$)/', $string, $matches, PREG_OFFSET_CAPTURE);
-        $end_quote_position = isset($matches[1][1]) ? $matches[1][1] : NULL;
+        preg_match('/(?:^|[^"])(?:"")*(?<quote>")(?:[^"]|$)/', $string, $matches, PREG_OFFSET_CAPTURE);
+        $end_quote_position = isset($matches['quote'][1]) ? $matches['quote'][1] : NULL;
         if (!isset($end_quote_position)) {
           $errors[] = [
             'message' => 'No ending quote character found.',
@@ -52,8 +52,8 @@ class Tags {
         $string = substr($string, $end_quote_position + 1);
 
         // Next char should be whitespace then comma or end of string.
-        preg_match('/^\s*([,]|$)/', $string, $matches, PREG_OFFSET_CAPTURE);
-        $next_char = isset($matches[1][0]) ? $matches[1][0] : NULL;
+        preg_match('/^\s*(?<nextchar>[,]|$)/', $string, $matches, PREG_OFFSET_CAPTURE);
+        $next_char = isset($matches['nextchar'][0]) ? $matches['nextchar'][0] : NULL;
         if ($next_char === ',') {
           // Take off the comma.
           $string = substr($string, 1);
@@ -79,12 +79,12 @@ class Tags {
         $tag = substr($string, 0, $end_position);
         $string = substr($string, $end_position + 1);
         // Determine if there are any single quote characters.
-        preg_match('/[^"](?:"")*(")(?:[^"]|$)/', $tag, $matches, PREG_OFFSET_CAPTURE);
+        preg_match('/[^"](?:"")*(?<quote>")(?:[^"]|$)/', $tag, $matches, PREG_OFFSET_CAPTURE);
         if (!count($matches)) {
           $tags[] = $tag;
         }
         else {
-          $sample_end = $matches[1][1];
+          $sample_end = $matches['quote'][1];
           $sample_start = max($sample_end - 10, 0);
           $string_to_quote = substr($tag, $sample_start, $sample_end);
           $errors[] = [
