@@ -167,7 +167,7 @@ class EntityAutocomplete extends Textfield {
       }
       else {
         $errors = [];
-        $input_values = $element['#tags'] ? Tags::explode($element['#value'], $errors) : [$element['#value']];
+        $input_values = $element['#tags'] ? Tags::safeExplode($element['#value'], $errors) : [$element['#value']];
         foreach ($errors as $error) {
           $form_state->setError($element, t($error['message'], $error['arguments']));
         }
