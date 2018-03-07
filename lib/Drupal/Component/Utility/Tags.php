@@ -36,7 +36,7 @@ class Tags {
         $first_quote_position = $matches[1][1];
         $string = substr($string, $first_quote_position + 1);
 
-        // Find first single quote.
+        // Find end single quote.
         preg_match('/(?:^|[^"])(?:"")*(?<quote>")(?:[^"]|$)/', $string, $matches, PREG_OFFSET_CAPTURE);
         $end_quote_position = isset($matches['quote'][1]) ? $matches['quote'][1] : NULL;
         if (!isset($end_quote_position)) {
