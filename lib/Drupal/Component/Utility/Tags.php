@@ -52,7 +52,7 @@ class Tags {
    *   contains arrays with keys 'message' and 'arguments' suitable for
    *   translation.
    *
-   * @return array
+   * @return string[]
    *   An array of tags.
    */
   public static function safeExplode($string, &$errors = NULL) {
