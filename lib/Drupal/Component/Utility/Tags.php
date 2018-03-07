@@ -118,9 +118,8 @@ class Tags {
           $tags[] = $tag;
         }
         else {
-          $sample_end = $matches['quote'][1];
-          $sample_start = max($sample_end - 10, 0);
-          $string_to_quote = substr($tag, $sample_start, $sample_end);
+          $unexpected_quote_position = $matches['quote'][1];
+          $string_to_quote = substr($tag, 0, $unexpected_quote_position);
           $errors[] = [
             'message' => 'Unexpected quote character found after "@tag"',
             'arguments' => [
