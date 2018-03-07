@@ -55,7 +55,7 @@ class Tags {
    * @return array
    *   An array of tags.
    */
-  public static function explode($string, &$errors = NULL) {
+  public static function safeExplode($string, &$errors = NULL) {
     $errors = [];
     $tags = [];
 

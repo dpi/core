@@ -69,7 +69,7 @@ class TagsTest extends UnitTestCase {
    * @dataProvider providerTestExplode
    */
   public function testExplode($string, $tagsExpected, $hasError) {
-    $tags = Tags::explode($string, $errors);
+    $tags = Tags::safeExplode($string, $errors);
     $this->assertEquals($tagsExpected, $tags);
     $this->assertEquals($hasError, count($errors) > 0);
 
