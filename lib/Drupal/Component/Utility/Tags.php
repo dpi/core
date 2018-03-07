@@ -74,11 +74,15 @@ class Tags {
         }
       }
       else {
+        // Handle tags not in quotes.
+
+        // Determine where the tag ends.
         $end_position = strpos($string, ',');
         $end_position = $end_position !== FALSE ? $end_position : strlen($string);
         $tag = substr($string, 0, $end_position);
         $string = substr($string, $end_position + 1);
-        // Determine if there are any single quote characters.
+
+        // There should not be any unescaped (single) quotes in an unquoted tag.
         preg_match('/[^"](?:"")*(?<quote>")(?:[^"]|$)/', $tag, $matches, PREG_OFFSET_CAPTURE);
         if (!count($matches)) {
           $tags[] = $tag;
