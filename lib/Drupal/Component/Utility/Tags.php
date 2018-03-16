@@ -104,9 +104,9 @@ class Tags {
           break;
         }
       }
-      else {
-        // Handle tags not in quotes.
 
+      // Handle tags not in quotes.
+      else {
         // Determine where the tag ends.
         $end_position = strpos($string, ',');
         $end_position = $end_position !== FALSE ? $end_position : strlen($string);
