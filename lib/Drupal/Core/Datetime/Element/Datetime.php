@@ -241,7 +241,7 @@ class Datetime extends DateElementBase {
       // placeholders are invalid for HTML5 date and datetime, so an example
       // format is appended to the title to appear in tooltips.
       $extra_attributes = [
-        'title' => t('Date (e.g. @format)', ['@format' => static::formatExample($date_format)]),
+        'title' => t('Date'),
         'type' => $element['#date_date_element'],
       ];
 
@@ -288,7 +288,7 @@ class Datetime extends DateElementBase {
 
       // Adds the HTML5 attributes.
       $extra_attributes = [
-        'title' => t('Time (e.g. @format)', ['@format' => static::formatExample($time_format)]),
+        'title' => t('Time'),
         'type' => $element['#date_time_element'],
         'step' => $element['#date_increment'],
       ];
@@ -392,6 +392,10 @@ class Datetime extends DateElementBase {
    * @param string $format
    *
    * @return string
+   *
+   * @deprecated in Drupal 8.6.x and will be removed before Drupal 9.0.0.
+   *   HTML date input format should not be exposed to users, as browser widgets
+   *   expose input differently, varying by vendor, locale, device type, etc.
    */
   public static function formatExample($format) {
     if (!static::$dateExample) {
