@@ -3,10 +3,15 @@
 namespace Drupal\Tests\user\Unit;
 
 use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Cache\Context\CacheContextsManager;
 use Drupal\Core\DependencyInjection\Container;
+use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\Language\LanguageInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\Tests\UnitTestCase;
 use Drupal\user\UserAccessControlHandler;
+use Drupal\user\UserInterface;
 
 /**
  * Tests the user access controller.
@@ -413,6 +418,29 @@ class UserAccessControlHandlerTest extends UnitTestCase {
       ],
     ];
     return $created_access;
+  }
+
+  /**
+   * Tests the an operation not implemented by the access control handler.
+   */
+  public function testUnrecognisedOperation() {
+    $moduleHandler = $this->createMock(ModuleHandlerInterface::class);
+    $moduleHandler->expects($this->exactly(2))
+      ->method('invokeAll')
+      ->willReturn([]);
+    $this->accessControlHandler->setModuleHandler($moduleHandler);
+
+    $language = $this->createMock(LanguageInterface::class);
+    $language->expects($this->any())
+      ->method('getId')
+      ->will($this->returnValue('de'));
+    $entity = $this->createMock(UserInterface::class);
+    $entity->expects($this->any())
+      ->method('language')
+      ->willReturn($language);
+    $account = $this->createMock(AccountInterface::class);
+    $access = $this->accessControlHandler->access($entity, $this->randomMachineName(), $account, TRUE);
+    $this->assertInstanceOf(AccessResultInterface::class, $access);
   }
 
 }
