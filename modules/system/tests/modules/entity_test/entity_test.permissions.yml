@@ -18,6 +18,9 @@ view all entity_test_query_access entities:
   title: 'view all entity_test_query_access entities'
 edit own entity_test content:
   title: 'Edit own entity_test content'
+'view all entity_test_rev revisions':
+  title: 'View all entity_test_rev revisions'
+  'restrict access': TRUE
 
 permission_callbacks:
   - \Drupal\entity_test\EntityTestPermissions::entityTestBundlePermissions
