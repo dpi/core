@@ -111,17 +111,25 @@ class ContextHandler implements ContextHandlerInterface {
           $missing_value[] = $plugin_context_id;
         }
       }
-      elseif (($context = $plugin->getContext($context_id)) && $context->hasContextValue()) {
-        // Ignore mappings if the plugin has a value for a missing context.
-        unset($mappings[$plugin_context_id]);
-      }
-      elseif ($plugin_context_definition->isRequired()) {
-        // Collect required contexts that are missing.
-        $missing_value[] = $plugin_context_id;
-      }
       else {
-        // Ignore mappings for optional missing context.
-        unset($mappings[$plugin_context_id]);
+        try {
+          // Check if the plugin already has this context.
+          $existingContext = $plugin->getContext($context_id);
+        }
+        catch (ContextException $e) {
+        }
+        if (isset($existingContext) && $existingContext->hasContextValue()) {
+          // Ignore mappings if the plugin has a value for a missing context.
+          unset($mappings[$plugin_context_id]);
+        }
+        elseif ($plugin_context_definition->isRequired()) {
+          // Collect required contexts that are missing.
+          $missing_value[] = $plugin_context_id;
+        }
+        else {
+          // Ignore mappings for optional missing context.
+          unset($mappings[$plugin_context_id]);
+        }
       }
     }
 
