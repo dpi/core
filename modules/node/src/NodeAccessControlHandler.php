@@ -36,6 +36,28 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
   protected $nodeStorage;
 
   /**
+   * Map of revision operations.
+   *
+   * Keys contain revision operations, where values are an array containing the
+   * permission operation and supplemental entity operation.
+   *
+   * Permission operation is used to build the required permission, e.g.
+   * 'permissionOperation all revisions', 'permissionOperation type revisions'.
+   *
+   * Supplemental entity operation is used to determine access, for
+   * 'delete revision' operation, an account must also have access to 'delete'
+   * operation on an entity.
+   *
+   * @internal Only to be used internally by this class. Consider as protected.
+   */
+  const REVISION_OPERATION_MAP = [
+    'view all revisions' => ['view', 'view'],
+    'view revision' => ['view', 'view'],
+    'revert' => ['view', 'update'],
+    'delete revision' => ['delete', 'delete'],
+  ];
+
+  /**
    * Constructs a NodeAccessControlHandler object.
    *
    * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
@@ -68,7 +90,8 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
   public function access(EntityInterface $entity, $operation, AccountInterface $account = NULL, $return_as_object = FALSE) {
     $account = $this->prepareUser($account);
 
-    if ($account->hasPermission('bypass node access')) {
+    // Only bypass if not a revision operation, to retain compatibility.
+    if ($account->hasPermission('bypass node access') && !isset(static::REVISION_OPERATION_MAP[$operation])) {
       $result = AccessResult::allowed()->cachePerPermissions();
       return $return_as_object ? $result : $result->isAllowed();
     }
@@ -116,15 +139,8 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
     }
 
     // Revision operations.
-    // Map of operations to fallback operation and permission operation.
-    $revisionPermissionOperations = [
-      'view all revisions' => 'view',
-      'view revision' => 'view',
-      'revert' => 'revert',
-      'delete revision' => 'delete',
-    ];
-    if (isset($revisionPermissionOperations[$operation])) {
-      $revisionPermissionOperation = $revisionPermissionOperations[$operation];
+    $revisionPermissionOperation = isset(static::REVISION_OPERATION_MAP[$operation]) ? static::REVISION_OPERATION_MAP[$operation][0] : NULL;
+    if ($revisionPermissionOperation) {
       $bundle = $node->bundle();
       // If user doesn't have any of these then quit.
       if (!$account->hasPermission("$revisionPermissionOperation all revisions") && !$account->hasPermission("$revisionPermissionOperation $bundle revisions") && !$account->hasPermission('administer nodes')) {
@@ -137,20 +153,14 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
         return AccessResult::allowed();
       }
 
-      $fallBackOperations = [
-        'view all revisions' => 'view',
-        'view revision' => 'view',
-        'revert' => 'update',
-        'delete revision' => 'delete',
-      ];
-      $fallBackOperation = $fallBackOperations[$operation];
+      $entityOperation = isset(static::REVISION_OPERATION_MAP[$operation]) ? static::REVISION_OPERATION_MAP[$operation][1] : NULL;
 
       // There should be at least two revisions. If the vid of the given node
       // and the vid of the default revision differ, then we already have two
       // different revisions so there is no need for a separate database
       // check. Also, if you try to revert to or delete the default revision,
       // that's not good.
-      if ($node->isDefaultRevision() && ($this->nodeStorage->countDefaultLanguageRevisions($node) == 1 || $fallBackOperation === 'update' || $fallBackOperation === 'delete')) {
+      if ($node->isDefaultRevision() && ($this->nodeStorage->countDefaultLanguageRevisions($node) == 1 || $entityOperation === 'update' || $entityOperation === 'delete')) {
         return AccessResult::neutral();
       }
       elseif ($account->hasPermission('administer nodes')) {
@@ -161,8 +171,8 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
         // node passed in is not the default revision then check access to
         // that, too.
         return AccessResult::allowedIf(
-          $this->access($this->nodeStorage->load($node->id()), $fallBackOperation, $account) &&
-          ($node->isDefaultRevision() || $this->access($node, $fallBackOperation, $account))
+          $this->access($this->nodeStorage->load($node->id()), $entityOperation, $account) &&
+          ($node->isDefaultRevision() || $this->access($node, $entityOperation, $account))
         );
       }
     }
