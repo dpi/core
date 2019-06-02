@@ -70,7 +70,11 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
   public function __construct(EntityTypeInterface $entity_type, NodeGrantDatabaseStorageInterface $grant_storage, EntityStorageInterface $nodeStorage = NULL) {
     parent::__construct($entity_type);
     $this->grantStorage = $grant_storage;
-    $this->nodeStorage = isset($nodeStorage) ? $nodeStorage : \Drupal::entityTypeManager()->getStorage('node');
+    if (!isset($nodeStorage)) {
+      @trigger_error('The $nodeStorage parameter was added in Drupal 8.8.0 and will be required in 9.0.0.', E_USER_DEPRECATED);
+      $nodeStorage = \Drupal::entityTypeManager()->getStorage('node');
+    }
+    $this->nodeStorage = $nodeStorage;
   }
 
   /**
@@ -138,8 +142,11 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
       return AccessResult::allowed()->cachePerPermissions()->cachePerUser()->addCacheableDependency($node);
     }
 
+    list($revisionPermissionOperation, $entityOperation) = isset(static::REVISION_OPERATION_MAP[$operation])
+      ? static::REVISION_OPERATION_MAP[$operation]
+      : [NULL, NULL];
+
     // Revision operations.
-    $revisionPermissionOperation = isset(static::REVISION_OPERATION_MAP[$operation]) ? static::REVISION_OPERATION_MAP[$operation][0] : NULL;
     if ($revisionPermissionOperation) {
       $bundle = $node->bundle();
       // If user doesn't have any of these then quit.
@@ -152,8 +159,6 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
       if ($operation === 'view all revisions' && $node->type->entity->shouldCreateNewRevision()) {
         return AccessResult::allowed();
       }
-
-      $entityOperation = isset(static::REVISION_OPERATION_MAP[$operation]) ? static::REVISION_OPERATION_MAP[$operation][1] : NULL;
 
       // There should be at least two revisions. If the vid of the given node
       // and the vid of the default revision differ, then we already have two
