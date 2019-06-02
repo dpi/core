@@ -59,7 +59,7 @@ class NodeOperationAccessTest extends UnitTestCase {
    *   Whether the node should be default revision, or NULL if not to expect it
    *   to be called.
    *
-   * @dataProvider testRevisionOperationsProvider
+   * @dataProvider providerTestRevisionOperations
    */
   public function testRevisionOperations($operation, array $hasPermissionMap, $assertAccess, $shouldCreateNewRevision = NULL, $defaultLanguageRevisionCount = NULL, $isDefaultRevision = NULL) {
     $account = $this->createMock(AccountInterface::class);
@@ -131,7 +131,7 @@ class NodeOperationAccessTest extends UnitTestCase {
    * @return array
    *   Data for testing.
    */
-  public function testRevisionOperationsProvider() {
+  public function providerTestRevisionOperations() {
     $data = [];
 
     // Tests 'bypass node access' never works on revision operations.
