@@ -8,6 +8,7 @@ use Drupal\Core\Entity\EntityFieldManager;
 use Drupal\Core\Entity\EntityLastInstalledSchemaRepositoryInterface;
 use Drupal\Core\Entity\EntityTypeManager;
 use Drupal\Core\Entity\Sql\DefaultTableMapping;
+use Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema;
 use Drupal\Tests\UnitTestCase;
 
 /**
@@ -1151,21 +1152,21 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
   }
 
   public function providerTestRequiresEntityDataMigration() {
-    $updated_entity_type_definition = $this->getMock('\Drupal\Core\Entity\EntityTypeInterface');
+    $updated_entity_type_definition = $this->createMock('\Drupal\Core\Entity\EntityTypeInterface');
     $updated_entity_type_definition->expects($this->any())
       ->method('getStorageClass')
       // A class that exists, *any* class.
       ->willReturn('\Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema');
-    $original_entity_type_definition = $this->getMock('\Drupal\Core\Entity\EntityTypeInterface');
+    $original_entity_type_definition = $this->createMock('\Drupal\Core\Entity\EntityTypeInterface');
     $original_entity_type_definition->expects($this->any())
       ->method('getStorageClass')
       // A class that exists, *any* class.
       ->willReturn('\Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema');
-    $original_entity_type_definition_other_nonexisting = $this->getMock('\Drupal\Core\Entity\EntityTypeInterface');
+    $original_entity_type_definition_other_nonexisting = $this->createMock('\Drupal\Core\Entity\EntityTypeInterface');
     $original_entity_type_definition_other_nonexisting->expects($this->any())
       ->method('getStorageClass')
       ->willReturn('bar');
-    $original_entity_type_definition_other_existing = $this->getMock('\Drupal\Core\Entity\EntityTypeInterface');
+    $original_entity_type_definition_other_existing = $this->createMock('\Drupal\Core\Entity\EntityTypeInterface');
     $original_entity_type_definition_other_existing->expects($this->any())
       ->method('getStorageClass')
       // A class that exists, *any* class.
@@ -1240,8 +1241,8 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
 
     $cases = [];
 
-    $updated_entity_type_definition = $this->getMock('\Drupal\Core\Entity\ContentEntityTypeInterface');
-    $original_entity_type_definition = $this->getMock('\Drupal\Core\Entity\ContentEntityTypeInterface');
+    $updated_entity_type_definition = $this->createMock('\Drupal\Core\Entity\ContentEntityTypeInterface');
+    $original_entity_type_definition = $this->createMock('\Drupal\Core\Entity\ContentEntityTypeInterface');
 
     $updated_entity_type_definition->expects($this->any())
       ->method('id')
@@ -1406,7 +1407,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
       ->method('schema')
       ->will($this->returnValue($this->dbSchemaHandler));
 
-    $key_value = $this->getMock('Drupal\Core\KeyValueStore\KeyValueStoreInterface');
+    $key_value = $this->createMock('Drupal\Core\KeyValueStore\KeyValueStoreInterface');
 
     $this->entityLastInstalledSchemaRepository
       ->expects($this->any())
@@ -1441,7 +1442,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
    *   FieldStorageDefinitionInterface::getSchema().
    */
   public function setUpStorageDefinition($field_name, array $schema) {
-    $this->storageDefinitions[$field_name] = $this->getMock('Drupal\Tests\Core\Field\TestBaseFieldDefinitionInterface');
+    $this->storageDefinitions[$field_name] = $this->createMock('Drupal\Tests\Core\Field\TestBaseFieldDefinitionInterface');
     $this->storageDefinitions[$field_name]->expects($this->any())
       ->method('isBaseField')
       ->will($this->returnValue(TRUE));
@@ -1460,7 +1461,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
     if (!empty($schema['columns'])) {
       $property_definitions = [];
       foreach ($schema['columns'] as $column => $info) {
-        $property_definitions[$column] = $this->getMock('Drupal\Core\TypedData\DataDefinitionInterface');
+        $property_definitions[$column] = $this->createMock('Drupal\Core\TypedData\DataDefinitionInterface');
         $property_definitions[$column]->expects($this->any())
           ->method('isRequired')
           ->will($this->returnValue(!empty($info['not null'])));
@@ -1560,6 +1561,123 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
     $this->assertNull(
       $this->storageSchema->onEntityTypeUpdate($this->entityType, $original_entity_type)
     );
+  }
+
+  /**
+   * Tests various value casts depending on column schema.
+   *
+   * @param mixed $expected
+   *   The expected value.
+   * @param mixed $value
+   *   The tested value.
+   * @param array $schema
+   *   The schema for the table column.
+   *
+   * @dataProvider providerSchemaCastValue
+   * @covers ::castValue
+   */
+  public function testCastValue($expected, $value, array $schema) {
+    $this->assertSame($expected, SqlContentEntityStorageSchema::castValue($schema, $value));
+  }
+
+  /**
+   * Provides data for testCastValue().
+   */
+  public function providerSchemaCastValue() {
+    $cases = [];
+    // Tests NULL values.
+    $cases[] = [
+      NULL,
+      NULL,
+      [
+        'not null' => FALSE,
+      ],
+    ];
+    $cases[] = [
+      0,
+      NULL,
+      [
+        'not null' => TRUE,
+        'type' => 'int',
+      ],
+    ];
+    $cases[] = [
+      0,
+      NULL,
+      [
+        'not null' => TRUE,
+        'type' => 'serial',
+      ],
+    ];
+    $cases[] = [
+      0.0,
+      NULL,
+      [
+        'not null' => TRUE,
+        'type' => 'float',
+      ],
+    ];
+    $cases[] = [
+      '',
+      NULL,
+      [
+        'not null' => TRUE,
+        'type' => 'varchar',
+      ],
+    ];
+    // Tests cast to int and serial.
+    $cases[] = [
+      1,
+      '1.001',
+      [
+        'type' => 'int',
+      ],
+    ];
+    $cases[] = [
+      2,
+      2.6,
+      [
+        'type' => 'int',
+      ],
+    ];
+    $cases[] = [
+      3,
+      '3.6',
+      [
+        'type' => 'serial',
+      ],
+    ];
+    // Tests float.
+    $cases[] = [
+      1.001,
+      '1.001',
+      [
+        'type' => 'float',
+      ],
+    ];
+    $cases[] = [
+      2.6,
+      2.6,
+      [
+        'type' => 'float',
+      ],
+    ];
+    // Tests other column types casts to string.
+    $cases[] = [
+      '1',
+      1,
+      [
+        'type' => 'varchar',
+      ],
+    ];
+    $cases[] = [
+      '2',
+      '2',
+      [
+        'type' => 'varchar',
+      ],
+    ];
+    return $cases;
   }
 
 }

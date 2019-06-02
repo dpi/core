@@ -34,7 +34,7 @@ class NodeCreationTest extends NodeTestBase {
    * Creates a "Basic page" node and verifies its consistency in the database.
    */
   public function testNodeCreation() {
-    $node_type_storage = \Drupal::entityManager()->getStorage('node_type');
+    $node_type_storage = \Drupal::entityTypeManager()->getStorage('node_type');
 
     // Test /node/add page with only one content type.
     $node_type_storage->load('article')->delete();
@@ -248,7 +248,7 @@ class NodeCreationTest extends NodeTestBase {
     $this->assertNoLinkByHref('/admin/structure/types/add');
 
     // Test /node/add page without content types.
-    foreach (\Drupal::entityManager()->getStorage('node_type')->loadMultiple() as $entity) {
+    foreach (\Drupal::entityTypeManager()->getStorage('node_type')->loadMultiple() as $entity) {
       $entity->delete();
     }
 
@@ -274,7 +274,7 @@ class NodeCreationTest extends NodeTestBase {
     // PostgreSQL doesn't support bytea LIKE queries, so we need to unserialize
     // first to check for the rollback exception message.
     $matches = [];
-    $query = db_query("SELECT wid, variables FROM {watchdog}");
+    $query = Database::getConnection()->query("SELECT wid, variables FROM {watchdog}");
     foreach ($query as $row) {
       $variables = (array) unserialize($row->variables);
       if (isset($variables['@message']) && $variables['@message'] === 'Test exception for rollback.') {
@@ -292,7 +292,7 @@ class NodeCreationTest extends NodeTestBase {
    *   records with the explicit rollback failed exception message.
    */
   protected static function getWatchdogIdsForFailedExplicitRollback() {
-    return db_query("SELECT wid FROM {watchdog} WHERE message LIKE 'Explicit rollback failed%'")->fetchAll();
+    return Database::getConnection()->query("SELECT wid FROM {watchdog} WHERE message LIKE 'Explicit rollback failed%'")->fetchAll();
   }
 
 }

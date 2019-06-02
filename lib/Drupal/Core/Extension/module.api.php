@@ -226,7 +226,7 @@ function hook_modules_installed($modules) {
  */
 function hook_install() {
   // Create the styles directory and ensure it's writable.
-  $directory = file_default_scheme() . '://styles';
+  $directory = \Drupal::config('system.file')->get('default_scheme') . '://styles';
   \Drupal::service('file_system')->prepareDirectory($directory, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
 }
 
@@ -283,7 +283,7 @@ function hook_modules_uninstalled($modules) {
  */
 function hook_uninstall() {
   // Remove the styles directory and generated images.
-  \Drupal::service('file_system')->deleteRecursive(file_default_scheme() . '://styles');
+  \Drupal::service('file_system')->deleteRecursive(\Drupal::config('system.file')->get('default_scheme') . '://styles');
 }
 
 /**
@@ -637,7 +637,7 @@ function hook_update_N(&$sandbox) {
     // This must be the first run. Initialize the sandbox.
     $sandbox['progress'] = 0;
     $sandbox['current_pk'] = 0;
-    $sandbox['max'] = Database::getConnection()->query('SELECT COUNT(myprimarykey) FROM {mytable1}')->fetchField() - 1;
+    $sandbox['max'] = Database::getConnection()->query('SELECT COUNT(myprimarykey) FROM {mytable1}')->fetchField();
   }
 
   // Update in chunks of 20.
@@ -729,7 +729,7 @@ function hook_post_update_NAME(&$sandbox) {
   $block_update_8001 = \Drupal::keyValue('update_backup')->get('block_update_8001', []);
 
   $block_ids = array_keys($block_update_8001);
-  $block_storage = \Drupal::entityManager()->getStorage('block');
+  $block_storage = \Drupal::entityTypeManager()->getStorage('block');
   $blocks = $block_storage->loadMultiple($block_ids);
   /** @var $blocks \Drupal\block\BlockInterface[] */
   foreach ($blocks as $block) {

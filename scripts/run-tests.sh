@@ -9,7 +9,6 @@ use Drupal\Component\FileSystem\FileSystem;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Timer;
 use Drupal\Component\Uuid\Php;
-use Drupal\Core\Composer\Composer;
 use Drupal\Core\Asset\AttachedAssets;
 use Drupal\Core\Database\Database;
 use Drupal\Core\File\Exception\FileException;
@@ -147,10 +146,6 @@ if (class_exists('\PHPUnit_Runner_Version')) {
 }
 else {
   $phpunit_version = Version::id();
-}
-if (!Composer::upgradePHPUnitCheck($phpunit_version)) {
-  simpletest_script_print_error("PHPUnit testing framework version 6 or greater is required when running on PHP 7.0 or greater. Run the command 'composer run-script drupal-phpunit-upgrade' in order to fix this.");
-  exit(SIMPLETEST_SCRIPT_EXIT_FAILURE);
 }
 
 $test_list = simpletest_script_get_test_list();
@@ -477,23 +472,6 @@ function simpletest_script_init() {
     simpletest_script_print_error('Unable to automatically determine the path to the PHP interpreter. Supply the --php command line argument.');
     simpletest_script_help();
     exit(SIMPLETEST_SCRIPT_EXIT_FAILURE);
-  }
-
-  // Detect if we're in the top-level process using the private 'execute-test'
-  // argument. Determine if being run on drupal.org's testing infrastructure
-  // using the presence of 'drupaltestbot' in the database url.
-  // @todo https://www.drupal.org/project/drupalci_testbot/issues/2860941 Use
-  //   better environment variable to detect DrupalCI.
-  // @todo https://www.drupal.org/project/drupal/issues/2942473 Remove when
-  //   dropping PHPUnit 4 and PHP 5 support.
-  if (!$args['execute-test'] && preg_match('/drupalci/', $args['sqlite'])) {
-    // Update PHPUnit if needed and possible. There is a later check once the
-    // autoloader is in place to ensure we're on the correct version. We need to
-    // do this before the autoloader is in place to ensure that it is correct.
-    $composer = ($composer = rtrim('\\' === DIRECTORY_SEPARATOR ? preg_replace('/[\r\n].*/', '', `where.exe composer.phar`) : `which composer.phar`))
-      ? $php . ' ' . escapeshellarg($composer)
-      : 'composer';
-    passthru("$composer run-script drupal-phpunit-upgrade-check");
   }
 
   $autoloader = require_once __DIR__ . '/../../autoload.php';
@@ -1094,7 +1072,7 @@ function simpletest_script_get_test_list() {
       // Extract test case class names from specified directory.
       // Find all tests in the PSR-X structure; Drupal\$extension\Tests\*.php
       // Since we do not want to hard-code too many structural file/directory
-      // assumptions about PSR-0/4 files and directories, we check for the
+      // assumptions about PSR-4 files and directories, we check for the
       // minimal conditions only; i.e., a '*.php' file that has '/Tests/' in
       // its path.
       // Ignore anything from third party vendors.

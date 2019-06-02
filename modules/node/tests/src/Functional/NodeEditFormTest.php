@@ -47,7 +47,7 @@ class NodeEditFormTest extends NodeTestBase {
     $this->adminUser = $this->drupalCreateUser(['bypass node access', 'administer nodes']);
     $this->drupalPlaceBlock('local_tasks_block');
 
-    $this->nodeStorage = $this->container->get('entity.manager')->getStorage('node');
+    $this->nodeStorage = $this->container->get('entity_type.manager')->getStorage('node');
   }
 
   /**
@@ -167,7 +167,7 @@ class NodeEditFormTest extends NodeTestBase {
 
     // Now test with the Autocomplete (Tags) field widget.
     /** @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface $form_display */
-    $form_display = \Drupal::entityManager()->getStorage('entity_form_display')->load('node.page.default');
+    $form_display = \Drupal::entityTypeManager()->getStorage('entity_form_display')->load('node.page.default');
     $widget = $form_display->getComponent('uid');
     $widget['type'] = 'entity_reference_autocomplete_tags';
     $widget['settings'] = [

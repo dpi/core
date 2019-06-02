@@ -54,7 +54,7 @@ class TermKernelTest extends KernelTestBase {
     $child_term_id = $child_term->id();
 
     $parent_term1->delete();
-    $term_storage = $this->container->get('entity.manager')->getStorage('taxonomy_term');
+    $term_storage = $this->container->get('entity_type.manager')->getStorage('taxonomy_term');
     $term_storage->resetCache([$child_term_id]);
     $child_term = Term::load($child_term_id);
     $this->assertTrue(!empty($child_term), 'Child term is not deleted if only one of its parents is removed.');
@@ -77,7 +77,7 @@ class TermKernelTest extends KernelTestBase {
     }
 
     // Get the taxonomy storage.
-    $taxonomy_storage = $this->container->get('entity.manager')->getStorage('taxonomy_term');
+    $taxonomy_storage = $this->container->get('entity_type.manager')->getStorage('taxonomy_term');
 
     // Set the weight on $term[1] so it appears before $term[5] when fetching
     // the parents for $term[2], in order to test for a regression on
@@ -127,7 +127,7 @@ class TermKernelTest extends KernelTestBase {
     $this->assertEqual(1, $depth_count[3], 'One element in taxonomy tree depth 3.');
 
     /** @var \Drupal\taxonomy\TermStorageInterface $storage */
-    $storage = \Drupal::entityManager()->getStorage('taxonomy_term');
+    $storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
     // Count parents of $term[2].
     $parents = $storage->loadParents($term[2]->id());
     $this->assertEqual(2, count($parents), 'The term has two parents.');

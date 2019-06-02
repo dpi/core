@@ -8,7 +8,6 @@
  */
 
 use Drupal\Component\Assertion\Handle;
-use Drupal\Core\Composer\Composer;
 use PHPUnit\Runner\Version;
 
 /**
@@ -159,11 +158,6 @@ if (class_exists('\PHPUnit_Runner_Version')) {
 else {
   $phpunit_version = Version::id();
 }
-if (!Composer::upgradePHPUnitCheck($phpunit_version)) {
-  $message = "PHPUnit testing framework version 6 or greater is required when running on PHP 7.0 or greater. Run the command 'composer run-script drupal-phpunit-upgrade' in order to fix this.";
-  echo "\033[31m" . $message . "\n\033[0m";
-  exit(1);
-}
 
 // Set sane locale settings, to ensure consistent string, dates, times and
 // numbers handling.
@@ -182,9 +176,9 @@ mb_language('uni');
 date_default_timezone_set('Australia/Sydney');
 
 // Runtime assertions. PHPUnit follows the php.ini assert.active setting for
-// runtime assertions. By default this setting is on. Here we make a call to
-// make PHP 5 and 7 handle assertion failures the same way, but this call does
-// not turn runtime assertions on if they weren't on already.
+// runtime assertions. By default this setting is on. Ensure exceptions are
+// thrown if an assert fails, but this call does not turn runtime assertions on
+// if they weren't on already.
 Handle::register();
 
 // PHPUnit 4 to PHPUnit 6 bridge. Tests written for PHPUnit 4 need to work on

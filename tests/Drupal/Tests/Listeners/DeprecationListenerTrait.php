@@ -123,7 +123,6 @@ trait DeprecationListenerTrait {
       'MigrateCckFieldPluginManager is deprecated in Drupal 8.3.x and will be removed before Drupal 9.0.x. Use \Drupal\migrate_drupal\Annotation\MigrateFieldPluginManager instead.',
       'MigrateCckFieldPluginManagerInterface is deprecated in Drupal 8.3.x and will be removed before Drupal 9.0.x. Use \Drupal\migrate_drupal\Annotation\MigrateFieldPluginManagerInterface instead.',
       'The "plugin.manager.migrate.cckfield" service is deprecated. You should use the \'plugin.manager.migrate.field\' service instead. See https://www.drupal.org/node/2751897',
-      'Drupal\system\Tests\Update\DbUpdatesTrait is deprecated in Drupal 8.4.0 and will be removed before Drupal 9.0.0. Use \Drupal\FunctionalTests\Update\DbUpdatesTrait instead. See https://www.drupal.org/node/2896640.',
       'Providing settings under \'handler_settings\' is deprecated and will be removed before 9.0.0. Move the settings in the root of the configuration array. See https://www.drupal.org/node/2870971.',
       'The Drupal\editor\Plugin\EditorBase::settingsFormValidate method is deprecated since version 8.3.x and will be removed in 9.0.0.',
       'The Drupal\migrate\Plugin\migrate\process\Migration is deprecated in Drupal 8.4.0 and will be removed before Drupal 9.0.0. Instead, use Drupal\migrate\Plugin\migrate\process\MigrationLookup',
@@ -177,12 +176,16 @@ trait DeprecationListenerTrait {
     // SymfonyTestsListenerTrait has its own error handler that needs to be
     // removed before this one.
     $test_result_object = $test->getTestResultObject();
-    $reflection_class = new \ReflectionClass($test_result_object);
-    $reflection_property = $reflection_class->getProperty('listeners');
-    $reflection_property->setAccessible(TRUE);
-    $listeners = $reflection_property->getValue($test_result_object);
-    $listeners[] = new AfterSymfonyListener();
-    $reflection_property->setValue($test_result_object, $listeners);
+    // It's possible that a test does not have a result object. This can happen
+    // when a test class does not have any test methods.
+    if ($test_result_object) {
+      $reflection_class = new \ReflectionClass($test_result_object);
+      $reflection_property = $reflection_class->getProperty('listeners');
+      $reflection_property->setAccessible(TRUE);
+      $listeners = $reflection_property->getValue($test_result_object);
+      $listeners[] = new AfterSymfonyListener();
+      $reflection_property->setValue($test_result_object, $listeners);
+    }
   }
 
 }

@@ -9,6 +9,7 @@ use Drupal\Core\Database\Query\Merge;
 use Drupal\Core\Database\Query\Select;
 use Drupal\Core\Database\Query\Truncate;
 use Drupal\Core\Database\Query\Update;
+use Drupal\Core\Database\StatementInterface;
 use Drupal\Core\Database\Transaction;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Database\DatabaseException;
@@ -411,6 +412,15 @@ class DatabaseLegacyTest extends DatabaseTestBase {
   }
 
   /**
+   * Tests the db_query() function.
+   *
+   * @expectedDeprecation db_query() is deprecated in drupal:8.0.0. It will be removed before drupal:9.0.0. Instead, get a database connection injected into your service from the container and call query() on it. For example, $injected_database->query($query, $args, $options). See https://www.drupal.org/node/2993033
+   */
+  public function testDbQuery() {
+    $this->assertInstanceOf(StatementInterface::class, db_query('SELECT name FROM {test} WHERE name = :name', [':name' => "John"]));
+  }
+
+  /**
    * Tests deprecation of the db_delete() function.
    *
    * @expectedDeprecation db_delete is deprecated in Drupal 8.0.x and will be removed before Drupal 9.0.0. Instead, get a database connection injected into your service from the container and call delete() on it. For example, $injected_database->delete($table, $options). See https://www.drupal.org/node/2993033
@@ -426,6 +436,24 @@ class DatabaseLegacyTest extends DatabaseTestBase {
    */
   public function testDbTruncate() {
     $this->assertInstanceOf(Truncate::class, db_truncate('test'));
+  }
+
+  /**
+   * Tests deprecation of the $options 'target' key in Connection::query.
+   *
+   * @expectedDeprecation Passing a 'target' key to \Drupal\Core\Database\Connection::query $options argument is deprecated in Drupal 8.0.x and will be removed before Drupal 9.0.0. Instead, use \Drupal\Core\Database\Database::getConnection($target)->query(). See https://www.drupal.org/node/2993033.
+   */
+  public function testDbOptionsTarget() {
+    $this->assertNotNull($this->connection->query('SELECT * FROM {test}', [], ['target' => 'bar']));
+  }
+
+  /**
+   * Tests deprecation of the $options 'target' key in Select.
+   *
+   * @expectedDeprecation Passing a 'target' key to \Drupal\Core\Database\Connection::query $options argument is deprecated in Drupal 8.0.x and will be removed before Drupal 9.0.0. Instead, use \Drupal\Core\Database\Database::getConnection($target)->query(). See https://www.drupal.org/node/2993033.
+   */
+  public function testDbOptionsTargetInSelect() {
+    $this->assertNotNull($this->connection->select('test', 't', ['target' => 'bar'])->fields('t')->execute());
   }
 
   /**
@@ -500,6 +528,19 @@ class DatabaseLegacyTest extends DatabaseTestBase {
     /** @var \Symfony\Component\HttpFoundation\Session\SessionInterface $session */
     $session = \Drupal::service('session');
     $this->assertTrue($session->has('ignore_replica_server'));
+  }
+
+  /**
+   * Tests the _db_get_target() function.
+   *
+   * @expectedDeprecation _db_get_target() is deprecated in drupal:8.8.0. Will be removed before drupal:9.0.0. See https://www.drupal.org/node/2993033
+   */
+  public function testDbGetTarget() {
+    $op1 = $op2 = ['target' => 'replica'];
+    $this->assertEquals('replica', _db_get_target($op1));
+    $this->assertEquals('default', _db_get_target($op2, FALSE));
+    $this->assertEmpty($op1);
+    $this->assertEmpty($op2);
   }
 
 }

@@ -711,7 +711,7 @@ function system_requirements($phase) {
     else {
       // This function can be called before the config_cache table has been
       // created.
-      if ($phase == 'install' || file_default_scheme() == 'public') {
+      if ($phase == 'install' || \Drupal::config('system.file')->get('default_scheme') == 'public') {
         $requirements['file system']['value'] = t('Writable (<em>public</em> download method)');
       }
       else {
@@ -762,7 +762,7 @@ function system_requirements($phase) {
     if ($change_list = \Drupal::entityDefinitionUpdateManager()->getChangeSummary()) {
       $build = [];
       foreach ($change_list as $entity_type_id => $changes) {
-        $entity_type = \Drupal::entityManager()->getDefinition($entity_type_id);
+        $entity_type = \Drupal::entityTypeManager()->getDefinition($entity_type_id);
         $build[] = [
           '#theme' => 'item_list',
           '#title' => $entity_type->getLabel(),
@@ -952,12 +952,7 @@ function system_requirements($phase) {
 
   // Warning for httpoxy on IIS with affected PHP versions
   // @see https://www.drupal.org/node/2783079
-  if (strpos($software, 'Microsoft-IIS') !== FALSE
-    && (
-    version_compare(PHP_VERSION, '5.5.38', '<')
-    || (version_compare(PHP_VERSION, '5.6.0', '>=') && version_compare(PHP_VERSION, '5.6.24', '<'))
-    || (version_compare(PHP_VERSION, '7.0.0', '>=') && version_compare(PHP_VERSION, '7.0.9', '<'))
-    )) {
+  if (strpos($software, 'Microsoft-IIS') !== FALSE && version_compare(PHP_VERSION, '7.0.9', '<')) {
     $dom = new \DOMDocument('1.0', 'UTF-8');
     $webconfig = file_get_contents('web.config');
     // If you are here the web.config file must - of course - be well formed.
@@ -1330,7 +1325,7 @@ function system_update_8004() {
   // https://www.drupal.org/node/2542748. Regenerate the related schemas to
   // ensure they match the currently expected status.
   $manager = \Drupal::entityDefinitionUpdateManager();
-  foreach (array_keys(\Drupal::entityManager()
+  foreach (array_keys(\Drupal::entityTypeManager()
     ->getDefinitions()) as $entity_type_id) {
     // Only update the entity type if it already exists. This condition is
     // needed in case new entity types are introduced after this update.
@@ -1591,7 +1586,7 @@ function _system_update_create_block($name, $theme_name, array $values) {
 function system_update_8007() {
   $database = \Drupal::database();
   $database_schema = $database->schema();
-  $entity_types = \Drupal::entityManager()->getDefinitions();
+  $entity_types = \Drupal::entityTypeManager()->getDefinitions();
 
   $schema = \Drupal::keyValue('entity.storage_schema.sql')->getAll();
   $schema_copy = $schema;
@@ -1649,7 +1644,7 @@ function system_update_8007() {
  * Purge field schema data for uninstalled entity types.
  */
 function system_update_8008() {
-  $entity_types = \Drupal::entityManager()->getDefinitions();
+  $entity_types = \Drupal::entityTypeManager()->getDefinitions();
   /** @var \Drupal\Core\KeyValueStore\KeyValueStoreInterface $schema */
   $schema = \Drupal::keyValue('entity.storage_schema.sql');
   foreach ($schema->getAll() as $key => $item) {
@@ -2275,6 +2270,13 @@ function system_update_8702() {
   // definitions to use the value of the live (in-code) entity type definitions
   // in cases when the key has not been populated yet.
   foreach ($last_installed_definitions as $entity_type_id => $entity_type) {
+    // The live (in-code) entity type definition might not exist anymore, while
+    // an update function that would remove its last installed definition didn't
+    // run yet. We don't need to update it in that case.
+    if (!isset($live_definitions[$entity_type_id])) {
+      continue;
+    }
+
     $revision_translation_affected_key = $live_definitions[$entity_type_id]->getKey('revision_translation_affected');
     if (!$entity_type->hasKey('revision_translation_affected') && !empty($revision_translation_affected_key) && $entity_definition_update_manager->getFieldStorageDefinition($revision_translation_affected_key, $entity_type_id)) {
       $entity_keys = $entity_type->getKeys();

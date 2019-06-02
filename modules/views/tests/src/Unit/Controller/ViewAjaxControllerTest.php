@@ -67,11 +67,11 @@ class ViewAjaxControllerTest extends UnitTestCase {
    * {@inheritdoc}
    */
   protected function setUp() {
-    $this->viewStorage = $this->getMock('Drupal\Core\Entity\EntityStorageInterface');
+    $this->viewStorage = $this->createMock('Drupal\Core\Entity\EntityStorageInterface');
     $this->executableFactory = $this->getMockBuilder('Drupal\views\ViewExecutableFactory')
       ->disableOriginalConstructor()
       ->getMock();
-    $this->renderer = $this->getMock('\Drupal\Core\Render\RendererInterface');
+    $this->renderer = $this->createMock('\Drupal\Core\Render\RendererInterface');
     $this->renderer->expects($this->any())
       ->method('render')
       ->will($this->returnCallback(function (array &$elements) {
@@ -86,19 +86,19 @@ class ViewAjaxControllerTest extends UnitTestCase {
     $this->currentPath = $this->getMockBuilder('Drupal\Core\Path\CurrentPathStack')
       ->disableOriginalConstructor()
       ->getMock();
-    $this->redirectDestination = $this->getMock('\Drupal\Core\Routing\RedirectDestinationInterface');
+    $this->redirectDestination = $this->createMock('\Drupal\Core\Routing\RedirectDestinationInterface');
 
     $this->viewAjaxController = new ViewAjaxController($this->viewStorage, $this->executableFactory, $this->renderer, $this->currentPath, $this->redirectDestination);
 
-    $element_info_manager = $this->getMock('\Drupal\Core\Render\ElementInfoManagerInterface');
+    $element_info_manager = $this->createMock('\Drupal\Core\Render\ElementInfoManagerInterface');
     $request_stack = new RequestStack();
     $request_stack->push(new Request());
     $args = [
-      $this->getMock('\Drupal\Core\Controller\ControllerResolverInterface'),
-      $this->getMock('\Drupal\Core\Theme\ThemeManagerInterface'),
+      $this->createMock('\Drupal\Core\Controller\ControllerResolverInterface'),
+      $this->createMock('\Drupal\Core\Theme\ThemeManagerInterface'),
       $element_info_manager,
-      $this->getMock('\Drupal\Core\Render\PlaceholderGeneratorInterface'),
-      $this->getMock('\Drupal\Core\Render\RenderCacheInterface'),
+      $this->createMock('\Drupal\Core\Render\PlaceholderGeneratorInterface'),
+      $this->createMock('\Drupal\Core\Render\RenderCacheInterface'),
       $request_stack,
       [
         'required_cache_contexts' => [
@@ -253,6 +253,26 @@ class ViewAjaxControllerTest extends UnitTestCase {
     $executable->expects($this->once())
       ->method('preview')
       ->with('page_1', $this->identicalTo(['arg1', NULL]));
+
+    $response = $this->viewAjaxController->ajaxView($request);
+    $this->assertTrue($response instanceof ViewAjaxResponse);
+
+    $this->assertViewResultCommand($response);
+  }
+
+  /**
+   * Tests a valid view with arguments.
+   */
+  public function testAjaxViewWithHtmlEntityArguments() {
+    $request = new Request();
+    $request->request->set('view_name', 'test_view');
+    $request->request->set('view_display_id', 'page_1');
+    $request->request->set('view_args', 'arg1 &amp; arg2/arg3');
+
+    list($view, $executable) = $this->setupValidMocks();
+    $executable->expects($this->once())
+      ->method('preview')
+      ->with('page_1', ['arg1 & arg2', 'arg3']);
 
     $response = $this->viewAjaxController->ajaxView($request);
     $this->assertTrue($response instanceof ViewAjaxResponse);

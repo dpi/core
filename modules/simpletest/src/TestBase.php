@@ -23,6 +23,10 @@ use Drupal\Tests\Traits\Core\GeneratePermutationsTrait;
  * Base class for Drupal tests.
  *
  * Do not extend this class directly; use \Drupal\simpletest\WebTestBase.
+ *
+ * @deprecated in Drupal 8.8.0 and will be removed before Drupal 9.0.0. Instead,
+ *   use one of the phpunit base test classes like
+ *   Drupal\Tests\BrowserTestBase. See https://www.drupal.org/node/3030340.
  */
 abstract class TestBase {
 
@@ -919,8 +923,7 @@ abstract class TestBase {
       $this->httpAuthCredentials = $username . ':' . $password;
     }
 
-    // Force assertion failures to be thrown as AssertionError for PHP 5 & 7
-    // compatibility.
+    // Force assertion failures to be thrown as exceptions.
     Handle::register();
 
     set_error_handler([$this, 'errorHandler']);
