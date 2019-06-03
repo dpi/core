@@ -242,13 +242,6 @@ class LinkFormatter extends FormatterBase implements ContainerFactoryPluginInter
       $url = $item->getUrl();
     }
     catch (\InvalidArgumentException $e) {
-      $variables = [
-        '@entity_id' => $item->getEntity()->id(),
-        '%entity_label' => $item->getEntity()->label(),
-        '%entity_type_label' => $item->getEntity()->getEntityType()->getLabel(),
-        '%field_label' => $item->getFieldDefinition()->getLabel(),
-      ];
-      watchdog_exception('link', $e, '%type: @message in %function (line %line of %file) when formatting field %field_label on %entity_type_label entity @entity_id (%entity_label).', $variables);
       $url = Url::fromRoute('<none>');
     }
 
