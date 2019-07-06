@@ -168,7 +168,7 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    $this->revision = $this->prepareRevision($this->revision);
+    $this->revision = $this->prepareRevision($this->revision, $form_state);
     $bundleLabel = $this->getBundleLabel($this->revision);
     $revisionLabel = $this->revision->label();
     if ($this->revision instanceof RevisionLogInterface) {
@@ -205,11 +205,13 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
    *
    * @param \Drupal\Core\Entity\RevisionableInterface $revision
    *   The revision to be reverted.
+   * @param \Drupal\Core\Form\FormStateInterface $formState
+   *   The current state of the form.
    *
    * @return \Drupal\Core\Entity\RevisionableInterface
    *   The prepared revision ready to be stored.
    */
-  protected function prepareRevision(RevisionableInterface $revision): RevisionableInterface {
+  protected function prepareRevision(RevisionableInterface $revision, FormStateInterface $formState): RevisionableInterface {
     $revision->setNewRevision();
     $revision->isDefaultRevision(TRUE);
     if ($this->revision instanceof EntityChangedInterface) {
