@@ -214,8 +214,12 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
   protected function prepareRevision(RevisionableInterface $revision, FormStateInterface $formState): RevisionableInterface {
     $revision->setNewRevision();
     $revision->isDefaultRevision(TRUE);
-    if ($this->revision instanceof EntityChangedInterface) {
-      $this->revision->setChangedTime($this->time->getRequestTime());
+    if ($revision instanceof EntityChangedInterface) {
+      $revision->setChangedTime($this->time->getRequestTime());
+    }
+    if ($revision instanceof RevisionLogInterface) {
+      $revision->setRevisionCreationTime($this->time->getRequestTime());
+      $revision->setRevisionUserId($this->currentUser()->id());
     }
     return $revision;
   }
