@@ -172,8 +172,8 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
     $bundleLabel = $this->getBundleLabel($this->revision);
     $revisionLabel = $this->revision->label();
     if ($this->revision instanceof RevisionLogInterface) {
-      // The revision timestamp will be updated when the revision is saved. Keep
-      // the original one for the confirmation message.
+      // Format the revision log and message before updating the new revision
+      // creation time.
       $originalRevisionTimestamp = $this->revision->getRevisionCreationTime();
 
       $date = $this->dateFormatter->format($originalRevisionTimestamp);
@@ -183,6 +183,7 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
         '%title' => $revisionLabel,
         '%revision-date' => $date,
       ]));
+      $this->revision->setRevisionCreationTime($this->time->getRequestTime());
     }
     else {
       $this->messenger->addMessage($this->t('@type %title has been reverted', [
@@ -218,7 +219,6 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
       $revision->setChangedTime($this->time->getRequestTime());
     }
     if ($revision instanceof RevisionLogInterface) {
-      $revision->setRevisionCreationTime($this->time->getRequestTime());
       $revision->setRevisionUserId($this->currentUser()->id());
     }
     return $revision;
