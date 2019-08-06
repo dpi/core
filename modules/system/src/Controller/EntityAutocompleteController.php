@@ -70,15 +70,15 @@ class EntityAutocompleteController extends ControllerBase {
    * @param string $selection_settings_key
    *   The hashed key of the key/value entry that holds the selection handler
    *   settings.
+   * @param string $entity_type
+   *   Optional. The entity type ID of the entity displaying the autocomplete.
+   * @param string $entity_id
+   *   Optional. The entity ID of the entity displaying the autocomplete.
    *
-   * @return \Symfony\Component\HttpFoundation\JsonResponse
-   *   The matched entity labels as a JSON response.
-   *
-   * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
-   *   Thrown if the selection settings key is not found in the key/value store
-   *   or if it does not match the stored data.
+   * @return \Symfony\Component\HttpFoundation\JsonResponse The matched entity labels as a JSON response.
+   * The matched entity labels as a JSON response.
    */
-  public function handleAutocomplete(Request $request, $target_type, $selection_handler, $selection_settings_key) {
+  public function handleAutocomplete(Request $request, $target_type, $selection_handler, $selection_settings_key, $entity_type, $entity_id) {
     $matches = [];
     // Get the typed string from the URL, if it exists.
     if ($input = $request->query->get('q')) {
@@ -102,39 +102,16 @@ class EntityAutocompleteController extends ControllerBase {
         throw new AccessDeniedHttpException();
       }
 
-      $entity_info = isset($selection_settings['entity']) ? $selection_settings['entity'] : NULL;
-      if (is_array($entity_info)) {
-        $selection_settings['entity'] = $this->loadEntityFromIds($entity_info);
+      if ($entity_type && $entity_id) {
+        $selection_settings['entity'] = $this->entityManager()
+          ->getStorage($entity_type)
+          ->load($entity_id);
       }
 
       $matches = $this->matcher->getMatches($target_type, $selection_handler, $selection_settings, $typed_string);
     }
 
     return new JsonResponse($matches);
-  }
-
-  /**
-   * Loads an entity from storage given entity ID's.
-   *
-   * @param array $entity_info
-   *   An array containing keys, where either uuid or ID is required:
-   *   - 'entity_type': Required. An entity type ID.
-   *   - 'uuid': Optional. An entity UUID.
-   *   - 'id': Optional. An entity ID.
-   *
-   * @return \Drupal\Core\Entity\EntityInterface|null
-   *   The entity loaded from provided ID's, or null if it does not exist.
-   */
-  protected function loadEntityFromIds(array $entity_info) {
-    $entity_type = $entity_info['entity_type'];
-    $uuid = !empty($entity_info['uuid']) ? $entity_info['uuid'] : NULL;
-    if ($uuid) {
-      return $this->entityManager()->loadEntityByUuid($entity_type, $uuid);
-    }
-    else {
-      return $this->entityManager()->getStorage($entity_type)
-        ->load($entity_info['id']);
-    }
   }
 
 }

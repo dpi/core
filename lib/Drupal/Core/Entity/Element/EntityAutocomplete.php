@@ -124,30 +124,32 @@ class EntityAutocomplete extends Textfield {
       $element['#autocreate']['uid'] = isset($element['#autocreate']['uid']) ? $element['#autocreate']['uid'] : \Drupal::currentUser()->id();
     }
 
+    $element['#autocomplete_route_name'] = 'system.entity_autocomplete';
+    $element['#autocomplete_route_parameters'] = [
+      'target_type' => $element['#target_type'],
+      'selection_handler' => $element['#selection_handler'],
+    ];
+
     // Store the selection settings in the key/value store and pass a hashed key
     // in the route parameters.
     $selection_settings = isset($element['#selection_settings']) ? $element['#selection_settings'] : [];
 
     $entity = isset($selection_settings['entity']) ? $selection_settings['entity'] : NULL;
     if ($entity instanceof EntityInterface) {
-      // Don't serialise the entity, just pack the ID's.
-      $selection_settings['entity'] = static::createIdsFromEntity($entity);
+      // Don't serialise the entity, pack the ID's into the route.
+      unset($selection_settings['entity']);
+      $element['#autocomplete_route_parameters']['entity_type'] = $entity->getEntityTypeId();
+      $element['#autocomplete_route_parameters']['entity_id'] = $entity->id();
     }
 
     $data = serialize($selection_settings) . $element['#target_type'] . $element['#selection_handler'];
     $selection_settings_key = Crypt::hmacBase64($data, Settings::getHashSalt());
+    $element['#autocomplete_route_parameters']['selection_settings_key'] = $selection_settings_key;
 
     $key_value_storage = \Drupal::keyValue('entity_autocomplete');
     if (!$key_value_storage->has($selection_settings_key)) {
       $key_value_storage->set($selection_settings_key, $selection_settings);
     }
-
-    $element['#autocomplete_route_name'] = 'system.entity_autocomplete';
-    $element['#autocomplete_route_parameters'] = [
-      'target_type' => $element['#target_type'],
-      'selection_handler' => $element['#selection_handler'],
-      'selection_settings_key' => $selection_settings_key,
-    ];
 
     return $element;
   }
@@ -253,36 +255,6 @@ class EntityAutocomplete extends Textfield {
     }
 
     $form_state->setValueForElement($element, $value);
-  }
-
-  /**
-   * Creates an array of entity information given an entity.
-   *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   An entity to generate entity information from.
-   *
-   * @return array|null
-   *   If the entity is saved, then an array containing the following structure.
-   *   Or NULL if the entity does not yet have ID's.
-   *   - 'entity_type': An entity type ID.
-   *   - 'uuid': An entity UUID.
-   *   - 'id': An entity ID.
-   */
-  static protected function createIdsFromEntity(EntityInterface $entity) {
-    if (!$entity->isNew()) {
-      $entity_info = [];
-      $entity_info['entity_type'] = $entity->getEntityTypeId();
-      $uuid = $entity->uuid();
-      if ($uuid) {
-        $entity_info['uuid'] = $uuid;
-      }
-      else {
-        $entity_info['id'] = $entity->id();
-      }
-      return $entity_info;
-    }
-
-    return NULL;
   }
 
   /**
