@@ -88,7 +88,10 @@ class EntityReferenceAutocompleteWidget extends WidgetBase {
     $referenced_entities = $items->referencedEntities();
 
     // Append the match operation to the selection settings.
-    $selection_settings = $this->getFieldSetting('handler_settings') + ['match_operator' => $this->getSetting('match_operator')];
+    $selection_settings = $this->getFieldSetting('handler_settings') + [
+      'match_operator' => $this->getSetting('match_operator'),
+      'entity' => $entity,
+    ];
 
     $element += [
       '#type' => 'entity_autocomplete',
