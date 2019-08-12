@@ -41,6 +41,20 @@ class DrupalDateTimeTest extends BrowserTestBase {
   }
 
   /**
+   * Test the AJAX Timezone Callback with invalid inputs.
+   */
+  public function testInvalidInputs() {
+    $response = $this->drupalGet('system/timezone/BST/3600/x');
+    $this->assertEqual($response, '"Europe\/London"', 'Timezone AJAX callback returns the correct response when given invalid input for DST parameter.');
+
+    $response = $this->drupalGet('system/timezone/BST/x');
+    $this->assertEqual($response, '"Europe\/London"', 'Timezone AJAX callback returns the correct response when given invalid input for GMT Offset.');
+
+    $response = $this->drupalGet('system/timezone/x');
+    $this->assertEqual($response, 'false', 'Timezone AJAX callback returns the correct response when given invalid input for Timezone Abbreviation.');
+  }
+
+  /**
    * Test that DrupalDateTime can detect the right timezone to use.
    * Test with a variety of less commonly used timezone names to
    * help ensure that the system timezone will be different than the
