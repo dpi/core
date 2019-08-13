@@ -260,3 +260,10 @@ function comment_update_8701() {
   $field_definition->setRequired(TRUE);
   $definition_update_manager->updateFieldStorageDefinition($field_definition);
 }
+
+/**
+ * Switch on legacy body token for existing sites.
+ */
+function comment_update_8800() {
+  \Drupal::state()->set(\COMMENT_LEGACY_BODY_TOKEN, TRUE);
+}

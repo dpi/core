@@ -70,6 +70,8 @@ class CommentTokenReplaceTest extends CommentTestBase {
     // Add HTML to ensure that sanitation of some fields tested directly.
     $comment->setSubject('<blink>Blinking Comment</blink>');
 
+    \Drupal::state()->set(\COMMENT_LEGACY_BODY_TOKEN, TRUE);
+
     // Generate and test tokens.
     $tests = [];
     $tests['[comment:cid]'] = $comment->id();
@@ -78,6 +80,7 @@ class CommentTokenReplaceTest extends CommentTestBase {
     $tests['[comment:mail]'] = $this->adminUser->getEmail();
     $tests['[comment:homepage]'] = UrlHelper::filterBadProtocol($comment->getHomepage());
     $tests['[comment:title]'] = Html::escape($comment->getSubject());
+    $tests['[comment:body]'] = $comment->comment_body->processed;
     $tests['[comment:comment_body]'] = $comment->comment_body->processed;
     $tests['[comment:langcode]'] = $comment->language()->getId();
     $tests['[comment:url]'] = $comment->toUrl('canonical', $url_options + ['fragment' => 'comment-' . $comment->id()])->toString();
@@ -106,6 +109,7 @@ class CommentTokenReplaceTest extends CommentTestBase {
     $metadata_tests['[comment:mail]'] = $bubbleable_metadata;
     $metadata_tests['[comment:homepage]'] = $base_bubbleable_metadata;
     $metadata_tests['[comment:title]'] = $base_bubbleable_metadata;
+    $metadata_tests['[comment:body]'] = $base_bubbleable_metadata;
     $metadata_tests['[comment:comment_body]'] = $base_bubbleable_metadata;
     $metadata_tests['[comment:langcode]'] = $base_bubbleable_metadata;
     $metadata_tests['[comment:url]'] = $base_bubbleable_metadata;
@@ -137,6 +141,13 @@ class CommentTokenReplaceTest extends CommentTestBase {
       $this->assertEqual($output, $expected, new FormattableMarkup('Comment token %token replaced.', ['%token' => $input]));
       $this->assertEqual($bubbleable_metadata, $metadata_tests[$input]);
     }
+
+    // If legacy token is off then token is not replaced.
+    \Drupal::state()->delete(\COMMENT_LEGACY_BODY_TOKEN);
+    $bubbleable_metadata = new BubbleableMetadata();
+    $input = '[comment:body]';
+    $output = $token_service->replace($input, ['comment' => $comment], ['langcode' => $language_interface->getId()], $bubbleable_metadata);
+    $this->assertEqual($input, $output, '[comment:body] token is not replaced.');
 
     // Test anonymous comment author.
     $author_name = 'This is a random & " > string';

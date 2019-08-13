@@ -70,6 +70,14 @@ const COMMENT_ANONYMOUS_MUST_CONTACT = 2;
 define('COMMENT_NEW_LIMIT', REQUEST_TIME - 30 * 24 * 60 * 60);
 
 /**
+ * State name for whether [comment:body] should proxy to [comment:comment_body].
+ *
+ * @deprecated in Drupal 8.8.x and will be removed before Drupal 9.0.0.
+ *   [comment:body] token will no longer return value of [comment:comment_body].
+ */
+const COMMENT_LEGACY_BODY_TOKEN = 'comment.legacy_body_token';
+
+/**
  * Implements hook_help().
  */
 function comment_help($route_name, RouteMatchInterface $route_match) {

@@ -65,6 +65,10 @@ function comment_token_info() {
     'name' => t("Title"),
     'description' => t("The title of the comment."),
   ];
+  $comment['body'] = [
+    'name' => \t("Content (Deprecated)"),
+    'description' => \t("The formatted content of the comment itself."),
+  ];
   $comment['comment_body'] = [
     'name' => t("Content"),
     'description' => t("The formatted content of the comment itself."),
@@ -166,6 +170,14 @@ function comment_tokens($type, $tokens, array $data, array $options, BubbleableM
         case 'title':
           $replacements[$original] = $comment->getSubject();
           break;
+
+        case 'body':
+          // [comment:body] token is deprecated as of Drupal 8.8.x.
+          if (empty(\Drupal::state()->get(\COMMENT_LEGACY_BODY_TOKEN))) {
+            break;
+          }
+          // Continues to 'comment_body' token if legacy token behavior is on.
+          @trigger_error('[comment:body] token will no longer return value of [comment:comment_body].', E_USER_DEPRECATED);
 
         case 'comment_body':
           // "processed" returns a \Drupal\Component\Render\MarkupInterface via

@@ -139,4 +139,15 @@ class CommentUpdateTest extends UpdatePathTestBase {
     $this->assertSession()->elementContains('css', '.system-status-report__entry--error', 'The comment_update_8701() function requires that the <em class="placeholder">entity_type</em> and <em class="placeholder">field_name</em> fields have values for all comment entities.');
   }
 
+  /**
+   * Test the update hook requirements check for 8800.
+   *
+   * @see \comment_update_8800()
+   */
+  public function testCommentLegacyBodyToken() {
+    $this->assertNull(\Drupal::state()->get(\COMMENT_LEGACY_BODY_TOKEN));
+    $this->runUpdates();
+    $this->assertTrue(\Drupal::state()->get(\COMMENT_LEGACY_BODY_TOKEN));
+  }
+
 }
