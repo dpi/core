@@ -78,7 +78,7 @@ class CommentTokenReplaceTest extends CommentTestBase {
     $tests['[comment:mail]'] = $this->adminUser->getEmail();
     $tests['[comment:homepage]'] = UrlHelper::filterBadProtocol($comment->getHomepage());
     $tests['[comment:title]'] = Html::escape($comment->getSubject());
-    $tests['[comment:body]'] = $comment->comment_body->processed;
+    $tests['[comment:comment_body]'] = $comment->comment_body->processed;
     $tests['[comment:langcode]'] = $comment->language()->getId();
     $tests['[comment:url]'] = $comment->toUrl('canonical', $url_options + ['fragment' => 'comment-' . $comment->id()])->toString();
     $tests['[comment:edit-url]'] = $comment->toUrl('edit-form', $url_options)->toString();
@@ -106,7 +106,7 @@ class CommentTokenReplaceTest extends CommentTestBase {
     $metadata_tests['[comment:mail]'] = $bubbleable_metadata;
     $metadata_tests['[comment:homepage]'] = $base_bubbleable_metadata;
     $metadata_tests['[comment:title]'] = $base_bubbleable_metadata;
-    $metadata_tests['[comment:body]'] = $base_bubbleable_metadata;
+    $metadata_tests['[comment:comment_body]'] = $base_bubbleable_metadata;
     $metadata_tests['[comment:langcode]'] = $base_bubbleable_metadata;
     $metadata_tests['[comment:url]'] = $base_bubbleable_metadata;
     $metadata_tests['[comment:edit-url]'] = $base_bubbleable_metadata;

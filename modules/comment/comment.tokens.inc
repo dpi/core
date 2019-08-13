@@ -65,7 +65,7 @@ function comment_token_info() {
     'name' => t("Title"),
     'description' => t("The title of the comment."),
   ];
-  $comment['body'] = [
+  $comment['comment_body'] = [
     'name' => t("Content"),
     'description' => t("The formatted content of the comment itself."),
   ];
@@ -167,7 +167,7 @@ function comment_tokens($type, $tokens, array $data, array $options, BubbleableM
           $replacements[$original] = $comment->getSubject();
           break;
 
-        case 'body':
+        case 'comment_body':
           // "processed" returns a \Drupal\Component\Render\MarkupInterface via
           // check_markup().
           $replacements[$original] = $comment->comment_body->processed;
