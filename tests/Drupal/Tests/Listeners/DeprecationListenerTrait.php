@@ -140,6 +140,7 @@ trait DeprecationListenerTrait {
       // This deprecation comes from behat/mink-browserkit-driver when updating
       // symfony/browser-kit to 4.3+.
       'The "Symfony\Component\BrowserKit\Response::getStatus()" method is deprecated since Symfony 4.3, use getStatusCode() instead.',
+      '[comment:body] token will no longer return value of [comment:comment_body].',
     ];
   }
 
