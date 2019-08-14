@@ -18,6 +18,7 @@ use Drupal\user\Entity\User;
  * replacement.
  *
  * @group comment
+ * @group legacy
  */
 class CommentTokenReplaceTest extends CommentTestBase {
 
@@ -70,7 +71,7 @@ class CommentTokenReplaceTest extends CommentTestBase {
     // Add HTML to ensure that sanitation of some fields tested directly.
     $comment->setSubject('<blink>Blinking Comment</blink>');
 
-    \Drupal::state()->set(\COMMENT_LEGACY_BODY_TOKEN, TRUE);
+    \Drupal::state()->set('comment.legacy_body_token', TRUE);
 
     // Generate and test tokens.
     $tests = [];
@@ -143,7 +144,7 @@ class CommentTokenReplaceTest extends CommentTestBase {
     }
 
     // If legacy token is off then token is not replaced.
-    \Drupal::state()->delete(\COMMENT_LEGACY_BODY_TOKEN);
+    \Drupal::state()->delete('comment.legacy_body_token');
     $bubbleable_metadata = new BubbleableMetadata();
     $input = '[comment:body]';
     $output = $token_service->replace($input, ['comment' => $comment], ['langcode' => $language_interface->getId()], $bubbleable_metadata);

@@ -173,7 +173,7 @@ function comment_tokens($type, $tokens, array $data, array $options, BubbleableM
 
         case 'body':
           // [comment:body] token is deprecated as of Drupal 8.8.x.
-          if (empty(\Drupal::state()->get(\COMMENT_LEGACY_BODY_TOKEN))) {
+          if (empty(\Drupal::state()->get('comment.legacy_body_token'))) {
             break;
           }
           // Continues to 'comment_body' token if legacy token behavior is on.

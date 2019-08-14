@@ -265,5 +265,5 @@ function comment_update_8701() {
  * Switch on legacy body token for existing sites.
  */
 function comment_update_8800() {
-  \Drupal::state()->set(\COMMENT_LEGACY_BODY_TOKEN, TRUE);
+  \Drupal::state()->set('comment.legacy_body_token', TRUE);
 }

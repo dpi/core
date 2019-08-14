@@ -145,9 +145,9 @@ class CommentUpdateTest extends UpdatePathTestBase {
    * @see \comment_update_8800()
    */
   public function testCommentLegacyBodyToken() {
-    $this->assertNull(\Drupal::state()->get(\COMMENT_LEGACY_BODY_TOKEN));
+    $this->assertNull(\Drupal::state()->get('comment.legacy_body_token'));
     $this->runUpdates();
-    $this->assertTrue(\Drupal::state()->get(\COMMENT_LEGACY_BODY_TOKEN));
+    $this->assertTrue(\Drupal::state()->get('comment.legacy_body_token'));
   }
 
 }
