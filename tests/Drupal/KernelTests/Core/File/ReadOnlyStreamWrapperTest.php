@@ -46,6 +46,7 @@ class ReadOnlyStreamWrapperTest extends FileTestBase {
     $uri = $this->scheme . '://' . $filename;
     \Drupal::service('stream_wrapper_manager')->getViaScheme($this->scheme);
 
+    $file_system = \Drupal::service('file_system');
     // Attempt to open a file in read/write mode
     $handle = @fopen($uri, 'r+');
     $this->assertFalse($handle, 'Unable to open a file for reading and writing with the read-only stream wrapper.');
@@ -79,20 +80,22 @@ class ReadOnlyStreamWrapperTest extends FileTestBase {
     // Test the rename() function
     $this->assertFalse(@rename($uri, $this->scheme . '://newname.txt'), 'Unable to rename files using the read-only stream wrapper.');
     // Test the unlink() function
-    $this->assertTrue(@drupal_unlink($uri), 'Able to unlink file using read-only stream wrapper.');
+    $this->assertTrue(@$file_system->unlink($uri), 'Able to unlink file using read-only stream wrapper.');
     $this->assertTrue(file_exists($filepath), 'Unlink File was not actually deleted.');
 
     // Test the mkdir() function by attempting to create a directory.
     $dirname = $this->randomMachineName();
     $dir = $site_path . '/files/' . $dirname;
     $readonlydir = $this->scheme . '://' . $dirname;
-    $this->assertFalse(@drupal_mkdir($readonlydir, 0775, 0), 'Unable to create directory with read-only stream wrapper.');
+    /** @var \Drupal\Core\File\FileSystemInterface $file_system */
+    $file_system = \Drupal::service('file_system');
+    $this->assertFalse(@$file_system->mkdir($readonlydir, 0775, 0), 'Unable to create directory with read-only stream wrapper.');
     // Create a temporary directory for testing purposes
-    $this->assertTrue(drupal_mkdir($dir), 'Test directory created.');
+    $this->assertTrue($file_system->mkdir($dir), 'Test directory created.');
     // Test the rmdir() function by attempting to remove the directory.
-    $this->assertFalse(@drupal_rmdir($readonlydir), 'Unable to delete directory with read-only stream wrapper.');
+    $this->assertFalse(@$file_system->rmdir($readonlydir), 'Unable to delete directory with read-only stream wrapper.');
     // Remove the temporary directory.
-    drupal_rmdir($dir);
+    $file_system->rmdir($dir);
   }
 
 }

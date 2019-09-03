@@ -52,7 +52,7 @@ class ViewsData {
     $data = [];
 
     $entity_types_with_moderation = array_filter($this->entityTypeManager->getDefinitions(), function (EntityTypeInterface $type) {
-      return $this->moderationInformation->canModerateEntitiesOfEntityType($type);
+      return $this->moderationInformation->isModeratedEntityType($type);
     });
 
     // Provides a relationship from moderated entity to its moderation state
@@ -79,11 +79,12 @@ class ViewsData {
           ],
         ],
         'field' => [
-          'id' => 'field',
+          'id' => 'moderation_state_field',
           'default_formatter' => 'content_moderation_state',
           'field_name' => 'moderation_state',
         ],
         'filter' => ['id' => 'moderation_state_filter', 'allow empty' => TRUE],
+        'sort' => ['id' => 'moderation_state_sort'],
       ];
 
       $revision_table = $entity_type->getRevisionDataTable() ?: $entity_type->getRevisionTable();
@@ -103,11 +104,12 @@ class ViewsData {
           ],
         ],
         'field' => [
-          'id' => 'field',
+          'id' => 'moderation_state_field',
           'default_formatter' => 'content_moderation_state',
           'field_name' => 'moderation_state',
         ],
         'filter' => ['id' => 'moderation_state_filter', 'allow empty' => TRUE],
+        'sort' => ['id' => 'moderation_state_sort'],
       ];
     }
 

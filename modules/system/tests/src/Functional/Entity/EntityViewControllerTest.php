@@ -85,7 +85,8 @@ class EntityViewControllerTest extends BrowserTestBase {
    */
   public function testFieldItemAttributes() {
     // Make sure the test field will be rendered.
-    entity_get_display('entity_test', 'entity_test', 'default')
+    \Drupal::service('entity_display.repository')
+      ->getViewDisplay('entity_test', 'entity_test')
       ->setComponent('field_test_text', ['type' => 'text_default'])
       ->save();
 
@@ -143,7 +144,7 @@ class EntityViewControllerTest extends BrowserTestBase {
       'bundle' => $entity_type,
       'name' => $this->randomMachineName(),
     ];
-    return $this->container->get('entity.manager')->getStorage($entity_type)->create($data);
+    return $this->container->get('entity_type.manager')->getStorage($entity_type)->create($data);
   }
 
 }

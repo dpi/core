@@ -12,6 +12,22 @@ use Drupal\media\Entity\MediaType;
 abstract class MediaSourceTestBase extends MediaJavascriptTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected function setUp() {
+    parent::setUp();
+
+    // Let's set the canonical flag in the base class of the source tests,
+    // because every source test has to check the output on the view page.
+    \Drupal::configFactory()
+      ->getEditable('media.settings')
+      ->set('standalone_url', TRUE)
+      ->save(TRUE);
+
+    $this->container->get('router.builder')->rebuild();
+  }
+
+  /**
    * Creates storage and field instance, attached to a given media type.
    *
    * @param string $field_name
@@ -38,9 +54,10 @@ abstract class MediaSourceTestBase extends MediaJavascriptTestBase {
     $component = \Drupal::service('plugin.manager.field.widget')
       ->prepareConfiguration($field_type, []);
 
-    // @todo Replace entity_get_form_display() when #2367933 is done.
-    // https://www.drupal.org/node/2872159.
-    $entity_form_display = entity_get_form_display('media', $media_type_id, 'default');
+    /** @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface $display_repository */
+    $display_repository = \Drupal::service('entity_display.repository');
+
+    $entity_form_display = $display_repository->getFormDisplay('media', $media_type_id, 'default');
     $entity_form_display->setComponent($field_name, $component)
       ->save();
 
@@ -48,9 +65,7 @@ abstract class MediaSourceTestBase extends MediaJavascriptTestBase {
     $component = \Drupal::service('plugin.manager.field.formatter')
       ->prepareConfiguration($field_type, []);
 
-    // @todo Replace entity_get_display() when #2367933 is done.
-    // https://www.drupal.org/node/2872159.
-    $entity_display = entity_get_display('media', $media_type_id, 'default');
+    $entity_display = $display_repository->getViewDisplay('media', $media_type_id);
     $entity_display->setComponent($field_name, $component)
       ->save();
   }
@@ -78,8 +93,12 @@ abstract class MediaSourceTestBase extends MediaJavascriptTestBase {
    *   The media type config entity ID.
    */
   protected function hideMediaTypeFieldWidget($field_name, $media_type_id) {
+
+    /** @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface $display_repository */
+    $display_repository = \Drupal::service('entity_display.repository');
+
     /** @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface $entity_form_display */
-    $entity_form_display = entity_get_form_display('media', $media_type_id, 'default');
+    $entity_form_display = $display_repository->getFormDisplay('media', $media_type_id, 'default');
     if ($entity_form_display->getComponent($field_name)) {
       $entity_form_display->removeComponent($field_name)->save();
     }

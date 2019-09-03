@@ -134,7 +134,7 @@ class NodeRevisionsTest extends NodeTestBase {
    * Checks node revision related operations.
    */
   public function testRevisions() {
-    $node_storage = $this->container->get('entity.manager')->getStorage('node');
+    $node_storage = $this->container->get('entity_type.manager')->getStorage('node');
     $nodes = $this->nodes;
     $logs = $this->revisionLogs;
 
@@ -164,7 +164,7 @@ class NodeRevisionsTest extends NodeTestBase {
     $this->assertRaw(t('@type %title has been reverted to the revision from %revision-date.', [
       '@type' => 'Basic page',
       '%title' => $nodes[1]->label(),
-      '%revision-date' => format_date($nodes[1]->getRevisionCreationTime()),
+      '%revision-date' => $this->container->get('date.formatter')->format($nodes[1]->getRevisionCreationTime()),
     ]), 'Revision reverted.');
     $node_storage->resetCache([$node->id()]);
     $reverted_node = $node_storage->load($node->id());
@@ -181,13 +181,13 @@ class NodeRevisionsTest extends NodeTestBase {
     // Confirm revisions delete properly.
     $this->drupalPostForm("node/" . $node->id() . "/revisions/" . $nodes[1]->getRevisionId() . "/delete", [], t('Delete'));
     $this->assertRaw(t('Revision from %revision-date of @type %title has been deleted.', [
-      '%revision-date' => format_date($nodes[1]->getRevisionCreationTime()),
+      '%revision-date' => $this->container->get('date.formatter')->format($nodes[1]->getRevisionCreationTime()),
       '@type' => 'Basic page',
       '%title' => $nodes[1]->label(),
     ]), 'Revision deleted.');
     $connection = Database::getConnection();
-    $this->assertTrue(db_query('SELECT COUNT(vid) FROM {node_revision} WHERE nid = :nid and vid = :vid', [':nid' => $node->id(), ':vid' => $nodes[1]->getRevisionId()])->fetchField() == 0, 'Revision not found.');
-    $this->assertTrue(db_query('SELECT COUNT(vid) FROM {node_field_revision} WHERE nid = :nid and vid = :vid', [':nid' => $node->id(), ':vid' => $nodes[1]->getRevisionId()])->fetchField() == 0, 'Field revision not found.');
+    $this->assertTrue($connection->query('SELECT COUNT(vid) FROM {node_revision} WHERE nid = :nid and vid = :vid', [':nid' => $node->id(), ':vid' => $nodes[1]->getRevisionId()])->fetchField() == 0, 'Revision not found.');
+    $this->assertTrue($connection->query('SELECT COUNT(vid) FROM {node_field_revision} WHERE nid = :nid and vid = :vid', [':nid' => $node->id(), ':vid' => $nodes[1]->getRevisionId()])->fetchField() == 0, 'Field revision not found.');
 
     // Set the revision timestamp to an older date to make sure that the
     // confirmation message correctly displays the stored revision date.
@@ -202,7 +202,7 @@ class NodeRevisionsTest extends NodeTestBase {
     $this->assertRaw(t('@type %title has been reverted to the revision from %revision-date.', [
       '@type' => 'Basic page',
       '%title' => $nodes[2]->label(),
-      '%revision-date' => format_date($old_revision_date),
+      '%revision-date' => $this->container->get('date.formatter')->format($old_revision_date),
     ]));
 
     // Make a new revision and set it to not be default.
@@ -305,7 +305,7 @@ class NodeRevisionsTest extends NodeTestBase {
    * Checks that revisions are correctly saved without log messages.
    */
   public function testNodeRevisionWithoutLogMessage() {
-    $node_storage = $this->container->get('entity.manager')->getStorage('node');
+    $node_storage = $this->container->get('entity_type.manager')->getStorage('node');
     // Create a node with an initial log message.
     $revision_log = $this->randomMachineName(10);
     $node = $this->drupalCreateNode(['revision_log' => $revision_log]);
@@ -406,7 +406,7 @@ class NodeRevisionsTest extends NodeTestBase {
     ]);
     $this->drupalPostForm($revert_translation_url, [], t('Revert'));
     /** @var \Drupal\node\NodeStorage $node_storage */
-    $node_storage = $this->container->get('entity.manager')->getStorage('node');
+    $node_storage = $this->container->get('entity_type.manager')->getStorage('node');
     $node_storage->resetCache();
     /** @var \Drupal\node\NodeInterface $node */
     $node = $node_storage->load($node->id());

@@ -223,7 +223,7 @@ class ConfigInstallTest extends KernelTestBase {
     }
     $this->installModules(['config_other_module_config_test']);
     $this->installModules(['config_install_dependency_test']);
-    $entity = \Drupal::entityManager()->getStorage('config_test')->load('other_module_test_with_dependency');
+    $entity = \Drupal::entityTypeManager()->getStorage('config_test')->load('other_module_test_with_dependency');
     $this->assertTrue($entity, 'The config_test.dynamic.other_module_test_with_dependency configuration has been created during install.');
     // Ensure that dependencies can be added during module installation by
     // hooks.
@@ -257,7 +257,8 @@ class ConfigInstallTest extends KernelTestBase {
    * Tests installing configuration where the filename and ID do not match.
    */
   public function testIdMisMatch() {
-    $this->setExpectedException(\PHPUnit_Framework_Error_Warning::class, 'The configuration name "config_test.dynamic.no_id_match" does not match the ID "does_not_match"');
+    $this->expectException(\PHPUnit_Framework_Error_Warning::class);
+    $this->expectExceptionMessage('The configuration name "config_test.dynamic.no_id_match" does not match the ID "does_not_match"');
     $this->installModules(['config_test_id_mismatch']);
   }
 

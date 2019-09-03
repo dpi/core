@@ -19,6 +19,7 @@ use Drupal\Core\File\MimeType\MimeTypeGuesser;
 use Drupal\Core\Http\TrustedHostsRequestFactory;
 use Drupal\Core\Installer\InstallerRedirectTrait;
 use Drupal\Core\Language\Language;
+use Drupal\Core\Security\PharExtensionInterceptor;
 use Drupal\Core\Security\RequestSanitizer;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\Test\TestDatabase;
@@ -35,6 +36,9 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\TerminableInterface;
 use Symfony\Component\Routing\Route;
+use TYPO3\PharStreamWrapper\Manager as PharStreamWrapperManager;
+use TYPO3\PharStreamWrapper\Behavior as PharStreamWrapperBehavior;
+use TYPO3\PharStreamWrapper\PharStreamWrapper;
 
 /**
  * The DrupalKernel class is the core of Drupal itself.
@@ -471,6 +475,26 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
     // Initialize the container.
     $this->initializeContainer();
 
+    if (in_array('phar', stream_get_wrappers(), TRUE)) {
+      // Set up a stream wrapper to handle insecurities due to PHP's builtin
+      // phar stream wrapper. This is not registered as a regular stream wrapper
+      // to prevent \Drupal\Core\File\FileSystem::validScheme() treating "phar"
+      // as a valid scheme.
+      try {
+        $behavior = new PharStreamWrapperBehavior();
+        PharStreamWrapperManager::initialize(
+          $behavior->withAssertion(new PharExtensionInterceptor())
+        );
+      }
+      catch (\LogicException $e) {
+        // Continue if the PharStreamWrapperManager is already initialized. For
+        // example, this occurs during a module install.
+        // @see \Drupal\Core\Extension\ModuleInstaller::install()
+      };
+      stream_wrapper_unregister('phar');
+      stream_wrapper_register('phar', PharStreamWrapper::class);
+    }
+
     $this->booted = TRUE;
 
     return $this;
@@ -883,16 +907,6 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
     // If there is no container and no cached container definition, build a new
     // one from scratch.
     if (!isset($container) && !isset($container_definition)) {
-      // Building the container creates 1000s of objects. Garbage collection of
-      // these objects is expensive. This appears to be causing random
-      // segmentation faults in PHP 5.6 due to
-      // https://bugs.php.net/bug.php?id=72286. Once the container is rebuilt,
-      // garbage collection is re-enabled.
-      $disable_gc = version_compare(PHP_VERSION, '7', '<') && gc_enabled();
-      if ($disable_gc) {
-        gc_collect_cycles();
-        gc_disable();
-      }
       $container = $this->compileContainer();
 
       // Only dump the container if dumping is allowed. This is useful for
@@ -901,11 +915,6 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
       if ($this->allowDumping) {
         $dumper = new $this->phpArrayDumperClass($container);
         $container_definition = $dumper->getArray();
-      }
-      // If garbage collection was disabled prior to rebuilding container,
-      // re-enable it.
-      if ($disable_gc) {
-        gc_enable();
       }
     }
 
@@ -1019,8 +1028,6 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
 
         // Web tests are to be conducted with runtime assertions active.
         assert_options(ASSERT_ACTIVE, TRUE);
-        // Now synchronize PHP 5 and 7's handling of assertions as much as
-        // possible.
         Handle::register();
 
         // Log fatal errors to the test site directory.
@@ -1563,7 +1570,7 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
    * @return bool
    *   TRUE if the Host header is trusted, FALSE otherwise.
    *
-   * @see https://www.drupal.org/node/1992030
+   * @see https://www.drupal.org/docs/8/install/trusted-host-settings
    * @see \Drupal\Core\Http\TrustedHostsRequestFactory
    */
   protected static function setupTrustedHosts(Request $request, $host_patterns) {

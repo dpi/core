@@ -2,12 +2,13 @@
 
 namespace Drupal\link\Plugin\Field\FieldWidget;
 
+use Drupal\Core\Url;
 use Drupal\Core\Entity\Element\EntityAutocomplete;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Validation\ConstraintViolation;
 use Drupal\link\LinkItemInterface;
-use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
 
 /**
@@ -78,6 +79,9 @@ class LinkWidget extends WidgetBase {
         $displayable_string = EntityAutocomplete::getEntityLabels([$entity]);
       }
     }
+    elseif ($scheme === 'route') {
+      $displayable_string = ltrim($displayable_string, 'route:');
+    }
 
     return $displayable_string;
   }
@@ -109,6 +113,10 @@ class LinkWidget extends WidgetBase {
       // @todo Support entity types other than 'node'. Will be fixed in
       //    https://www.drupal.org/node/2423093.
       $uri = 'entity:node/' . $entity_id;
+    }
+    // Support linking to nothing.
+    elseif (in_array($string, ['<nolink>', '<none>'], TRUE)) {
+      $uri = 'route:' . $string;
     }
     // Detect a schemeless string, map to 'internal:' URI.
     elseif (!empty($string) && parse_url($string, PHP_URL_SCHEME) === NULL) {
@@ -207,13 +215,13 @@ class LinkWidget extends WidgetBase {
     // If the field is configured to allow only internal links, add a useful
     // element prefix and description.
     if (!$this->supportsExternalLinks()) {
-      $element['uri']['#field_prefix'] = rtrim(\Drupal::url('<front>', [], ['absolute' => TRUE]), '/');
-      $element['uri']['#description'] = $this->t('This must be an internal path such as %add-node. You can also start typing the title of a piece of content to select it. Enter %front to link to the front page.', ['%add-node' => '/node/add', '%front' => '<front>']);
+      $element['uri']['#field_prefix'] = rtrim(Url::fromRoute('<front>', [], ['absolute' => TRUE])->toString(), '/');
+      $element['uri']['#description'] = $this->t('This must be an internal path such as %add-node. You can also start typing the title of a piece of content to select it. Enter %front to link to the front page. Enter %nolink to display link text only.', ['%add-node' => '/node/add', '%front' => '<front>', '%nolink' => '<nolink>']);
     }
     // If the field is configured to allow both internal and external links,
     // show a useful description.
     elseif ($this->supportsExternalLinks() && $this->supportsInternalLinks()) {
-      $element['uri']['#description'] = $this->t('Start typing the title of a piece of content to select it. You can also enter an internal path such as %add-node or an external URL such as %url. Enter %front to link to the front page.', ['%front' => '<front>', '%add-node' => '/node/add', '%url' => 'http://example.com']);
+      $element['uri']['#description'] = $this->t('Start typing the title of a piece of content to select it. You can also enter an internal path such as %add-node or an external URL such as %url. Enter %front to link to the front page. Enter %nolink to display link text only.', ['%front' => '<front>', '%add-node' => '/node/add', '%url' => 'http://example.com', '%nolink' => '<nolink>']);
     }
     // If the field is configured to allow only external links, show a useful
     // description.

@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\Core\Extension;
 
+use Drupal\Component\Version\Constraint;
 use Drupal\Core\Extension\Dependency;
 use Drupal\Tests\UnitTestCase;
 
@@ -76,7 +77,8 @@ class DependencyTest extends UnitTestCase {
    */
   public function testOffsetGetException() {
     $dependency = new Dependency('views', 'drupal', '>8.x-1.1');
-    $this->setExpectedException(\InvalidArgumentException::class, 'The does_not_exist key is not supported');
+    $this->expectException(\InvalidArgumentException::class);
+    $this->expectExceptionMessage('The does_not_exist key is not supported');
     $dependency['does_not_exist'];
   }
 
@@ -86,7 +88,8 @@ class DependencyTest extends UnitTestCase {
    */
   public function testOffsetUnset() {
     $dependency = new Dependency('views', 'drupal', '>8.x-1.1');
-    $this->setExpectedException(\BadMethodCallException::class, 'Drupal\Core\Extension\Dependency::offsetUnset() is not supported');
+    $this->expectException(\BadMethodCallException::class);
+    $this->expectExceptionMessage('Drupal\Core\Extension\Dependency::offsetUnset() is not supported');
     unset($dependency['name']);
   }
 
@@ -96,8 +99,24 @@ class DependencyTest extends UnitTestCase {
    */
   public function testOffsetSet() {
     $dependency = new Dependency('views', 'drupal', '>8.x-1.1');
-    $this->setExpectedException(\BadMethodCallException::class, 'Drupal\Core\Extension\Dependency::offsetSet() is not supported');
+    $this->expectException(\BadMethodCallException::class);
+    $this->expectExceptionMessage('Drupal\Core\Extension\Dependency::offsetSet() is not supported');
     $dependency['name'] = 'foo';
+  }
+
+  /**
+   * Ensures that constraint objects are not serialized.
+   *
+   * @covers ::__sleep
+   */
+  public function testSerialization() {
+    $dependency = new Dependency('paragraphs_demo', 'paragraphs', '>8.x-1.1');
+    $this->assertTrue($dependency->isCompatible('1.2'));
+    $this->assertInstanceOf(Constraint::class, $this->getObjectAttribute($dependency, 'constraint'));
+    $dependency = unserialize(serialize($dependency));
+    $this->assertNull($this->getObjectAttribute($dependency, 'constraint'));
+    $this->assertTrue($dependency->isCompatible('1.2'));
+    $this->assertInstanceOf(Constraint::class, $this->getObjectAttribute($dependency, 'constraint'));
   }
 
 }

@@ -5,6 +5,7 @@
  * Tracks recent content posted by a user or users.
  */
 
+use Drupal\Core\Url;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\comment\CommentInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
@@ -23,7 +24,7 @@ function tracker_help($route_name, RouteMatchInterface $route_match) {
       $output .= '<h3>' . t('Uses') . '</h3>';
       $output .= '<dl>';
       $output .= '<dt>' . t('Tracking new and updated site content') . '</dt>';
-      $output .= '<dd>' . t('The <a href=":recent">Recent content</a> page shows new and updated content in reverse chronological order, listing the content type, title, author\'s name, number of comments, and time of last update. Content is considered updated when changes occur in the text, or when new comments are added. The <em>My recent content</em> tab limits the list to the currently logged-in user.', [':recent' => \Drupal::url('tracker.page')]) . '</dd>';
+      $output .= '<dd>' . t('The <a href=":recent">Recent content</a> page shows new and updated content in reverse chronological order, listing the content type, title, author\'s name, number of comments, and time of last update. Content is considered updated when changes occur in the text, or when new comments are added. The <em>My recent content</em> tab limits the list to the currently logged-in user.', [':recent' => Url::fromRoute('tracker.page')->toString()]) . '</dd>';
       $output .= '<dt>' . t('Tracking user-specific content') . '</dt>';
       $output .= '<dd>' . t("To follow a specific user's new and updated content, select the <em>Activity</em> tab from the user's profile page.") . '</dd>';
       $output .= '</dl>';
@@ -255,7 +256,7 @@ function _tracker_add($nid, $uid, $changed) {
   $connection = \Drupal::database();
   // @todo This should be actually filtering on the desired language and just
   //   fall back to the default language.
-  $node = db_query('SELECT nid, status, uid, changed FROM {node_field_data} WHERE nid = :nid AND default_langcode = 1 ORDER BY changed DESC, status DESC', [':nid' => $nid])->fetchObject();
+  $node = $connection->query('SELECT nid, status, uid, changed FROM {node_field_data} WHERE nid = :nid AND default_langcode = 1 ORDER BY changed DESC, status DESC', [':nid' => $nid])->fetchObject();
 
   // Adding a comment can only increase the changed timestamp, so our
   // calculation here is simple.
@@ -357,7 +358,7 @@ function _tracker_remove($nid, $uid = NULL, $changed = NULL) {
     // and the node itself.
     // We only need to do this if the removed item has a timestamp that equals
     // or exceeds the listed changed timestamp for the node.
-    $tracker_node = db_query('SELECT nid, changed FROM {tracker_node} WHERE nid = :nid', [':nid' => $nid])->fetchObject();
+    $tracker_node = $connection->query('SELECT nid, changed FROM {tracker_node} WHERE nid = :nid', [':nid' => $nid])->fetchObject();
     if ($tracker_node && $changed >= $tracker_node->changed) {
       // If we're here, the item being removed is *possibly* the item that
       // established the node's changed timestamp.

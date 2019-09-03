@@ -43,7 +43,7 @@ use Drupal\user\EntityOwnerTrait;
  *     "translation" = "Drupal\content_translation\ContentTranslationHandler",
  *     "views_data" = "Drupal\media\MediaViewsData",
  *     "route_provider" = {
- *       "html" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
+ *       "html" = "Drupal\media\Routing\MediaRouteProvider",
  *     }
  *   },
  *   base_table = "media",
@@ -75,7 +75,7 @@ use Drupal\user\EntityOwnerTrait;
  *   links = {
  *     "add-page" = "/media/add",
  *     "add-form" = "/media/add/{media_type}",
- *     "canonical" = "/media/{media}",
+ *     "canonical" = "/media/{media}/edit",
  *     "collection" = "/admin/content/media",
  *     "delete-form" = "/media/{media}/delete",
  *     "delete-multiple-form" = "/media/delete",
@@ -159,19 +159,10 @@ class Media extends EditorialContentEntityBase implements MediaInterface {
     // Set the thumbnail alt.
     $media_source = $this->getSource();
     $plugin_definition = $media_source->getPluginDefinition();
+
+    $this->thumbnail->alt = '';
     if (!empty($plugin_definition['thumbnail_alt_metadata_attribute'])) {
       $this->thumbnail->alt = $media_source->getMetadata($this, $plugin_definition['thumbnail_alt_metadata_attribute']);
-    }
-    else {
-      $this->thumbnail->alt = $this->t('Thumbnail', [], ['langcode' => $this->langcode->value]);
-    }
-
-    // Set the thumbnail title.
-    if (!empty($plugin_definition['thumbnail_title_metadata_attribute'])) {
-      $this->thumbnail->title = $media_source->getMetadata($this, $plugin_definition['thumbnail_title_metadata_attribute']);
-    }
-    else {
-      $this->thumbnail->title = $this->label();
     }
 
     return $this;

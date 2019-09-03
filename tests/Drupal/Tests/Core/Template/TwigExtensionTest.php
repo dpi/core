@@ -61,10 +61,10 @@ class TwigExtensionTest extends UnitTestCase {
   public function setUp() {
     parent::setUp();
 
-    $this->renderer = $this->getMock('\Drupal\Core\Render\RendererInterface');
-    $this->urlGenerator = $this->getMock('\Drupal\Core\Routing\UrlGeneratorInterface');
-    $this->themeManager = $this->getMock('\Drupal\Core\Theme\ThemeManagerInterface');
-    $this->dateFormatter = $this->getMock('\Drupal\Core\Datetime\DateFormatterInterface');
+    $this->renderer = $this->createMock('\Drupal\Core\Render\RendererInterface');
+    $this->urlGenerator = $this->createMock('\Drupal\Core\Routing\UrlGeneratorInterface');
+    $this->themeManager = $this->createMock('\Drupal\Core\Theme\ThemeManagerInterface');
+    $this->dateFormatter = $this->createMock('\Drupal\Core\Datetime\DateFormatterInterface');
 
     $this->systemUnderTest = new TwigExtension($this->renderer, $this->urlGenerator, $this->themeManager, $this->dateFormatter);
   }
@@ -148,15 +148,18 @@ class TwigExtensionTest extends UnitTestCase {
    * Tests the format_date filter.
    */
   public function testFormatDate() {
-    $this->dateFormatter->expects($this->exactly(2))
+    $this->dateFormatter->expects($this->exactly(1))
       ->method('format')
-      ->willReturn('1978-11-19');
+      ->will($this->returnCallback(function ($timestamp) {
+        return date('Y-m-d', $timestamp);
+      }));
 
     $loader = new StringLoader();
     $twig = new \Twig_Environment($loader);
     $twig->addExtension($this->systemUnderTest);
-    $result = $twig->render('{{ time|format_date("html_date") }}');
-    $this->assertEquals($this->dateFormatter->format('html_date'), $result);
+    $timestamp = strtotime('1978-11-19');
+    $result = $twig->render('{{ time|format_date("html_date") }}', ['time' => $timestamp]);
+    $this->assertEquals('1978-11-19', $result);
   }
 
   /**
@@ -197,7 +200,7 @@ class TwigExtensionTest extends UnitTestCase {
 
     // By default, TwigExtension will attempt to cast objects to strings.
     // Ensure objects that implement MarkupInterface are unchanged.
-    $safe_string = $this->getMock('\Drupal\Component\Render\MarkupInterface');
+    $safe_string = $this->createMock('\Drupal\Component\Render\MarkupInterface');
     $this->assertSame($safe_string, $this->systemUnderTest->escapeFilter($twig, $safe_string, 'html', 'UTF-8', TRUE));
 
     // Ensure objects that do not implement MarkupInterface are escaped.
@@ -331,7 +334,8 @@ class TwigExtensionTest extends UnitTestCase {
    * @covers ::createAttribute
    */
   public function testCreateAttribute() {
-    $loader = new StringLoader();
+    $name = '__string_template_test_1__';
+    $loader = new \Twig_Loader_Array([$name => "{% for iteration in iterations %}<div{{ create_attribute(iteration) }}></div>{% endfor %}"]);
     $twig = new \Twig_Environment($loader);
     $twig->addExtension($this->systemUnderTest);
 
@@ -340,12 +344,15 @@ class TwigExtensionTest extends UnitTestCase {
       ['id' => 'puppies', 'data-value' => 'foo', 'data-lang' => 'en'],
       [],
     ];
-    $result = $twig->render("{% for iteration in iterations %}<div{{ create_attribute(iteration) }}></div>{% endfor %}", ['iterations' => $iterations]);
+    $result = $twig->render($name, ['iterations' => $iterations]);
     $expected = '<div class="kittens" data-toggle="modal" data-lang="es"></div><div id="puppies" data-value="foo" data-lang="en"></div><div></div>';
     $this->assertEquals($expected, $result);
 
     // Test default creation of empty attribute object and using its method.
-    $result = $twig->render("<div{{ create_attribute().addClass('meow') }}></div>");
+    $name = '__string_template_test_2__';
+    $loader = new \Twig_Loader_Array([$name => "<div{{ create_attribute().addClass('meow') }}></div>"]);
+    $twig->setLoader($loader);
+    $result = $twig->render($name);
     $expected = '<div class="meow"></div>';
     $this->assertEquals($expected, $result);
   }

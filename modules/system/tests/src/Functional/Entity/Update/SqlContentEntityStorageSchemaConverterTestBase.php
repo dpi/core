@@ -4,6 +4,7 @@ namespace Drupal\Tests\system\Functional\Entity\Update;
 
 use Drupal\FunctionalTests\Update\UpdatePathTestBase;
 use Drupal\Tests\system\Functional\Entity\Traits\EntityDefinitionTestTrait;
+use Drupal\Tests\Traits\ExpectDeprecationTrait;
 
 /**
  * Defines a class for testing the conversion of entity types to revisionable.
@@ -11,13 +12,7 @@ use Drupal\Tests\system\Functional\Entity\Traits\EntityDefinitionTestTrait;
 abstract class SqlContentEntityStorageSchemaConverterTestBase extends UpdatePathTestBase {
 
   use EntityDefinitionTestTrait;
-
-  /**
-   * The entity manager service.
-   *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
-   */
-  protected $entityManager;
+  use ExpectDeprecationTrait;
 
   /**
    * The entity definition update manager.
@@ -53,7 +48,6 @@ abstract class SqlContentEntityStorageSchemaConverterTestBase extends UpdatePath
   protected function setUp() {
     parent::setUp();
 
-    $this->entityManager = \Drupal::entityManager();
     $this->entityDefinitionUpdateManager = \Drupal::entityDefinitionUpdateManager();
     $this->lastInstalledSchemaRepository = \Drupal::service('entity.last_installed_schema.repository');
     $this->installedStorageSchema = \Drupal::keyValue('entity.storage_schema.sql');
@@ -80,6 +74,7 @@ abstract class SqlContentEntityStorageSchemaConverterTestBase extends UpdatePath
       $this->updateEntityTypeToRevisionable();
     }
 
+    $this->expectDeprecation('\Drupal\Core\Entity\Sql\SqlContentEntityStorageSchemaConverter is deprecated in Drupal 8.7.0, will be removed before Drupal 9.0.0. Use \Drupal\Core\Entity\EntityDefinitionUpdateManagerInterface::updateFieldableEntityType() instead. See https://www.drupal.org/node/3029997.');
     $this->runUpdates();
 
     /** @var \Drupal\Core\Entity\EntityTypeInterface $entity_test_update */

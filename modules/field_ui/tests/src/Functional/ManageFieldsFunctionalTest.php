@@ -101,7 +101,8 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     ];
     $this->createEntityReferenceField('node', 'article', 'field_' . $vocabulary->id(), 'Tags', 'taxonomy_term', 'default', $handler_settings);
 
-    entity_get_form_display('node', 'article', 'default')
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay('node', 'article')
       ->setComponent('field_' . $vocabulary->id())
       ->save();
   }
@@ -141,7 +142,7 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     ];
     foreach ($table_headers as $table_header) {
       // We check that the label appear in the table headings.
-      $this->assertRaw($table_header . '</th>', format_string('%table_header table header was found.', ['%table_header' => $table_header]));
+      $this->assertRaw($table_header . '</th>', new FormattableMarkup('%table_header table header was found.', ['%table_header' => $table_header]));
     }
 
     // Test the "Add field" action link.
@@ -398,7 +399,7 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     // Create a valid field.
     $this->fieldUIAddNewField('admin/structure/types/manage/' . $this->contentType, $this->fieldNameInput, $this->fieldLabel);
     $this->drupalGet('admin/structure/types/manage/' . $this->contentType . '/fields/node.' . $this->contentType . '.' . $field_prefix . $this->fieldNameInput);
-    $this->assertText(format_string('@label settings for @type', ['@label' => $this->fieldLabel, '@type' => $this->contentType]));
+    $this->assertText(new FormattableMarkup('@label settings for @type', ['@label' => $this->fieldLabel, '@type' => $this->contentType]));
   }
 
   /**
@@ -419,7 +420,10 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     ]);
     $field->save();
 
-    entity_get_form_display('node', $this->contentType, 'default')
+    /** @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface $display_repository */
+    $display_repository = \Drupal::service('entity_display.repository');
+
+    $display_repository->getFormDisplay('node', $this->contentType)
       ->setComponent($field_name)
       ->save();
 
@@ -471,8 +475,9 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     $this->assertEqual($field->getDefaultValueLiteral(), [], 'The default value was correctly saved.');
 
     // Check that the default widget is used when the field is hidden.
-    entity_get_form_display($field->getTargetEntityTypeId(), $field->getTargetBundle(), 'default')
-      ->removeComponent($field_name)->save();
+    $display_repository->getFormDisplay($field->getTargetEntityTypeId(), $field->getTargetBundle())
+      ->removeComponent($field_name)
+      ->save();
     $this->drupalGet($admin_path);
     $this->assertFieldById($element_id, '', 'The default value widget was displayed when field is hidden.');
   }
@@ -556,7 +561,8 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
       'field_storage' => $field_storage,
       'bundle' => $this->contentType,
     ])->save();
-    entity_get_form_display('node', $this->contentType, 'default')
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay('node', $this->contentType)
       ->setComponent($field_name, [
         'type' => 'test_field_widget',
       ])
@@ -593,10 +599,11 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
       'label' => t('Hidden field'),
     ];
     FieldConfig::create($field)->save();
-    entity_get_form_display('node', $this->contentType, 'default')
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay('node', $this->contentType)
       ->setComponent($field_name)
       ->save();
-    $this->assertTrue(FieldConfig::load('node.' . $this->contentType . '.' . $field_name), format_string('A field of the field storage %field was created programmatically.', ['%field' => $field_name]));
+    $this->assertTrue(FieldConfig::load('node.' . $this->contentType . '.' . $field_name), new FormattableMarkup('A field of the field storage %field was created programmatically.', ['%field' => $field_name]));
 
     // Check that the newly added field appears on the 'Manage Fields'
     // screen.
@@ -689,7 +696,10 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
       'bundle' => 'article',
     ])->save();
 
-    entity_get_form_display('node', 'article', 'default')->setComponent('field_image')->save();
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay('node', 'article')
+      ->setComponent('field_image')
+      ->save();
 
     $edit = [
       'description' => '<strong>Test with an upload field.',
@@ -743,9 +753,12 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     $this->assertTrue($field->isRequired());
     $this->assertEqual($field->getSetting('test_field_setting'), 'preconfigured_field_setting');
 
-    $form_display = entity_get_form_display('node', 'article', 'default');
+    /** @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface $display_repository */
+    $display_repository = \Drupal::service('entity_display.repository');
+
+    $form_display = $display_repository->getFormDisplay('node', 'article');
     $this->assertEqual($form_display->getComponent('field_test_custom_options')['type'], 'test_field_widget_multiple');
-    $view_display = entity_get_display('node', 'article', 'default');
+    $view_display = $display_repository->getViewDisplay('node', 'article');
     $this->assertEqual($view_display->getComponent('field_test_custom_options')['type'], 'field_test_multiple');
     $this->assertEqual($view_display->getComponent('field_test_custom_options')['settings']['test_formatter_setting_multiple'], 'altered dummy test string');
   }

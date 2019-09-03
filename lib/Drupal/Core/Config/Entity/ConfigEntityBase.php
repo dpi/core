@@ -5,7 +5,7 @@ namespace Drupal\Core\Config\Entity;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Config\Schema\SchemaIncompleteException;
-use Drupal\Core\Entity\Entity;
+use Drupal\Core\Entity\EntityBase;
 use Drupal\Core\Config\ConfigDuplicateUUIDException;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
@@ -18,7 +18,7 @@ use Drupal\Core\Plugin\PluginDependencyTrait;
  *
  * @ingroup entity_api
  */
-abstract class ConfigEntityBase extends Entity implements ConfigEntityInterface {
+abstract class ConfigEntityBase extends EntityBase implements ConfigEntityInterface {
 
   use PluginDependencyTrait {
     addDependency as addDependencyTrait;
@@ -326,8 +326,11 @@ abstract class ConfigEntityBase extends Entity implements ConfigEntityInterface 
   public function __sleep() {
     $keys_to_unset = [];
     if ($this instanceof EntityWithPluginCollectionInterface) {
+      // Get the plugin collections first, so that the properties are
+      // initialized in $vars and can be found later.
+      $plugin_collections = $this->getPluginCollections();
       $vars = get_object_vars($this);
-      foreach ($this->getPluginCollections() as $plugin_config_key => $plugin_collection) {
+      foreach ($plugin_collections as $plugin_config_key => $plugin_collection) {
         // Save any changes to the plugin configuration to the entity.
         $this->set($plugin_config_key, $plugin_collection->getConfiguration());
         // If the plugin collections are stored as properties on the entity,

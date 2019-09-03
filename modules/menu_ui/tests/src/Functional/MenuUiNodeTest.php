@@ -63,12 +63,12 @@ class MenuUiNodeTest extends BrowserTestBase {
     $this->assertSession()->responseHeaderContains('X-Drupal-Cache-Contexts', 'user.roles:authenticated');
 
     // Verify that the menu link title has the correct maxlength.
-    $title_max_length = \Drupal::entityManager()->getBaseFieldDefinitions('menu_link_content')['title']->getSetting('max_length');
+    $title_max_length = \Drupal::service('entity_field.manager')->getBaseFieldDefinitions('menu_link_content')['title']->getSetting('max_length');
     $this->drupalGet('node/add/page');
     $this->assertPattern('/<input .* id="edit-menu-title" .* maxlength="' . $title_max_length . '" .* \/>/', 'Menu link title field has correct maxlength in node add form.');
 
     // Verify that the menu link description has the correct maxlength.
-    $description_max_length = \Drupal::entityManager()->getBaseFieldDefinitions('menu_link_content')['description']->getSetting('max_length');
+    $description_max_length = \Drupal::service('entity_field.manager')->getBaseFieldDefinitions('menu_link_content')['description']->getSetting('max_length');
     $this->drupalGet('node/add/page');
     $this->assertPattern('/<input .* id="edit-menu-description" .* maxlength="' . $description_max_length . '" .* \/>/', 'Menu link description field has correct maxlength in node add form.');
 
@@ -189,7 +189,7 @@ class MenuUiNodeTest extends BrowserTestBase {
     $link = MenuLinkContent::load($link_id);
     $link->set('enabled', FALSE);
     $link->save();
-    $this->drupalPostForm($node->urlInfo('edit-form'), $edit, t('Save'));
+    $this->drupalPostForm($node->toUrl('edit-form'), $edit, t('Save'));
     $link = MenuLinkContent::load($link_id);
     $this->assertFalse($link->isEnabled(), 'Saving a node with a disabled menu link keeps the menu link disabled.');
 

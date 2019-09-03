@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\block_content\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\block_content\Entity\BlockContent;
 
 /**
@@ -57,14 +58,14 @@ class PageEditTest extends BlockContentTestBase {
     $this->drupalPostForm(NULL, $edit, t('Save'));
 
     // Ensure that the block revision has been created.
-    \Drupal::entityManager()->getStorage('block_content')->resetCache([$block->id()]);
+    \Drupal::entityTypeManager()->getStorage('block_content')->resetCache([$block->id()]);
     $revised_block = BlockContent::load($block->id());
     $this->assertNotIdentical($block->getRevisionId(), $revised_block->getRevisionId(), 'A new revision has been created.');
 
     // Test deleting the block.
     $this->drupalGet("block/" . $revised_block->id());
     $this->clickLink(t('Delete'));
-    $this->assertText(format_string('Are you sure you want to delete the custom block @label?', ['@label' => $revised_block->label()]));
+    $this->assertText(new FormattableMarkup('Are you sure you want to delete the custom block @label?', ['@label' => $revised_block->label()]));
   }
 
 }

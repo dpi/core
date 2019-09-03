@@ -9,9 +9,10 @@ use Drupal\Component\FileSystem\FileSystem;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\Timer;
 use Drupal\Component\Uuid\Php;
-use Drupal\Core\Composer\Composer;
 use Drupal\Core\Asset\AttachedAssets;
 use Drupal\Core\Database\Database;
+use Drupal\Core\File\Exception\FileException;
+use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\StreamWrapper\PublicStream;
 use Drupal\Core\Test\TestDatabase;
 use Drupal\Core\Test\TestRunnerKernel;
@@ -60,7 +61,7 @@ if ($args['execute-test']) {
 }
 
 if ($args['list']) {
-  // Display all available tests.
+  // Display all available tests organized by one @group annotation.
   echo "\nAvailable test groups & classes\n";
   echo "-------------------------------\n\n";
   try {
@@ -71,11 +72,18 @@ if ($args['list']) {
     echo (string) $e;
     exit(SIMPLETEST_SCRIPT_EXIT_EXCEPTION);
   }
+
+  // A given class can appear in multiple groups. For historical reasons, we
+  // need to present each test only once. The test is shown in the group that is
+  // printed first.
+  $printed_tests = [];
   foreach ($groups as $group => $tests) {
     echo $group . "\n";
-    foreach ($tests as $class => $info) {
-      echo " - $class\n";
+    $tests = array_diff(array_keys($tests), $printed_tests);
+    foreach ($tests as $test) {
+      echo " - $test\n";
     }
+    $printed_tests = array_merge($printed_tests, $tests);
   }
   exit(SIMPLETEST_SCRIPT_EXIT_SUCCESS);
 }
@@ -138,10 +146,6 @@ if (class_exists('\PHPUnit_Runner_Version')) {
 }
 else {
   $phpunit_version = Version::id();
-}
-if (!Composer::upgradePHPUnitCheck($phpunit_version)) {
-  simpletest_script_print_error("PHPUnit testing framework version 6 or greater is required when running on PHP 7.0 or greater. Run the command 'composer run-script drupal-phpunit-upgrade' in order to fix this.");
-  exit(SIMPLETEST_SCRIPT_EXIT_FAILURE);
 }
 
 $test_list = simpletest_script_get_test_list();
@@ -470,23 +474,6 @@ function simpletest_script_init() {
     exit(SIMPLETEST_SCRIPT_EXIT_FAILURE);
   }
 
-  // Detect if we're in the top-level process using the private 'execute-test'
-  // argument. Determine if being run on drupal.org's testing infrastructure
-  // using the presence of 'drupaltestbot' in the database url.
-  // @todo https://www.drupal.org/project/drupalci_testbot/issues/2860941 Use
-  //   better environment variable to detect DrupalCI.
-  // @todo https://www.drupal.org/project/drupal/issues/2942473 Remove when
-  //   dropping PHPUnit 4 and PHP 5 support.
-  if (!$args['execute-test'] && preg_match('/drupalci/', $args['sqlite'])) {
-    // Update PHPUnit if needed and possible. There is a later check once the
-    // autoloader is in place to ensure we're on the correct version. We need to
-    // do this before the autoloader is in place to ensure that it is correct.
-    $composer = ($composer = rtrim('\\' === DIRECTORY_SEPARATOR ? preg_replace('/[\r\n].*/', '', `where.exe composer.phar`) : `which composer.phar`))
-      ? $php . ' ' . escapeshellarg($composer)
-      : 'composer';
-    passthru("$composer run-script drupal-phpunit-upgrade-check");
-  }
-
   $autoloader = require_once __DIR__ . '/../../autoload.php';
 
   // Get URL from arguments.
@@ -760,7 +747,7 @@ function simpletest_script_execute_batch($test_classes) {
           // @see https://www.drupal.org/node/2780087
           $total_status = max(SIMPLETEST_SCRIPT_EXIT_FAILURE, $total_status);
           // Insert a fail for xml results.
-          TestBase::insertAssert($child['test_id'], $child['class'], FALSE, $message, 'run-tests.sh check');
+          simpletest_insert_assert($child['test_id'], $child['class'], FALSE, $message, 'run-tests.sh check');
           // Ensure that an error line is displayed for the class.
           simpletest_script_reporter_display_summary(
             $child['class'],
@@ -962,8 +949,13 @@ function simpletest_script_cleanup($test_id, $test_class, $exitcode) {
     // simpletest_clean_temporary_directories() cannot be used here, since it
     // would also delete file directories of other tests that are potentially
     // running concurrently.
-    file_unmanaged_delete_recursive($test_directory, ['Drupal\simpletest\TestBase', 'filePreDeleteCallback']);
-    $messages[] = "- Removed test site directory.";
+    try {
+      \Drupal::service('file_system')->deleteRecursive($test_directory, ['\Drupal\Tests\BrowserTestBase', 'filePreDeleteCallback']);
+      $messages[] = "- Removed test site directory.";
+    }
+    catch (FileException $e) {
+      // Ignore failed deletes.
+    }
   }
 
   // Clear out all database tables from the test.
@@ -1019,7 +1011,7 @@ function simpletest_script_get_test_list() {
     foreach ($groups as $group => $tests) {
       $all_tests = array_merge($all_tests, array_keys($tests));
     }
-    $test_list = $all_tests;
+    $test_list = array_unique($all_tests);
   }
   else {
     if ($args['class']) {
@@ -1080,7 +1072,7 @@ function simpletest_script_get_test_list() {
       // Extract test case class names from specified directory.
       // Find all tests in the PSR-X structure; Drupal\$extension\Tests\*.php
       // Since we do not want to hard-code too many structural file/directory
-      // assumptions about PSR-0/4 files and directories, we check for the
+      // assumptions about PSR-4 files and directories, we check for the
       // minimal conditions only; i.e., a '*.php' file that has '/Tests/' in
       // its path.
       // Ignore anything from third party vendors.
@@ -1092,7 +1084,7 @@ function simpletest_script_get_test_list() {
       else {
         $directory = DRUPAL_ROOT . "/" . $args['directory'];
       }
-      foreach (file_scan_directory($directory, '/\.php$/', $ignore) as $file) {
+      foreach (\Drupal::service('file_system')->scanDirectory($directory, '/\.php$/', $ignore) as $file) {
         // '/Tests/' can be contained anywhere in the file's path (there can be
         // sub-directories below /Tests), but must be contained literally.
         // Case-insensitive to match all Simpletest and PHPUnit tests:
@@ -1139,16 +1131,20 @@ function simpletest_script_get_test_list() {
         echo (string) $e;
         exit(SIMPLETEST_SCRIPT_EXIT_EXCEPTION);
       }
-      foreach ($args['test_names'] as $group_name) {
-        if (isset($groups[$group_name])) {
-          $test_list = array_merge($test_list, array_keys($groups[$group_name]));
-        }
-        else {
-          simpletest_script_print_error('Test group not found: ' . $group_name);
-          simpletest_script_print_alternatives($group_name, array_keys($groups));
-          exit(SIMPLETEST_SCRIPT_EXIT_FAILURE);
-        }
+      // Store all the groups so we can suggest alternatives if we need to.
+      $all_groups = array_keys($groups);
+      // Verify that the groups exist.
+      if (!empty($unknown_groups = array_diff($args['test_names'], $all_groups))) {
+        $first_group = reset($unknown_groups);
+        simpletest_script_print_error('Test group not found: ' . $first_group);
+        simpletest_script_print_alternatives($first_group, $all_groups);
+        exit(SIMPLETEST_SCRIPT_EXIT_FAILURE);
       }
+      // Ensure our list of tests contains only one entry for each test.
+      foreach ($args['test_names'] as $group_name) {
+        $test_list = array_merge($test_list, array_flip(array_keys($groups[$group_name])));
+      }
+      $test_list = array_flip($test_list);
     }
   }
 
@@ -1565,7 +1561,7 @@ function simpletest_script_open_browser() {
   // Ensure we have assets verbose directory - tests with no verbose output will
   // not have created one.
   $directory = PublicStream::basePath() . '/simpletest/verbose';
-  file_prepare_directory($directory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+  \Drupal::service('file_system')->prepareDirectory($directory, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
   $php = new Php();
   $uuid = $php->generate();
   $filename = $directory . '/results-' . $uuid . '.html';

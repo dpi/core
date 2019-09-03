@@ -6,11 +6,14 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Render\Element\Email;
+use Drupal\user\UserInterface;
 use Drupal\user\UserStorageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Provides a user password reset form.
+ *
+ * Send the user an email to reset their password.
  *
  * @internal
  */
@@ -48,7 +51,7 @@ class UserPasswordForm extends FormBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('entity.manager')->getStorage('user'),
+      $container->get('entity_type.manager')->getStorage('user'),
       $container->get('language_manager')
     );
   }
@@ -68,7 +71,7 @@ class UserPasswordForm extends FormBase {
       '#type' => 'textfield',
       '#title' => $this->t('Username or email address'),
       '#size' => 60,
-      '#maxlength' => max(USERNAME_MAX_LENGTH, Email::EMAIL_MAX_LENGTH),
+      '#maxlength' => max(UserInterface::USERNAME_MAX_LENGTH, Email::EMAIL_MAX_LENGTH),
       '#required' => TRUE,
       '#attributes' => [
         'autocorrect' => 'off',

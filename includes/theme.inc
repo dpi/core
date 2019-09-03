@@ -8,6 +8,7 @@
  * customized by user themes.
  */
 
+use Drupal\Core\Url;
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Utility\Html;
@@ -215,7 +216,10 @@ function drupal_find_theme_templates($cache, $extension, $path) {
   // Escape the periods in the extension.
   $regex = '/' . str_replace('.', '\.', $extension) . '$/';
   // Get a listing of all template files in the path to search.
-  $files = file_scan_directory($path, $regex, ['key' => 'filename']);
+  $files = [];
+  if (is_dir($path)) {
+    $files = \Drupal::service('file_system')->scanDirectory($path, $regex, ['key' => 'filename']);
+  }
 
   // Find templates that implement registered theme hooks and include that in
   // what is returned so that the registry knows that the theme has this
@@ -507,17 +511,19 @@ function theme_settings_convert_to_config(array $theme_settings, Config $config)
  *   - text:
  */
 function template_preprocess_time(&$variables) {
+  /** @var \Drupal\Core\Datetime\DateFormatterInterface $date_formatter */
+  $date_formatter = \Drupal::service('date.formatter');
   // Format the 'datetime' attribute based on the timestamp.
   // @see http://www.w3.org/TR/html5-author/the-time-element.html#attr-time-datetime
   if (!isset($variables['attributes']['datetime']) && isset($variables['timestamp'])) {
-    $variables['attributes']['datetime'] = format_date($variables['timestamp'], 'html_datetime', '', 'UTC');
+    $variables['attributes']['datetime'] = $date_formatter->format($variables['timestamp'], 'html_datetime', '', 'UTC');
   }
 
   // If no text was provided, try to auto-generate it.
   if (!isset($variables['text'])) {
     // Format and use a human-readable version of the timestamp, if any.
     if (isset($variables['timestamp'])) {
-      $variables['text'] = format_date($variables['timestamp']);
+      $variables['text'] = $date_formatter->format($variables['timestamp']);
     }
     // Otherwise, use the literal datetime attribute.
     elseif (isset($variables['attributes']['datetime'])) {
@@ -1373,7 +1379,7 @@ function template_preprocess_page(&$variables) {
   }
 
   $variables['base_path'] = base_path();
-  $variables['front_page'] = \Drupal::url('<front>');
+  $variables['front_page'] = Url::fromRoute('<front>')->toString();
   $variables['language'] = $language_interface;
 
   // An exception might be thrown.

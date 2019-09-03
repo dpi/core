@@ -157,7 +157,7 @@ class Schema extends DatabaseSchema {
    * Create an SQL string for a field to be used in table creation or alteration.
    *
    * Before passing a field out of a schema definition into this function it has
-   * to be processed by db_processField().
+   * to be processed by self::processField().
    *
    * @param $name
    *   Name of the field.
@@ -772,6 +772,18 @@ class Schema extends DatabaseSchema {
     }
     $schema = $this->introspectSchema($table);
     return $schema['primary key'];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function introspectIndexSchema($table) {
+    if (!$this->tableExists($table)) {
+      throw new SchemaObjectDoesNotExistException("The table $table doesn't exist.");
+    }
+    $schema = $this->introspectSchema($table);
+    unset($schema['fields']);
+    return $schema;
   }
 
   /**

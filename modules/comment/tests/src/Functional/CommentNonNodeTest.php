@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\comment\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\comment\CommentInterface;
 use Drupal\comment\Entity\Comment;
 use Drupal\comment\Entity\CommentType;
@@ -61,7 +62,7 @@ class CommentNonNodeTest extends BrowserTestBase {
     $this->addDefaultCommentField('entity_test', 'entity_test');
 
     // Verify that bundles are defined correctly.
-    $bundles = \Drupal::entityManager()->getBundleInfo('comment');
+    $bundles = \Drupal::service('entity_type.bundle.info')->getBundleInfo('comment');
     $this->assertEqual($bundles['comment']['label'], 'Comment settings');
 
     // Create test user.
@@ -122,7 +123,8 @@ class CommentNonNodeTest extends BrowserTestBase {
     }
 
     // Determine the visibility of subject form field.
-    if (entity_get_form_display('comment', 'comment', 'default')->getComponent('subject')) {
+    $display_repository = $this->container->get('entity_display.repository');
+    if ($display_repository->getFormDisplay('comment', 'comment')->getComponent('subject')) {
       // Subject input allowed.
       $edit['subject[0][value]'] = $subject;
     }
@@ -185,7 +187,7 @@ class CommentNonNodeTest extends BrowserTestBase {
   public function commentExists(CommentInterface $comment = NULL, $reply = FALSE) {
     if ($comment) {
       $regex = '/' . ($reply ? '<div class="indented">(.*?)' : '');
-      $regex .= '<a id="comment-' . $comment->id() . '"(.*?)';
+      $regex .= '<article(.*?)id="comment-' . $comment->id() . '"(.*?)';
       $regex .= $comment->getSubject() . '(.*?)';
       $regex .= $comment->comment_body->value . '(.*?)';
       $regex .= '/s';
@@ -225,10 +227,10 @@ class CommentNonNodeTest extends BrowserTestBase {
 
     if ($operation == 'delete') {
       $this->drupalPostForm(NULL, [], t('Delete'));
-      $this->assertRaw(\Drupal::translation()->formatPlural(1, 'Deleted 1 comment.', 'Deleted @count comments.'), format_string('Operation "@operation" was performed on comment.', ['@operation' => $operation]));
+      $this->assertRaw(\Drupal::translation()->formatPlural(1, 'Deleted 1 comment.', 'Deleted @count comments.'), new FormattableMarkup('Operation "@operation" was performed on comment.', ['@operation' => $operation]));
     }
     else {
-      $this->assertText(t('The update has been performed.'), format_string('Operation "@operation" was performed on comment.', ['@operation' => $operation]));
+      $this->assertText(t('The update has been performed.'), new FormattableMarkup('Operation "@operation" was performed on comment.', ['@operation' => $operation]));
     }
   }
 
@@ -396,14 +398,14 @@ class CommentNonNodeTest extends BrowserTestBase {
     // Test comment option change in field settings.
     $edit = [
       'default_value_input[comment][0][status]' => CommentItemInterface::CLOSED,
-      'settings[anonymous]' => COMMENT_ANONYMOUS_MAY_CONTACT,
+      'settings[anonymous]' => CommentInterface::ANONYMOUS_MAY_CONTACT,
     ];
     $this->drupalPostForm(NULL, $edit, t('Save settings'));
     $this->drupalGet('entity_test/structure/entity_test/fields/entity_test.entity_test.comment');
     $this->assertNoFieldChecked('edit-default-value-input-comment-0-status-0');
     $this->assertFieldChecked('edit-default-value-input-comment-0-status-1');
     $this->assertNoFieldChecked('edit-default-value-input-comment-0-status-2');
-    $this->assertFieldByName('settings[anonymous]', COMMENT_ANONYMOUS_MAY_CONTACT);
+    $this->assertFieldByName('settings[anonymous]', CommentInterface::ANONYMOUS_MAY_CONTACT);
 
     // Add a new comment-type.
     $bundle = CommentType::create([

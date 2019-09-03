@@ -107,7 +107,7 @@ class ConfigTranslationOverviewTest extends BrowserTestBase {
         $this->assertIdentical('Translate', $dropbutton->getText());
       }
 
-      $entity_type = \Drupal::entityManager()->getDefinition($test_entity->getEntityTypeId());
+      $entity_type = \Drupal::entityTypeManager()->getDefinition($test_entity->getEntityTypeId());
       $this->drupalGet($base_url . '/translate');
 
       $title = $test_entity->label() . ' ' . $entity_type->getLowercaseLabel();
@@ -148,7 +148,7 @@ class ConfigTranslationOverviewTest extends BrowserTestBase {
     $original_label = 'Default';
     $overridden_label = 'Overridden label';
 
-    $config_test_storage = $this->container->get('entity.manager')->getStorage('config_test');
+    $config_test_storage = $this->container->get('entity_type.manager')->getStorage('config_test');
 
     // Set up an override.
     $settings['config']['config_test.dynamic.dotted.default']['label'] = (object) [

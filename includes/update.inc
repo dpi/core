@@ -9,12 +9,17 @@
  */
 
 use Drupal\Component\Graph\Graph;
+use Drupal\Core\Update\UpdateKernel;
 use Drupal\Core\Utility\Error;
 
 /**
  * Disables any extensions that are incompatible with the current core version.
  */
 function update_fix_compatibility() {
+  // Fix extension objects if the update is being done via Drush 8. In non-Drush
+  // environments this will already be fixed by the UpdateKernel this point.
+  UpdateKernel::fixSerializedExtensionObjects(\Drupal::getContainer());
+
   $extension_config = \Drupal::configFactory()->getEditable('core.extension');
   $save = FALSE;
   foreach (['module', 'theme'] as $type) {
@@ -43,7 +48,7 @@ function update_check_incompatibility($name, $type = 'module') {
     // code changes that were made in the filesystem before the update script
     // was initiated.
     $themes = \Drupal::service('theme_handler')->rebuildThemeData();
-    $modules = system_rebuild_module_data();
+    $modules = \Drupal::service('extension.list.module')->reset()->getList();
   }
 
   if ($type == 'module' && isset($modules[$name])) {

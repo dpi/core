@@ -319,8 +319,10 @@ abstract class CommentResourceTestBase extends EntityResourceTestBase {
         return "The 'post comments' permission is required.";
       case 'PATCH';
         return "The 'edit own comments' permission is required, the user must be the comment author, and the comment must be published.";
-      default:
-        return parent::getExpectedUnauthorizedAccessMessage($method);
+      case 'DELETE':
+        // \Drupal\comment\CommentAccessControlHandler::checkAccess() does not
+        // specify a reason for not allowing a comment to be deleted.
+        return '';
     }
   }
 
@@ -345,7 +347,7 @@ abstract class CommentResourceTestBase extends EntityResourceTestBase {
     $response = $this->request('POST', $url, $request_options);
     $unserialized = $this->serializer->deserialize((string) $response->getBody(), get_class($this->entity), static::$format);
     $this->assertResourceResponse(201, FALSE, $response);
-    $this->assertFalse($unserialized->getStatus());
+    $this->assertFalse($unserialized->isPublished());
 
     // Grant anonymous permission to skip comment approval.
     $this->grantPermissionsToTestedRole(['skip comment approval']);
@@ -354,15 +356,15 @@ abstract class CommentResourceTestBase extends EntityResourceTestBase {
     $response = $this->request('POST', $url, $request_options);
     $unserialized = $this->serializer->deserialize((string) $response->getBody(), get_class($this->entity), static::$format);
     $this->assertResourceResponse(201, FALSE, $response);
-    $this->assertTrue($unserialized->getStatus());
+    $this->assertTrue($unserialized->isPublished());
   }
 
   /**
    * {@inheritdoc}
    */
-  protected function getExpectedUnauthorizedAccessCacheability() {
+  protected function getExpectedUnauthorizedEntityAccessCacheability($is_authenticated) {
     // @see \Drupal\comment\CommentAccessControlHandler::checkAccess()
-    return parent::getExpectedUnauthorizedAccessCacheability()
+    return parent::getExpectedUnauthorizedEntityAccessCacheability($is_authenticated)
       ->addCacheTags(['comment:1']);
   }
 

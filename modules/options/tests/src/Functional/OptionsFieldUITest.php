@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\options\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\Tests\field\Functional\FieldTestBase;
@@ -274,7 +275,10 @@ class OptionsFieldUITest extends FieldTestBase {
       'bundle' => $this->type,
     ])->save();
 
-    entity_get_form_display('node', $this->type, 'default')->setComponent($this->fieldName)->save();
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay('node', $this->type)
+      ->setComponent($this->fieldName)
+      ->save();
 
     $this->adminPath = 'admin/structure/types/manage/' . $this->type . '/fields/node.' . $this->type . '.' . $this->fieldName . '/storage';
   }
@@ -322,7 +326,7 @@ class OptionsFieldUITest extends FieldTestBase {
     ];
 
     $this->drupalPostForm($this->adminPath, $edit, t('Save field settings'));
-    $this->assertText(format_string('Updated field @field_name field settings.', ['@field_name' => $this->fieldName]), "The 'On' and 'Off' form fields work for boolean fields.");
+    $this->assertText(new FormattableMarkup('Updated field @field_name field settings.', ['@field_name' => $this->fieldName]), "The 'On' and 'Off' form fields work for boolean fields.");
 
     // Select a default value.
     $edit = [

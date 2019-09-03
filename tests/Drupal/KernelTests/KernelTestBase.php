@@ -66,6 +66,8 @@ use org\bovigo\vfs\visitor\vfsStreamPrintVisitor;
  * @see \Drupal\Tests\KernelTestBase::installEntitySchema()
  * @see \Drupal\Tests\KernelTestBase::installSchema()
  * @see \Drupal\Tests\BrowserTestBase
+ *
+ * @ingroup testing
  */
 abstract class KernelTestBase extends TestCase implements ServiceProviderInterface {
 
@@ -290,15 +292,12 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     $this->siteDirectory = vfsStream::url('root/' . $test_site_path);
 
     mkdir($this->siteDirectory . '/files', 0775);
-    mkdir($this->siteDirectory . '/files/config/' . CONFIG_SYNC_DIRECTORY, 0775, TRUE);
+    mkdir($this->siteDirectory . '/files/config/sync', 0775, TRUE);
 
     $settings = Settings::getInstance() ? Settings::getAll() : [];
     $settings['file_public_path'] = $this->siteDirectory . '/files';
+    $settings['config_sync_directory'] = $this->siteDirectory . '/files/config/sync';
     new Settings($settings);
-
-    $GLOBALS['config_directories'] = [
-      CONFIG_SYNC_DIRECTORY => $this->siteDirectory . '/files/config/sync',
-    ];
   }
 
   /**
@@ -330,17 +329,6 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     $GLOBALS['conf']['container_service_providers']['test'] = $this;
 
     $modules = self::getModulesToEnable(get_class($this));
-
-    // Prepare a precompiled container for all tests of this class.
-    // Substantially improves performance, since ContainerBuilder::compile()
-    // is very expensive. Encourages testing best practices (small tests).
-    // Normally a setUpBeforeClass() operation, but object scope is required to
-    // inject $this test class instance as a service provider (see above).
-    $rc = new \ReflectionClass(get_class($this));
-    $test_method_count = count(array_filter($rc->getMethods(), function ($method) {
-      // PHPUnit's @test annotations are intentionally ignored/not supported.
-      return strpos($method->getName(), 'test') === 0;
-    }));
 
     // Bootstrap the kernel. Do not use createFromRequest() to retain Settings.
     $kernel = new DrupalKernel('testing', $this->classLoader, FALSE);
@@ -600,9 +588,6 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
       $this->container->get('kernel')->shutdown();
     }
 
-    // Fail in case any (new) shutdown functions exist.
-    $this->assertCount(0, drupal_register_shutdown_function(), 'Unexpected Drupal shutdown callbacks exist after running shutdown functions.');
-
     parent::assertPostConditions();
   }
 
@@ -719,7 +704,7 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
       if (empty($schema)) {
         // BC layer to avoid some contrib tests to fail.
         if ($module == 'system') {
-          @trigger_error('Special handling of system module schemas in \Drupal\KernelTests\KernelTestBase::installSchema has been deprecated in Drupal 8.7.x, remove any calls to this method that use invalid schema names. See https://www.drupal.org/project/drupal/issues/2794347.', E_USER_DEPRECATED);
+          @trigger_error('Special handling of system module schemas in \Drupal\KernelTests\KernelTestBase::installSchema has been deprecated in Drupal 8.7.x, remove any calls to this method that use invalid schema names. See https://www.drupal.org/node/3003360.', E_USER_DEPRECATED);
           continue;
         }
         throw new \LogicException("$module module does not define a schema for table '$table'.");
@@ -735,14 +720,13 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
    *   The ID of the entity type.
    */
   protected function installEntitySchema($entity_type_id) {
-    /** @var \Drupal\Core\Entity\EntityManagerInterface $entity_manager */
-    $entity_manager = $this->container->get('entity.manager');
-    $entity_type = $entity_manager->getDefinition($entity_type_id);
-    $entity_manager->onEntityTypeCreate($entity_type);
+    $entity_type_manager = \Drupal::entityTypeManager();
+    $entity_type = $entity_type_manager->getDefinition($entity_type_id);
+    \Drupal::service('entity_type.listener')->onEntityTypeCreate($entity_type);
 
     // For test runs, the most common storage backend is a SQL database. For
     // this case, ensure the tables got created.
-    $storage = $entity_manager->getStorage($entity_type_id);
+    $storage = $entity_type_manager->getStorage($entity_type_id);
     if ($storage instanceof SqlEntityStorageInterface) {
       $tables = $storage->getTableMapping()->getTableNames();
       $db_schema = $this->container->get('database')->schema();
@@ -1053,7 +1037,7 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
           return Settings::get('file_private_path');
 
         case 'temp_files_directory':
-          return file_directory_temp();
+          return \Drupal::service('file_system')->getTempDirectory();
 
         case 'translation_files_directory':
           return Settings::get('file_public_path', \Drupal::service('site.path') . '/translations');
@@ -1061,9 +1045,9 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     }
 
     if ($name === 'configDirectories') {
-      trigger_error(sprintf("KernelTestBase::\$%s no longer exists. Use config_get_config_directory() directly instead.", $name), E_USER_DEPRECATED);
+      trigger_error(sprintf("KernelTestBase::\$%s no longer exists. Use Settings::get('config_sync_directory') directly instead.", $name), E_USER_DEPRECATED);
       return [
-        CONFIG_SYNC_DIRECTORY => config_get_config_directory(CONFIG_SYNC_DIRECTORY),
+        CONFIG_SYNC_DIRECTORY => Settings::get('config_sync_directory'),
       ];
     }
 

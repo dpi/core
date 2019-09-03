@@ -96,13 +96,10 @@ class EntityType extends PluginDefinition implements EntityTypeInterface {
    *
    * @var callable|null
    *
-   * @deprecated in Drupal 8.0.x-dev and will be removed before Drupal 9.0.0.
-   *   Use Drupal\Core\Entity\EntityInterface::label() for complex label
-   *   generation as needed.
+   * @deprecated in drupal:8.0.0 and is removed from drupal:9.0.0. Override the
+   *   EntityInterface::label() method instead for dynamic labels.
    *
    * @see \Drupal\Core\Entity\EntityInterface::label()
-   *
-   * @todo Remove usages of label_callback https://www.drupal.org/node/2450793.
    */
   protected $label_callback = NULL;
 
@@ -232,6 +229,8 @@ class EntityType extends PluginDefinition implements EntityTypeInterface {
 
   /**
    * The machine name of the entity type group.
+   *
+   * @var string
    */
   protected $group;
 
@@ -665,6 +664,7 @@ class EntityType extends PluginDefinition implements EntityTypeInterface {
    * {@inheritdoc}
    */
   public function getLabelCallback() {
+    @trigger_error('EntityType::getLabelCallback() is deprecated in drupal:8.0.0 and is removed from drupal:9.0.0. Override the EntityInterface::label() method instead for dynamic labels. See https://www.drupal.org/node/3050794', E_USER_DEPRECATED);
     return $this->label_callback;
   }
 
@@ -672,6 +672,7 @@ class EntityType extends PluginDefinition implements EntityTypeInterface {
    * {@inheritdoc}
    */
   public function setLabelCallback($callback) {
+    @trigger_error('EntityType::setLabelCallback() is deprecated in drupal:8.0.0 and is removed from drupal:9.0.0. Override the EntityInterface::label() method instead for dynamic labels. See https://www.drupal.org/node/3050794', E_USER_DEPRECATED);
     $this->label_callback = $callback;
     return $this;
   }
@@ -680,6 +681,7 @@ class EntityType extends PluginDefinition implements EntityTypeInterface {
    * {@inheritdoc}
    */
   public function hasLabelCallback() {
+    @trigger_error('EntityType::hasabelCallback() is deprecated in drupal:8.0.0 and is removed from drupal:9.0.0. Override the EntityInterface::label() method instead for dynamic labels. See https://www.drupal.org/node/3050794', E_USER_DEPRECATED);
     return isset($this->label_callback);
   }
 
@@ -910,7 +912,7 @@ class EntityType extends PluginDefinition implements EntityTypeInterface {
     // If this entity type uses entities to manage its bundles then depend on
     // the bundle entity.
     if ($bundle_entity_type_id = $this->getBundleEntityType()) {
-      if (!$bundle_entity = \Drupal::entityManager()->getStorage($bundle_entity_type_id)->load($bundle)) {
+      if (!$bundle_entity = \Drupal::entityTypeManager()->getStorage($bundle_entity_type_id)->load($bundle)) {
         throw new \LogicException(sprintf('Missing bundle entity, entity type %s, entity id %s.', $bundle_entity_type_id, $bundle));
       }
       $config_dependency = [

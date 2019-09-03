@@ -9,6 +9,7 @@ use Drupal\workspaces\Entity\Workspace;
 /**
  * Install/uninstall core module and confirm table creation/deletion.
  *
+ * @group #slow
  * @group Module
  */
 class InstallUninstallTest extends ModuleTestBase {
@@ -35,7 +36,7 @@ class InstallUninstallTest extends ModuleTestBase {
     $this->assertEqual($this->container->get('state')->get('system_test_preuninstall_module'), 'module_test');
     $this->resetAll();
 
-    $all_modules = system_rebuild_module_data();
+    $all_modules = $this->container->get('extension.list.module')->getList();
 
     // Test help on required modules, but do not test uninstalling.
     $required_modules = array_filter($all_modules, function ($module) {
@@ -351,7 +352,7 @@ class InstallUninstallTest extends ModuleTestBase {
     $query = \Drupal::entityQuery('taxonomy_term');
     $query->condition('vid', 'forums');
     $ids = $query->execute();
-    $storage = \Drupal::entityManager()->getStorage('taxonomy_term');
+    $storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
     $terms = $storage->loadMultiple($ids);
     $storage->delete($terms);
   }

@@ -2,6 +2,7 @@
 
 namespace Drupal\FunctionalTests\Bootstrap;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -37,7 +38,7 @@ class UncaughtExceptionTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['error_service_test'];
+  public static $modules = ['error_service_test', 'error_test'];
 
   /**
    * {@inheritdoc}
@@ -97,6 +98,25 @@ class UncaughtExceptionTest extends BrowserTestBase {
     $this->assertText('The website encountered an unexpected error. Please try again later.');
     $this->assertText($this->expectedExceptionMessage);
     $this->assertErrorLogged($this->expectedExceptionMessage);
+  }
+
+  /**
+   * Tests displaying an uncaught fatal error.
+   */
+  public function testUncaughtFatalError() {
+    $fatal_error = [
+      '%type' => 'TypeError',
+      '@message' => 'Argument 1 passed to Drupal\error_test\Controller\ErrorTestController::Drupal\error_test\Controller\{closure}() must be of the type array, string given, called in ' . \Drupal::root() . '/core/modules/system/tests/modules/error_test/src/Controller/ErrorTestController.php on line 62',
+      '%function' => 'Drupal\error_test\Controller\ErrorTestController->Drupal\error_test\Controller\{closure}()',
+    ];
+    $this->drupalGet('error-test/generate-fatals');
+    $this->assertResponse(500, 'Received expected HTTP status code.');
+    $message = new FormattableMarkup('%type: @message in %function (line ', $fatal_error);
+    $this->assertRaw((string) $message);
+    $this->assertRaw('<pre class="backtrace">');
+    // Ensure we are escaping but not double escaping.
+    $this->assertRaw('&#039;');
+    $this->assertNoRaw('&amp;#039;');
   }
 
   /**

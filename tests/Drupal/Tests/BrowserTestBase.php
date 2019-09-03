@@ -238,18 +238,22 @@ abstract class BrowserTestBase extends TestCase {
       'hidden_field_selector' => new HiddenFieldSelector(),
     ]);
     $session = new Session($driver, $selectors_handler);
-    $cookies = $this->extractCookiesFromRequest(\Drupal::request());
-    foreach ($cookies as $cookie_name => $values) {
-      foreach ($values as $value) {
-        $session->setCookie($cookie_name, $value);
-      }
-    }
     $this->mink = new Mink();
     $this->mink->registerSession('default', $session);
     $this->mink->setDefaultSessionName('default');
     $this->registerSessions();
 
     $this->initFrontPage();
+
+    // Copies cookies from the current environment, for example, XDEBUG_SESSION
+    // in order to support Xdebug.
+    // @see BrowserTestBase::initFrontPage()
+    $cookies = $this->extractCookiesFromRequest(\Drupal::request());
+    foreach ($cookies as $cookie_name => $values) {
+      foreach ($values as $value) {
+        $session->setCookie($cookie_name, $value);
+      }
+    }
 
     return $session;
   }
@@ -376,15 +380,6 @@ abstract class BrowserTestBase extends TestCase {
    * {@inheritdoc}
    */
   protected function setUp() {
-    // Installing Drupal creates 1000s of objects. Garbage collection of these
-    // objects is expensive. This appears to be causing random segmentation
-    // faults in PHP 5.x due to https://bugs.php.net/bug.php?id=72286. Once
-    // Drupal is installed is rebuilt, garbage collection is re-enabled.
-    $disable_gc = version_compare(PHP_VERSION, '7', '<') && gc_enabled();
-    if ($disable_gc) {
-      gc_collect_cycles();
-      gc_disable();
-    }
     parent::setUp();
 
     $this->setupBaseUrl();
@@ -398,11 +393,6 @@ abstract class BrowserTestBase extends TestCase {
 
     // Set up the browser test output file.
     $this->initBrowserOutputFile();
-    // If garbage collection was disabled prior to rebuilding container,
-    // re-enable it.
-    if ($disable_gc) {
-      gc_enable();
-    }
 
     // Ensure that the test is not marked as risky because of no assertions. In
     // PHPUnit 6 tests that only make assertions using $this->assertSession()
@@ -411,7 +401,7 @@ abstract class BrowserTestBase extends TestCase {
   }
 
   /**
-   * Ensures test files are deletable within file_unmanaged_delete_recursive().
+   * Ensures test files are deletable.
    *
    * Some tests chmod generated files to be read only. During
    * BrowserTestBase::cleanupEnvironment() and other cleanup operations,
@@ -419,6 +409,8 @@ abstract class BrowserTestBase extends TestCase {
    *
    * @param string $path
    *   The file path.
+   *
+   * @see \Drupal\Core\File\FileSystemInterface::deleteRecursive()
    */
   public static function filePreDeleteCallback($path) {
     // When the webserver runs with the same system user as phpunit, we can
@@ -447,7 +439,7 @@ abstract class BrowserTestBase extends TestCase {
     }
 
     // Delete test site directory.
-    file_unmanaged_delete_recursive($this->siteDirectory, [$this, 'filePreDeleteCallback']);
+    \Drupal::service('file_system')->deleteRecursive($this->siteDirectory, [$this, 'filePreDeleteCallback']);
   }
 
   /**
@@ -645,10 +637,13 @@ abstract class BrowserTestBase extends TestCase {
    * @return array
    *   The HTTP headers values.
    *
-   * @deprecated Scheduled for removal in Drupal 9.0.0.
+   * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0.
    *   Use $this->getSession()->getResponseHeaders() instead.
+   *
+   * @see https://www.drupal.org/node/3067207
    */
   protected function drupalGetHeaders() {
+    @trigger_error('Drupal\Tests\BrowserTestBase::drupalGetHeaders() is deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use $this->getSession()->getResponseHeaders() instead. See https://www.drupal.org/node/3067207', E_USER_DEPRECATED);
     return $this->getSession()->getResponseHeaders();
   }
 

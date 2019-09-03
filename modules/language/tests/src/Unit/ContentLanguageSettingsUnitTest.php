@@ -4,7 +4,6 @@ namespace Drupal\Tests\language\Unit;
 
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
-use Drupal\Core\Entity\EntityManager;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityTypeRepositoryInterface;
 use Drupal\language\Entity\ContentLanguageSettings;
@@ -22,13 +21,6 @@ class ContentLanguageSettingsUnitTest extends UnitTestCase {
    * @var \Drupal\Core\Entity\EntityTypeInterface|\PHPUnit_Framework_MockObject_MockObject
    */
   protected $entityType;
-
-  /**
-   * The entity manager used for testing.
-   *
-   * @var \Drupal\Core\Entity\EntityManagerInterface|\PHPUnit_Framework_MockObject_MockObject
-   */
-  protected $entityManager;
 
   /**
    * The entity type manager used for testing.
@@ -70,26 +62,21 @@ class ContentLanguageSettingsUnitTest extends UnitTestCase {
    */
   protected function setUp() {
     $this->entityTypeId = $this->randomMachineName();
-    $this->entityType = $this->getMock('\Drupal\Core\Entity\EntityTypeInterface');
+    $this->entityType = $this->createMock('\Drupal\Core\Entity\EntityTypeInterface');
 
-    $this->entityManager = new EntityManager();
-    $this->entityTypeManager = $this->getMock(EntityTypeManagerInterface::class);
+    $this->entityTypeManager = $this->createMock(EntityTypeManagerInterface::class);
 
-    $this->uuid = $this->getMock('\Drupal\Component\Uuid\UuidInterface');
+    $this->uuid = $this->createMock('\Drupal\Component\Uuid\UuidInterface');
 
-    $this->typedConfigManager = $this->getMock('Drupal\Core\Config\TypedConfigManagerInterface');
+    $this->typedConfigManager = $this->createMock('Drupal\Core\Config\TypedConfigManagerInterface');
 
-    $this->configEntityStorageInterface = $this->getMock('Drupal\Core\Entity\EntityStorageInterface');
+    $this->configEntityStorageInterface = $this->createMock('Drupal\Core\Entity\EntityStorageInterface');
 
     $container = new ContainerBuilder();
-    $container->set('entity.manager', $this->entityManager);
     $container->set('entity_type.manager', $this->entityTypeManager);
     $container->set('uuid', $this->uuid);
     $container->set('config.typed', $this->typedConfigManager);
     $container->set('config.storage', $this->configEntityStorageInterface);
-    // Inject the container into entity.manager so it can defer to other entity
-    // services.
-    $this->entityManager->setContainer($container);
     \Drupal::setContainer($container);
   }
 
@@ -98,7 +85,7 @@ class ContentLanguageSettingsUnitTest extends UnitTestCase {
    */
   public function testCalculateDependencies() {
     // Mock the interfaces necessary to create a dependency on a bundle entity.
-    $target_entity_type = $this->getMock('\Drupal\Core\Entity\EntityTypeInterface');
+    $target_entity_type = $this->createMock('\Drupal\Core\Entity\EntityTypeInterface');
     $target_entity_type->expects($this->any())
       ->method('getBundleConfigDependency')
       ->will($this->returnValue(['type' => 'config', 'name' => 'test.test_entity_type.id']));

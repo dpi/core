@@ -39,6 +39,8 @@ abstract class Schema implements PlaceholderInterface {
 
   /**
    * A unique identifier for this query object.
+   *
+   * @var string
    */
   protected $uniqueIdentifier;
 
@@ -169,7 +171,7 @@ abstract class Schema implements PlaceholderInterface {
     $condition->compile($this->connection, $this);
     // Normally, we would heartily discourage the use of string
     // concatenation for conditionals like this however, we
-    // couldn't use db_select() here because it would prefix
+    // couldn't use \Drupal::database()->select() here because it would prefix
     // information_schema.tables and the query would fail.
     // Don't use {} around information_schema.tables table.
     return (bool) $this->connection->query("SELECT 1 FROM information_schema.tables WHERE " . (string) $condition, $condition->arguments())->fetchField();
@@ -196,7 +198,7 @@ abstract class Schema implements PlaceholderInterface {
     $tables = [];
     // Normally, we would heartily discourage the use of string
     // concatenation for conditionals like this however, we
-    // couldn't use db_select() here because it would prefix
+    // couldn't use \Drupal::database()->select() here because it would prefix
     // information_schema.tables and the query would fail.
     // Don't use {} around information_schema.tables table.
     $results = $this->connection->query("SELECT table_name as table_name FROM information_schema.tables WHERE " . (string) $condition, $condition->arguments());
@@ -239,7 +241,7 @@ abstract class Schema implements PlaceholderInterface {
    *
    * @param $table
    *   The name of the table in drupal (no prefixing).
-   * @param $name
+   * @param $column
    *   The name of the column.
    *
    * @return
@@ -251,7 +253,7 @@ abstract class Schema implements PlaceholderInterface {
     $condition->compile($this->connection, $this);
     // Normally, we would heartily discourage the use of string
     // concatenation for conditionals like this however, we
-    // couldn't use db_select() here because it would prefix
+    // couldn't use \Drupal::database()->select() here because it would prefix
     // information_schema.tables and the query would fail.
     // Don't use {} around information_schema.columns table.
     return (bool) $this->connection->query("SELECT 1 FROM information_schema.columns WHERE " . (string) $condition, $condition->arguments())->fetchField();
@@ -544,6 +546,28 @@ abstract class Schema implements PlaceholderInterface {
    *   by that name to begin with.
    */
   abstract public function dropIndex($table, $name);
+
+  /**
+   * Finds the columns for the primary key, unique keys and indexes of a table.
+   *
+   * @param string $table
+   *   The name of the table.
+   *
+   * @return array
+   *   A schema array with the following keys: 'primary key', 'unique keys' and
+   *   'indexes', and values as arrays of database columns.
+   *
+   * @throws \Drupal\Core\Database\SchemaObjectDoesNotExistException
+   *   If the specified table doesn't exist.
+   * @throws \RuntimeException
+   *   If the driver does not implement this method.
+   */
+  protected function introspectIndexSchema($table) {
+    if (!$this->tableExists($table)) {
+      throw new SchemaObjectDoesNotExistException("The table $table doesn't exist.");
+    }
+    throw new \RuntimeException("The '{$this->connection->driver()}' database driver does not implement " . __METHOD__);
+  }
 
   /**
    * Change a field definition.

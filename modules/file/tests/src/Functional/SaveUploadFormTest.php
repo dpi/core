@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\file\Functional;
 
+use Drupal\Core\File\FileSystemInterface;
 use Drupal\file\Entity\File;
 use Drupal\Tests\TestFileCreationTrait;
 
@@ -34,11 +35,15 @@ class SaveUploadFormTest extends FileManagedTestBase {
 
   /**
    * A PHP file path for upload security testing.
+   *
+   * @var string
    */
   protected $phpfile;
 
   /**
    * The largest file id when the test starts.
+   *
+   * @var int
    */
   protected $maxFidBefore;
 
@@ -133,7 +138,7 @@ class SaveUploadFormTest extends FileManagedTestBase {
     $this->drupalPostForm('file-test/save_upload_from_form_test', $edit, t('Submit'));
     $this->assertResponse(200, 'Received a 200 response for posted test file.');
     $this->assertRaw(t('You WIN!'));
-    $this->assertTrue(is_file('temporary://' . $dir . '/' . trim(drupal_basename($image3_realpath))));
+    $this->assertTrue(is_file('temporary://' . $dir . '/' . trim(\Drupal::service('file_system')->basename($image3_realpath))));
   }
 
   /**
@@ -302,7 +307,7 @@ class SaveUploadFormTest extends FileManagedTestBase {
     /** @var \Drupal\Core\File\FileSystemInterface $file_system */
     $file_system = \Drupal::service('file_system');
     $edit = [
-      'file_test_replace' => FILE_EXISTS_RENAME,
+      'file_test_replace' => FileSystemInterface::EXISTS_RENAME,
       'files[file_test_upload][]' => $file_system->realpath($this->image->getFileUri()),
     ];
     $this->drupalPostForm('file-test/save_upload_from_form_test', $edit, t('Submit'));
@@ -363,7 +368,7 @@ class SaveUploadFormTest extends FileManagedTestBase {
   public function testDrupalMovingUploadedFileError() {
     // Create a directory and make it not writable.
     $test_directory = 'test_drupal_move_uploaded_file_fail';
-    drupal_mkdir('temporary://' . $test_directory, 0000);
+    \Drupal::service('file_system')->mkdir('temporary://' . $test_directory, 0000);
     $this->assertTrue(is_dir('temporary://' . $test_directory));
 
     /** @var \Drupal\Core\File\FileSystemInterface $file_system */

@@ -131,7 +131,7 @@ class LanguageConfigurationElementTest extends BrowserTestBase {
 
     // Check the default value of a language field when authors preferred option
     // is selected.
-    // Create first an user and assign a preferred langcode to him.
+    // Create first an user and assign a preferred langcode.
     $some_user = $this->drupalCreateUser();
     $some_user->preferred_langcode = 'bb';
     $some_user->save();
@@ -203,15 +203,15 @@ class LanguageConfigurationElementTest extends BrowserTestBase {
     $this->drupalPostForm('admin/structure/types/manage/article', $edit, t('Save content type'));
 
     // Check the language default configuration for articles is present.
-    $configuration = \Drupal::entityManager()->getStorage('language_content_settings')->load('node.article');
+    $configuration = \Drupal::entityTypeManager()->getStorage('language_content_settings')->load('node.article');
     $this->assertTrue($configuration, 'The language configuration is present.');
 
     // Delete 'article' bundle.
     $this->drupalPostForm('admin/structure/types/manage/article/delete', [], t('Delete'));
 
     // Check that the language configuration has been deleted.
-    \Drupal::entityManager()->getStorage('language_content_settings')->resetCache();
-    $configuration = \Drupal::entityManager()->getStorage('language_content_settings')->load('node.article');
+    \Drupal::entityTypeManager()->getStorage('language_content_settings')->resetCache();
+    $configuration = \Drupal::entityTypeManager()->getStorage('language_content_settings')->load('node.article');
     $this->assertFalse($configuration, 'The language configuration was deleted after bundle was deleted.');
   }
 

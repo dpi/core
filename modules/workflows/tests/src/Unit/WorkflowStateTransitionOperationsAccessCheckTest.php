@@ -31,7 +31,7 @@ class WorkflowStateTransitionOperationsAccessCheckTest extends UnitTestCase {
       ->shouldBeCalled()
       ->willReturn($workflow_entity_access_result);
 
-    $route = new Route(NULL, [
+    $route = new Route('', [
       'workflow' => NULL,
       'workflow_transition' => NULL,
       'workflow_state' => NULL,
@@ -97,7 +97,7 @@ class WorkflowStateTransitionOperationsAccessCheckTest extends UnitTestCase {
     $workflow = $this->prophesize(WorkflowInterface::class);
     $workflow->access()->shouldNotBeCalled();
 
-    $route = new Route(NULL, [
+    $route = new Route('', [
       'workflow' => NULL,
       'workflow_state' => NULL,
     ], [
@@ -126,8 +126,9 @@ class WorkflowStateTransitionOperationsAccessCheckTest extends UnitTestCase {
    * @dataProvider invalidOperationNameTestCases
    */
   public function testInvalidOperationName($operation_name) {
-    $this->setExpectedException(\Exception::class, "Invalid _workflow_access operation '$operation_name' specified for route 'Foo Route'.");
-    $route = new Route(NULL, [], [
+    $this->expectException(\Exception::class);
+    $this->expectExceptionMessage("Invalid _workflow_access operation '$operation_name' specified for route 'Foo Route'.");
+    $route = new Route('', [], [
       '_workflow_access' => $operation_name,
     ]);
     $access_check = new WorkflowStateTransitionOperationsAccessCheck();
@@ -162,7 +163,7 @@ class WorkflowStateTransitionOperationsAccessCheckTest extends UnitTestCase {
       ->shouldBeCalled()
       ->willReturn($workflow_entity_access_result);
 
-    $route = new Route(NULL, [
+    $route = new Route('', [
       'workflow' => NULL,
       'workflow_state' => NULL,
     ], ['_workflow_state_delete_access' => 'true']);

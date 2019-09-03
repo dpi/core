@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\comment\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\comment\Plugin\Field\FieldType\CommentItemInterface;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\field\Entity\FieldConfig;
@@ -51,11 +52,11 @@ class CommentFieldsTest extends CommentTestBase {
     $field_storage = FieldStorageConfig::loadByName('comment', 'comment_body');
     $this->assertTrue($field_storage, 'The comment_body field exists');
     $field = FieldConfig::loadByName('comment', 'comment', 'comment_body');
-    $this->assertTrue(isset($field), format_string('The comment_body field is present for comments on type @type', ['@type' => $type_name]));
+    $this->assertTrue(isset($field), new FormattableMarkup('The comment_body field is present for comments on type @type', ['@type' => $type_name]));
 
     // Test adding a field that defaults to CommentItemInterface::CLOSED.
     $this->addDefaultCommentField('node', 'test_node_type', 'who_likes_ponies', CommentItemInterface::CLOSED, 'who_likes_ponies');
-    $field = FieldConfig::load('node.test_node_type.who_likes_ponies');;
+    $field = FieldConfig::load('node.test_node_type.who_likes_ponies');
     $this->assertEqual($field->getDefaultValueLiteral()[0]['status'], CommentItemInterface::CLOSED);
   }
 
@@ -113,7 +114,7 @@ class CommentFieldsTest extends CommentTestBase {
 
     // Go to the node first so that webuser2 see new comments.
     $this->drupalLogin($web_user2);
-    $this->drupalGet($node->urlInfo());
+    $this->drupalGet($node->toUrl());
     $this->drupalLogout();
 
     // Test that buildCommentedEntityLinks() does not break when the 'comment'
@@ -135,7 +136,7 @@ class CommentFieldsTest extends CommentTestBase {
 
     $link_info = $this->getDrupalSettings()['comment']['newCommentsLinks']['node']['comment2']['2'];
     $this->assertIdentical($link_info['new_comment_count'], 1);
-    $this->assertIdentical($link_info['first_new_comment_link'], $node->url('canonical', ['fragment' => 'new']));
+    $this->assertIdentical($link_info['first_new_comment_link'], $node->toUrl('canonical', ['fragment' => 'new'])->toString());
   }
 
   /**

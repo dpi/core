@@ -531,9 +531,9 @@ use Drupal\node\Entity\NodeType;
  * implementing \Drupal\Core\Entity\EntityStorageInterface that you can
  * retrieve with:
  * @code
- * $storage = \Drupal::entityManager()->getStorage('your_entity_type');
+ * $storage = \Drupal::entityTypeManager()->getStorage('your_entity_type');
  * // Or if you have a $container variable:
- * $storage = $container->get('entity.manager')->getStorage('your_entity_type');
+ * $storage = $container->get('entity_type.manager')->getStorage('your_entity_type');
  * @endcode
  * Here, 'your_entity_type' is the machine name of your entity type ('id'
  * annotation property on the entity class), and note that you should use
@@ -580,9 +580,9 @@ use Drupal\node\Entity\NodeType;
  * implementing \Drupal\Core\Entity\EntityViewBuilderInterface that you can
  * retrieve with:
  * @code
- * $view_builder = \Drupal::entityManager()->getViewBuilder('your_entity_type');
+ * $view_builder = \Drupal::entityTypeManager()->getViewBuilder('your_entity_type');
  * // Or if you have a $container variable:
- * $view_builder = $container->get('entity.manager')->getViewBuilder('your_entity_type');
+ * $view_builder = $container->get('entity_type.manager')->getViewBuilder('your_entity_type');
  * @endcode
  * Then, to build and render the entity:
  * @code
@@ -622,7 +622,7 @@ use Drupal\node\Entity\NodeType;
  *
  * @see i18n
  * @see entity_crud
- * @see \Drupal\Core\Entity\EntityManagerInterface::getTranslationFromContext()
+ * @see \Drupal\Core\Entity\EntityRepositoryInterface::getTranslationFromContext()
  * @}
  */
 
@@ -798,8 +798,8 @@ function hook_entity_type_alter(array &$entity_types) {
  * @param array $view_modes
  *   An array of view modes, keyed first by entity type, then by view mode name.
  *
- * @see \Drupal\Core\Entity\EntityManagerInterface::getAllViewModes()
- * @see \Drupal\Core\Entity\EntityManagerInterface::getViewModes()
+ * @see \Drupal\Core\Entity\EntityDisplayRepositoryInterface::getAllViewModes()
+ * @see \Drupal\Core\Entity\EntityDisplayRepositoryInterface::getViewModes()
  */
 function hook_entity_view_mode_info_alter(&$view_modes) {
   $view_modes['user']['full']['status'] = TRUE;
@@ -812,10 +812,10 @@ function hook_entity_view_mode_info_alter(&$view_modes) {
  *   An associative array of all entity bundles, keyed by the entity
  *   type name, and then the bundle name, with the following keys:
  *   - label: The human-readable name of the bundle.
- *   - uri_callback: The same as the 'uri_callback' key defined for the entity
- *     type in the EntityManager, but for the bundle only. When determining
- *     the URI of an entity, if a 'uri_callback' is defined for both the
- *     entity type and the bundle, the one for the bundle is used.
+ *   - uri_callback: (optional) The same as the 'uri_callback' key defined for
+ *     the entity type in the EntityTypeManager, but for the bundle only. When
+ *     determining the URI of an entity, if a 'uri_callback' is defined for both
+ *     the entity type and the bundle, the one for the bundle is used.
  *   - translatable: (optional) A boolean value specifying whether this bundle
  *     has translation support enabled. Defaults to FALSE.
  *
@@ -1530,7 +1530,8 @@ function hook_entity_view_alter(array &$build, Drupal\Core\Entity\EntityInterfac
     $build['an_additional_field']['#weight'] = -10;
 
     // Add a #post_render callback to act on the rendered HTML of the entity.
-    $build['#post_render'][] = 'my_module_node_post_render';
+    // The object must implement \Drupal\Core\Security\TrustedCallbackInterface.
+    $build['#post_render'][] = '\Drupal\my_module\NodeCallback::postRender';
   }
 }
 
@@ -1827,7 +1828,7 @@ function hook_entity_form_display_alter(\Drupal\Core\Entity\Display\EntityFormDi
  * @see hook_entity_bundle_field_info()
  * @see hook_entity_bundle_field_info_alter()
  * @see \Drupal\Core\Field\FieldDefinitionInterface
- * @see \Drupal\Core\Entity\EntityManagerInterface::getFieldDefinitions()
+ * @see \Drupal\Core\Entity\EntityFieldManagerInterface::getFieldDefinitions()
  */
 function hook_entity_base_field_info(\Drupal\Core\Entity\EntityTypeInterface $entity_type) {
   if ($entity_type->id() == 'node') {
@@ -1888,7 +1889,7 @@ function hook_entity_base_field_info_alter(&$fields, \Drupal\Core\Entity\EntityT
  * @see hook_entity_bundle_field_info_alter()
  * @see \Drupal\Core\Field\FieldDefinitionInterface
  * @see \Drupal\Core\Field\FieldDefinition
- * @see \Drupal\Core\Entity\EntityManagerInterface::getFieldDefinitions()
+ * @see \Drupal\Core\Entity\EntityFieldManagerInterface::getFieldDefinitions()
  *
  * @todo WARNING: This hook will be changed in
  * https://www.drupal.org/node/2346347.
@@ -1940,10 +1941,10 @@ function hook_entity_bundle_field_info_alter(&$fields, \Drupal\Core\Entity\Entit
  *
  * @see hook_entity_field_storage_info_alter()
  * @see \Drupal\Core\Field\FieldStorageDefinitionInterface
- * @see \Drupal\Core\Entity\EntityManagerInterface::getFieldStorageDefinitions()
+ * @see \Drupal\Core\Entity\EntityFieldManagerInterface::getFieldStorageDefinitions()
  */
 function hook_entity_field_storage_info(\Drupal\Core\Entity\EntityTypeInterface $entity_type) {
-  if (\Drupal::entityManager()->getStorage($entity_type->id()) instanceof DynamicallyFieldableEntityStorageInterface) {
+  if (\Drupal::entityTypeManager()->getStorage($entity_type->id()) instanceof DynamicallyFieldableEntityStorageInterface) {
     // Query by filtering on the ID as this is more efficient than filtering
     // on the entity_type property directly.
     $ids = \Drupal::entityQuery('field_storage_config')
@@ -2176,7 +2177,7 @@ function hook_entity_extra_field_info() {
  *
  * @param array $info
  *   The array structure is identical to that of the return value of
- *   \Drupal\Core\Entity\EntityManagerInterface::getExtraFields().
+ *   \Drupal\Core\Entity\EntityFieldManagerInterface::getExtraFields().
  *
  * @see hook_entity_extra_field_info()
  */

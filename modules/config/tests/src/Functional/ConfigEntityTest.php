@@ -60,7 +60,7 @@ class ConfigEntityTest extends BrowserTestBase {
     $this->assertIdentical($empty->getEntityTypeId(), 'config_test');
     // The URI can only be checked after saving.
     try {
-      $empty->urlInfo();
+      $empty->toUrl();
       $this->fail('EntityMalformedException was thrown.');
     }
     catch (EntityMalformedException $e) {
@@ -119,7 +119,7 @@ class ConfigEntityTest extends BrowserTestBase {
     }
 
     // The entity path can only be checked after saving.
-    $this->assertIdentical($config_test->url(), Url::fromRoute('entity.config_test.edit_form', ['config_test' => $expected['id']])->toString());
+    $this->assertIdentical($config_test->toUrl()->toString(), Url::fromRoute('entity.config_test.edit_form', ['config_test' => $expected['id']])->toString());
 
     // Verify that the correct status is returned and properties did not change.
     $this->assertIdentical($status, SAVED_NEW);
@@ -225,7 +225,7 @@ class ConfigEntityTest extends BrowserTestBase {
     // Test config entity prepopulation.
     \Drupal::state()->set('config_test.prepopulate', TRUE);
     $config_test = $storage->create(['foo' => 'bar']);
-    $this->assertEqual($config_test->get('foo'), 'baz', 'Initial value correctly populated');
+    $this->assertEquals('baz', $config_test->get('foo'), 'Initial value correctly populated');
   }
 
   /**
@@ -238,9 +238,9 @@ class ConfigEntityTest extends BrowserTestBase {
     $label1 = $this->randomMachineName();
     $label2 = $this->randomMachineName();
     $label3 = $this->randomMachineName();
-    $message_insert = format_string('%label configuration has been created.', ['%label' => $label1]);
-    $message_update = format_string('%label configuration has been updated.', ['%label' => $label2]);
-    $message_delete = format_string('The test configuration %label has been deleted.', ['%label' => $label2]);
+    $message_insert = new FormattableMarkup('%label configuration has been created.', ['%label' => $label1]);
+    $message_update = new FormattableMarkup('%label configuration has been updated.', ['%label' => $label2]);
+    $message_delete = new FormattableMarkup('The test configuration %label has been deleted.', ['%label' => $label2]);
 
     // Create a configuration entity.
     $edit = [
@@ -311,12 +311,13 @@ class ConfigEntityTest extends BrowserTestBase {
     ];
     $this->drupalPostForm('admin/structure/config_test/add', $edit, 'Save');
     $this->assertResponse(200);
-    $message_insert = format_string('%label configuration has been created.', ['%label' => $edit['label']]);
+    $message_insert = new FormattableMarkup('%label configuration has been created.', ['%label' => $edit['label']]);
     $this->assertRaw($message_insert);
     $this->assertLinkByHref('admin/structure/config_test/manage/0');
     $this->assertLinkByHref('admin/structure/config_test/manage/0/delete');
     $this->drupalPostForm('admin/structure/config_test/manage/0/delete', [], 'Delete');
-    $this->assertFalse(entity_load('config_test', '0'), 'Test entity deleted');
+    $storage = \Drupal::entityTypeManager()->getStorage('config_test');
+    $this->assertNull($storage->load(0), 'Test entity deleted');
 
     // Create a configuration entity with a property that uses AJAX to show
     // extra form elements. Test this scenario in a non-JS case by using a
@@ -343,9 +344,9 @@ class ConfigEntityTest extends BrowserTestBase {
     $edit += ['size_value' => 'medium'];
     $this->drupalPostForm(NULL, $edit, 'Save');
 
-    $entity = entity_load('config_test', $id);
-    $this->assertEqual($entity->get('size'), 'custom');
-    $this->assertEqual($entity->get('size_value'), 'medium');
+    $entity = $storage->load($id);
+    $this->assertEquals('custom', $entity->get('size'));
+    $this->assertEquals('medium', $entity->get('size_value'));
   }
 
 }

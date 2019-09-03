@@ -7,6 +7,7 @@ use Drupal\Core\Entity\EntityChangedTrait;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\File\Exception\FileException;
 use Drupal\file\FileInterface;
 use Drupal\user\EntityOwnerTrait;
 
@@ -76,11 +77,23 @@ class File extends ContentEntityBase implements FileInterface {
 
   /**
    * {@inheritdoc}
+   */
+  public function createFileUrl($relative = TRUE) {
+    $url = file_create_url($this->getFileUri());
+    if ($relative && $url) {
+      $url = file_url_transform_relative($url);
+    }
+    return $url;
+  }
+
+  /**
+   * {@inheritdoc}
    *
    * @see file_url_transform_relative()
    */
   public function url($rel = 'canonical', $options = []) {
-    return file_create_url($this->getFileUri());
+    @trigger_error('File entities returning the URL to the physical file in File::url() is deprecated, use $file->createFileUrl() instead. See https://www.drupal.org/node/3019830', E_USER_DEPRECATED);
+    return $this->createFileUrl(FALSE);
   }
 
   /**
@@ -152,7 +165,7 @@ class File extends ContentEntityBase implements FileInterface {
   public static function preCreate(EntityStorageInterface $storage, array &$values) {
     // Automatically detect filename if not set.
     if (!isset($values['filename']) && isset($values['uri'])) {
-      $values['filename'] = drupal_basename($values['uri']);
+      $values['filename'] = \Drupal::service('file_system')->basename($values['uri']);
     }
 
     // Automatically detect filemime if not set.
@@ -194,7 +207,12 @@ class File extends ContentEntityBase implements FileInterface {
       // Delete the actual file. Failures due to invalid files and files that
       // were already deleted are logged to watchdog but ignored, the
       // corresponding file entity will be deleted.
-      file_unmanaged_delete($entity->getFileUri());
+      try {
+        \Drupal::service('file_system')->delete($entity->getFileUri());
+      }
+      catch (FileException $e) {
+        // Ignore and continue.
+      }
     }
   }
 

@@ -2,8 +2,10 @@
 
 namespace Drupal\layout_builder\Field;
 
+use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Field\FieldItemList;
 use Drupal\Core\Field\FieldItemListInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\layout_builder\Section;
 use Drupal\layout_builder\SectionListInterface;
 use Drupal\layout_builder\SectionStorage\SectionStorageTrait;
@@ -12,6 +14,7 @@ use Drupal\layout_builder\SectionStorage\SectionStorageTrait;
  * Defines a item list class for layout section fields.
  *
  * @internal
+ *   Plugin classes are internal.
  *
  * @see \Drupal\layout_builder\Plugin\Field\FieldType\LayoutSectionItem
  */
@@ -72,6 +75,16 @@ class LayoutSectionItemList extends FieldItemList implements SectionListInterfac
       }, $list->getSections());
     };
     return $convert($this) === $convert($list_to_compare);
+  }
+
+  /**
+   * Overrides \Drupal\Core\Field\FieldItemListInterface::defaultAccess().
+   *
+   * @ingroup layout_builder_access
+   */
+  public function defaultAccess($operation = 'view', AccountInterface $account = NULL) {
+    // @todo Allow access in https://www.drupal.org/node/2942975.
+    return AccessResult::forbidden();
   }
 
 }

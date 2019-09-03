@@ -50,7 +50,7 @@ class UnroutedUrlAssemblerTest extends UnitTestCase {
     parent::setUp();
 
     $this->requestStack = new RequestStack();
-    $this->pathProcessor = $this->getMock('Drupal\Core\PathProcessor\OutboundPathProcessorInterface');
+    $this->pathProcessor = $this->createMock('Drupal\Core\PathProcessor\OutboundPathProcessorInterface');
     $this->unroutedUrlAssembler = new UnroutedUrlAssembler($this->requestStack, $this->pathProcessor);
   }
 
@@ -58,7 +58,7 @@ class UnroutedUrlAssemblerTest extends UnitTestCase {
    * @covers ::assemble
    */
   public function testAssembleWithNeitherExternalNorDomainLocalUri() {
-    $this->setExpectedException(\InvalidArgumentException::class);
+    $this->expectException(\InvalidArgumentException::class);
     $this->unroutedUrlAssembler->assemble('wrong-url');
   }
 
@@ -66,7 +66,7 @@ class UnroutedUrlAssemblerTest extends UnitTestCase {
    * @covers ::assemble
    */
   public function testAssembleWithLeadingSlash() {
-    $this->setExpectedException(\InvalidArgumentException::class);
+    $this->expectException(\InvalidArgumentException::class);
     $this->unroutedUrlAssembler->assemble('/drupal.org');
   }
 

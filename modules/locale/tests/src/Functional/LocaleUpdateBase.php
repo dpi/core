@@ -3,6 +3,7 @@
 namespace Drupal\Tests\locale\Functional;
 
 use Drupal\Core\Database\Database;
+use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\StreamWrapper\PublicStream;
 use Drupal\file\Entity\File;
 use Drupal\Tests\BrowserTestBase;
@@ -76,7 +77,7 @@ abstract class LocaleUpdateBase extends BrowserTestBase {
    *   directory.
    */
   protected function setTranslationsDirectory($path) {
-    file_prepare_directory($path, FILE_CREATE_DIRECTORY);
+    \Drupal::service('file_system')->prepareDirectory($path, FileSystemInterface::CREATE_DIRECTORY);
     $this->config('locale.settings')->set('translation.path', $path)->save();
   }
 
@@ -130,7 +131,7 @@ EOF;
       }
     }
 
-    file_prepare_directory($path, FILE_CREATE_DIRECTORY);
+    \Drupal::service('file_system')->prepareDirectory($path, FileSystemInterface::CREATE_DIRECTORY);
     $file = File::create([
       'uid' => 1,
       'filename' => $filename,
@@ -300,9 +301,9 @@ EOF;
    *   (optional) A message to display with the assertion.
    */
   protected function assertTranslation($source, $translation, $langcode, $message = '') {
-    $db_translation = db_query('SELECT translation FROM {locales_target} lt INNER JOIN {locales_source} ls ON ls.lid = lt.lid WHERE ls.source = :source AND lt.language = :langcode', [':source' => $source, ':langcode' => $langcode])->fetchField();
+    $db_translation = Database::getConnection()->query('SELECT translation FROM {locales_target} lt INNER JOIN {locales_source} ls ON ls.lid = lt.lid WHERE ls.source = :source AND lt.language = :langcode', [':source' => $source, ':langcode' => $langcode])->fetchField();
     $db_translation = $db_translation == FALSE ? '' : $db_translation;
-    $this->assertEqual($translation, $db_translation, $message ? $message : format_string('Correct translation of %source (%language)', ['%source' => $source, '%language' => $langcode]));
+    $this->assertEqual($translation, $db_translation, $message ? $message : new FormattableMarkup('Correct translation of %source (%language)', ['%source' => $source, '%language' => $langcode]));
   }
 
 }

@@ -7,15 +7,19 @@ const collectedFolders = {
   Tests: [],
   Commands: [],
   Assertions: [],
+  Pages: [],
 };
 const searchDirectory = process.env.DRUPAL_NIGHTWATCH_SEARCH_DIRECTORY || '';
+const defaultIgnore = ['vendor/**'];
 
 glob
   .sync('**/tests/**/Nightwatch/**/*.js', {
     cwd: path.resolve(process.cwd(), `../${searchDirectory}`),
     ignore: process.env.DRUPAL_NIGHTWATCH_IGNORE_DIRECTORIES
-      ? process.env.DRUPAL_NIGHTWATCH_IGNORE_DIRECTORIES.split(',')
-      : [],
+      ? process.env.DRUPAL_NIGHTWATCH_IGNORE_DIRECTORIES.split(',').concat(
+          defaultIgnore,
+        )
+      : defaultIgnore,
   })
   .forEach(file => {
     let m = regex.exec(file);
@@ -45,7 +49,7 @@ module.exports = {
   output_folder: process.env.DRUPAL_NIGHTWATCH_OUTPUT,
   custom_commands_path: collectedFolders.Commands,
   custom_assertions_path: collectedFolders.Assertions,
-  page_objects_path: '',
+  page_objects_path: collectedFolders.Pages,
   globals_path: 'tests/Drupal/Nightwatch/globals.js',
   selenium: {
     start_process: false,

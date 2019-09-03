@@ -41,10 +41,11 @@
     "mkdirp": "^0.5.1",
     "nightwatch": "^0.9.20",
     "prettier": "^1.14.0",
-    "stylelint": "^9.1.1",
+    "stylelint": "^9.10.1",
     "stylelint-checkstyle-formatter": "^0.1.1",
     "stylelint-config-standard": "^18.2.0",
-    "stylelint-no-browser-hacks": "^1.1.0"
+    "stylelint-no-browser-hacks": "^1.1.0",
+    "stylelint-order": "^2.1.0"
   },
   "//": "'development is the default environment, and legacy is for transpiling the old jQuery codebase",
   "babel": {

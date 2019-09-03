@@ -5,6 +5,7 @@ namespace Drupal\Tests\user\Functional;
 use Drupal\Core\Test\AssertMailTrait;
 use Drupal\Tests\BrowserTestBase;
 use Drupal\user\RoleInterface;
+use Drupal\user\UserInterface;
 
 /**
  * Tests user administration page functionality.
@@ -40,7 +41,7 @@ class UserAdminTest extends BrowserTestBase {
     $user_c->name = 'User C';
     $user_c->save();
 
-    $user_storage = $this->container->get('entity.manager')->getStorage('user');
+    $user_storage = $this->container->get('entity_type.manager')->getStorage('user');
 
     // Create admin user to delete registered user.
     $admin_user = $this->drupalCreateUser(['administer users']);
@@ -56,7 +57,7 @@ class UserAdminTest extends BrowserTestBase {
     $this->assertText($admin_user->getAccountName(), 'Found Admin user on admin users page');
 
     // Test for existence of edit link in table.
-    $link = $user_a->link(t('Edit'), 'edit-form', ['query' => ['destination' => $user_a->url('collection')]]);
+    $link = $user_a->toLink(t('Edit'), 'edit-form', ['query' => ['destination' => $user_a->toUrl('collection')->toString()]])->toString();
     $this->assertRaw($link, 'Found user A edit link on admin users page');
 
     // Test exposed filter elements.
@@ -167,7 +168,7 @@ class UserAdminTest extends BrowserTestBase {
     // Allow users to register with admin approval.
     $config
       ->set('verify_mail', TRUE)
-      ->set('register', USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL)
+      ->set('register', UserInterface::REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL)
       ->save();
     // Set the site and notification email addresses.
     $system = $this->config('system.site');

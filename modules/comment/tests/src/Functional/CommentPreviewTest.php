@@ -143,7 +143,7 @@ class CommentPreviewTest extends CommentTestBase {
     $edit['date[date]'] = $date->format('Y-m-d');
     $edit['date[time]'] = $date->format('H:i:s');
     $raw_date = $date->getTimestamp();
-    $expected_text_date = format_date($raw_date);
+    $expected_text_date = $this->container->get('date.formatter')->format($raw_date);
     $expected_form_date = $date->format('Y-m-d');
     $expected_form_time = $date->format('H:i:s');
     $comment = $this->postComment($this->node, $edit['subject[0][value]'], $edit['comment_body[0][value]'], TRUE);
@@ -185,7 +185,7 @@ class CommentPreviewTest extends CommentTestBase {
     $this->drupalPostForm('comment/' . $comment->id() . '/edit', $displayed, t('Save'));
 
     // Check that the saved comment is still correct.
-    $comment_storage = \Drupal::entityManager()->getStorage('comment');
+    $comment_storage = \Drupal::entityTypeManager()->getStorage('comment');
     $comment_storage->resetCache([$comment->id()]);
     /** @var \Drupal\comment\CommentInterface $comment_loaded */
     $comment_loaded = Comment::load($comment->id());

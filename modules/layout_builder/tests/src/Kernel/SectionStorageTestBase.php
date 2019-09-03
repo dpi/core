@@ -58,7 +58,7 @@ abstract class SectionStorageTestBase extends EntityKernelTestBase {
   abstract protected function getSectionStorage(array $section_data);
 
   /**
-   * @covers ::getSections
+   * Tests ::getSections().
    */
   public function testGetSections() {
     $expected = [
@@ -83,7 +83,8 @@ abstract class SectionStorageTestBase extends EntityKernelTestBase {
    * @covers ::getSection
    */
   public function testGetSectionInvalidDelta() {
-    $this->setExpectedException(\OutOfBoundsException::class, 'Invalid delta "2"');
+    $this->expectException(\OutOfBoundsException::class);
+    $this->expectExceptionMessage('Invalid delta "2"');
     $this->sectionStorage->getSection(2);
   }
 
@@ -124,6 +125,32 @@ abstract class SectionStorageTestBase extends EntityKernelTestBase {
   }
 
   /**
+   * @covers ::removeAllSections
+   *
+   * @dataProvider providerTestRemoveAllSections
+   */
+  public function testRemoveAllSections($set_blank, $expected) {
+    if ($set_blank === NULL) {
+      $this->sectionStorage->removeAllSections();
+    }
+    else {
+      $this->sectionStorage->removeAllSections($set_blank);
+    }
+    $this->assertSections($expected);
+  }
+
+  /**
+   * Provides test data for ::testRemoveAllSections().
+   */
+  public function providerTestRemoveAllSections() {
+    $data = [];
+    $data[] = [NULL, []];
+    $data[] = [FALSE, []];
+    $data[] = [TRUE, [new Section('layout_builder_blank')]];
+    return $data;
+  }
+
+  /**
    * @covers ::removeSection
    */
   public function testRemoveSection() {
@@ -133,6 +160,19 @@ abstract class SectionStorageTestBase extends EntityKernelTestBase {
       ]),
     ];
 
+    $this->sectionStorage->removeSection(0);
+    $this->assertSections($expected);
+  }
+
+  /**
+   * @covers ::removeSection
+   */
+  public function testRemoveMultipleSections() {
+    $expected = [
+      new Section('layout_builder_blank'),
+    ];
+
+    $this->sectionStorage->removeSection(0);
     $this->sectionStorage->removeSection(0);
     $this->assertSections($expected);
   }

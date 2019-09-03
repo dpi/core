@@ -2,11 +2,11 @@
 
 namespace Drupal\layout_builder\Form;
 
+use Drupal\Component\Utility\Html;
 use Drupal\Component\Uuid\UuidInterface;
 use Drupal\Core\Ajax\AjaxFormHelperTrait;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
-use Drupal\Core\DependencyInjection\ClassResolverInterface;
 use Drupal\Core\Form\BaseFormIdInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
@@ -27,6 +27,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * Provides a base form for configuring a block.
  *
  * @internal
+ *   Form classes are internal.
  */
 abstract class ConfigureBlockFormBase extends FormBase implements BaseFormIdInterface {
 
@@ -109,17 +110,14 @@ abstract class ConfigureBlockFormBase extends FormBase implements BaseFormIdInte
    *   The block manager.
    * @param \Drupal\Component\Uuid\UuidInterface $uuid
    *   The UUID generator.
-   * @param \Drupal\Core\DependencyInjection\ClassResolverInterface $class_resolver
-   *   The class resolver.
    * @param \Drupal\Core\Plugin\PluginFormFactoryInterface $plugin_form_manager
    *   The plugin form manager.
    */
-  public function __construct(LayoutTempstoreRepositoryInterface $layout_tempstore_repository, ContextRepositoryInterface $context_repository, BlockManagerInterface $block_manager, UuidInterface $uuid, ClassResolverInterface $class_resolver, PluginFormFactoryInterface $plugin_form_manager) {
+  public function __construct(LayoutTempstoreRepositoryInterface $layout_tempstore_repository, ContextRepositoryInterface $context_repository, BlockManagerInterface $block_manager, UuidInterface $uuid, PluginFormFactoryInterface $plugin_form_manager) {
     $this->layoutTempstoreRepository = $layout_tempstore_repository;
     $this->contextRepository = $context_repository;
     $this->blockManager = $block_manager;
     $this->uuidGenerator = $uuid;
-    $this->classResolver = $class_resolver;
     $this->pluginFormFactory = $plugin_form_manager;
   }
 
@@ -132,7 +130,6 @@ abstract class ConfigureBlockFormBase extends FormBase implements BaseFormIdInte
       $container->get('context.repository'),
       $container->get('plugin.manager.block'),
       $container->get('uuid'),
-      $container->get('class_resolver'),
       $container->get('plugin_form.factory')
     );
   }
@@ -184,8 +181,19 @@ abstract class ConfigureBlockFormBase extends FormBase implements BaseFormIdInte
     ];
     if ($this->isAjax()) {
       $form['actions']['submit']['#ajax']['callback'] = '::ajaxSubmit';
+      // @todo static::ajaxSubmit() requires data-drupal-selector to be the same
+      //   between the various Ajax requests. A bug in
+      //   \Drupal\Core\Form\FormBuilder prevents that from happening unless
+      //   $form['#id'] is also the same. Normally, #id is set to a unique HTML
+      //   ID via Html::getUniqueId(), but here we bypass that in order to work
+      //   around the data-drupal-selector bug. This is okay so long as we
+      //   assume that this form only ever occurs once on a page. Remove this
+      //   workaround in https://www.drupal.org/node/2897377.
+      $form['#id'] = Html::getId($form_state->getBuildInfo()['form_id']);
     }
 
+    // Mark this as an administrative page for JavaScript ("Back to site" link).
+    $form['#attached']['drupalSettings']['path']['currentPathIsAdmin'] = TRUE;
     return $form;
   }
 

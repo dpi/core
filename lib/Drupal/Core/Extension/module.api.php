@@ -6,6 +6,8 @@
  */
 
 use Drupal\Core\Database\Database;
+use Drupal\Core\File\FileSystemInterface;
+use Drupal\Core\Link;
 use Drupal\Core\Url;
 use Drupal\Core\Utility\UpdateException;
 
@@ -225,8 +227,8 @@ function hook_modules_installed($modules) {
  */
 function hook_install() {
   // Create the styles directory and ensure it's writable.
-  $directory = file_default_scheme() . '://styles';
-  file_prepare_directory($directory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+  $directory = \Drupal::config('system.file')->get('default_scheme') . '://styles';
+  \Drupal::service('file_system')->prepareDirectory($directory, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
 }
 
 /**
@@ -282,7 +284,7 @@ function hook_modules_uninstalled($modules) {
  */
 function hook_uninstall() {
   // Remove the styles directory and generated images.
-  file_unmanaged_delete_recursive(file_default_scheme() . '://styles');
+  \Drupal::service('file_system')->deleteRecursive(\Drupal::config('system.file')->get('default_scheme') . '://styles');
 }
 
 /**
@@ -636,7 +638,7 @@ function hook_update_N(&$sandbox) {
     // This must be the first run. Initialize the sandbox.
     $sandbox['progress'] = 0;
     $sandbox['current_pk'] = 0;
-    $sandbox['max'] = Database::getConnection()->query('SELECT COUNT(myprimarykey) FROM {mytable1}')->fetchField() - 1;
+    $sandbox['max'] = Database::getConnection()->query('SELECT COUNT(myprimarykey) FROM {mytable1}')->fetchField();
   }
 
   // Update in chunks of 20.
@@ -681,6 +683,20 @@ function hook_update_N(&$sandbox) {
  * Drupal also ensures to not execute the same hook_post_update_NAME() function
  * twice.
  *
+ * @section sec_bulk Batch updates
+ * If running your update all at once could possibly cause PHP to time out, use
+ * the $sandbox parameter to indicate that the Batch API should be used for your
+ * update. In this case, your update function acts as an implementation of
+ * callback_batch_operation(), and $sandbox acts as the batch context
+ * parameter. In your function, read the state information from the previous
+ * run from $sandbox (or initialize), run a chunk of updates, save the state in
+ * $sandbox, and set $sandbox['#finished'] to a value between 0 and 1 to
+ * indicate the percent completed, or 1 if it is finished (you need to do this
+ * explicitly in each pass).
+ *
+ * See the @link batch Batch operations topic @endlink for more information on
+ * how to use the Batch API.
+ *
  * @param array $sandbox
  *   Stores information for batch updates. See above for more information.
  *
@@ -714,7 +730,7 @@ function hook_post_update_NAME(&$sandbox) {
   $block_update_8001 = \Drupal::keyValue('update_backup')->get('block_update_8001', []);
 
   $block_ids = array_keys($block_update_8001);
-  $block_storage = \Drupal::entityManager()->getStorage('block');
+  $block_storage = \Drupal::entityTypeManager()->getStorage('block');
   $blocks = $block_storage->loadMultiple($block_ids);
   /** @var $blocks \Drupal\block\BlockInterface[] */
   foreach ($blocks as $block) {
@@ -937,7 +953,7 @@ function hook_requirements($phase) {
   // Test PHP version
   $requirements['php'] = [
     'title' => t('PHP'),
-    'value' => ($phase == 'runtime') ? \Drupal::l(phpversion(), new Url('system.php')) : phpversion(),
+    'value' => ($phase == 'runtime') ? Link::fromTextAndUrl(phpversion(), Url::fromRoute('system.php'))->toString() : phpversion(),
   ];
   if (version_compare(phpversion(), DRUPAL_MINIMUM_PHP) < 0) {
     $requirements['php']['description'] = t('Your PHP installation is too old. Drupal requires at least PHP %version.', ['%version' => DRUPAL_MINIMUM_PHP]);
@@ -959,7 +975,7 @@ function hook_requirements($phase) {
       ];
     }
 
-    $requirements['cron']['description'] .= ' ' . t('You can <a href=":cron">run cron manually</a>.', [':cron' => \Drupal::url('system.run_cron')]);
+    $requirements['cron']['description'] .= ' ' . t('You can <a href=":cron">run cron manually</a>.', [':cron' => Url::fromRoute('system.run_cron')->toString()]);
 
     $requirements['cron']['title'] = t('Cron maintenance tasks');
   }
