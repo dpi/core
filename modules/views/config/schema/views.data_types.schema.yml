@@ -253,6 +253,9 @@ views_display:
     exposed_block:
       type: boolean
       label: 'Put the exposed form in a block'
+    exposed_block_render_in_view:
+      type: boolean
+      label: 'Still render the exposed form in the view'
     display_extenders:
       type: sequence
       label: 'Display extenders'

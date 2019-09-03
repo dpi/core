@@ -598,6 +598,10 @@ abstract class DisplayPluginBase extends PluginBase implements DisplayPluginInte
         'default' => FALSE,
       ],
 
+      'exposed_block_render_in_view' => [
+        'default' => FALSE,
+      ],
+
       'header' => [
         'default' => [],
         'merge_defaults' => [$this, 'mergeHandler'],
@@ -1760,12 +1764,23 @@ abstract class DisplayPluginBase extends PluginBase implements DisplayPluginInte
       case 'exposed_block':
         $form['#title'] .= $this->t('Put the exposed form in a block');
         $form['description'] = [
-          '#markup' => '<div class="js-form-item form-item description">' . $this->t('If set, any exposed widgets will not appear with this view. Instead, a block will be made available to the Drupal block administration system, and the exposed form will appear there. Note that this block must be enabled manually, Views will not enable it for you.') . '</div>',
+          '#markup' => '<div class="js-form-item form-item description">' . $this->t('If set, any exposed widgets will not appear with this view. Instead, a block will be made available to the Drupal block administration system, and the exposed form will appear there. Note that this block must be enabled manually, Views will not enable it for you. You may opt in to keep rendering the exposed filters in the view while also having it available as a block.') . '</div>',
         ];
         $form['exposed_block'] = [
           '#type' => 'radios',
           '#options' => [1 => $this->t('Yes'), 0 => $this->t('No')],
           '#default_value' => $this->getOption('exposed_block') ? 1 : 0,
+        ];
+        $form['exposed_block_render_in_view'] = [
+          '#type' => 'checkbox',
+          '#title' => $this->t('Also render in view'),
+          '#description' => $this->t('If checked the exposed filters will also be rendered in the view and not just as an exposed block.'),
+          '#default_value' => $this->getOption('exposed_block_render_in_view') ? 1 : 0,
+          '#states' => [
+            'visible' => [
+              ':input[name="exposed_block"]' => ['value' => 1],
+            ],
+          ],
         ];
         break;
       case 'exposed_form':
@@ -1946,6 +1961,7 @@ abstract class DisplayPluginBase extends PluginBase implements DisplayPluginInte
       case 'show_admin_links':
       case 'exposed_block':
         $this->setOption($section, (bool) $form_state->getValue($section));
+        $this->setOption('exposed_block_render_in_view', (bool) $form_state->getValue('exposed_block_render_in_view'));
         break;
       case 'use_more':
         $this->setOption($section, intval($form_state->getValue($section)));

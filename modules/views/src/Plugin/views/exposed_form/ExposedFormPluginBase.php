@@ -121,13 +121,6 @@ abstract class ExposedFormPluginBase extends PluginBase implements CacheableDepe
       ->setAlwaysProcess()
       ->disableRedirect();
 
-    // Some types of displays (eg. attachments) may wish to use the exposed
-    // filters of their parent displays instead of showing an additional
-    // exposed filter form for the attachment as well as that for the parent.
-    if (!$this->view->display_handler->displaysExposed() || (!$block && $this->view->display_handler->getOption('exposed_block'))) {
-      $form_state->set('rerender', NULL);
-    }
-
     if (!empty($this->ajax)) {
       $form_state->set('ajax', TRUE);
     }
@@ -140,12 +133,48 @@ abstract class ExposedFormPluginBase extends PluginBase implements CacheableDepe
       $this->view->build_info['abort'] = TRUE;
     }
 
-    if (!$this->view->display_handler->displaysExposed() || (!$block && $this->view->display_handler->getOption('exposed_block'))) {
-      return [];
-    }
-    else {
+    if ($this->shouldRenderExposedForm($block)) {
+      // Some types of displays (eg. attachments) may wish to use the exposed
+      // filters of their parent displays instead of showing an additional
+      // exposed filter form for the attachment as well as that for the parent.
+      $form_state->set('rerender', NULL);
       return $form;
     }
+
+    return [];
+  }
+
+  /**
+   * Check if the exposed form should be rendered or not.
+   *
+   * @param bool $block
+   *   (optional) TRUE if the exposed form is being rendered as part of a
+   *   block; FALSE (default) if not.
+   *
+   * @return bool
+   *   Boolean indicating if the exposed form should be rendered.
+   */
+  protected function shouldRenderExposedForm($block = FALSE) {
+    $exposed_block = $this->view
+      ->display_handler
+      ->getOption('exposed_block');
+
+    $render_in_view = $this->view
+      ->display_handler
+      ->getOption('exposed_block_render_in_view');
+
+    // If the display does not expose a form then it should not be rendered.
+    if (!$this->view->display_handler->displaysExposed()) {
+      return FALSE;
+    }
+
+    // If a block isn't being rendered and the form has been exposed but the
+    // render in view has been set to false then it should not render.
+    if (!$block && $exposed_block && !$render_in_view) {
+      return FALSE;
+    }
+
+    return TRUE;
   }
 
   /**

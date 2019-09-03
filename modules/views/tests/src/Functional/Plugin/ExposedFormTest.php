@@ -24,7 +24,12 @@ class ExposedFormTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $testViews = ['test_exposed_form_buttons', 'test_exposed_block', 'test_exposed_form_sort_items_per_page'];
+  public static $testViews = [
+    'test_exposed_form_buttons',
+    'test_exposed_block',
+    'test_exposed_block_render_in_view',
+    'test_exposed_form_sort_items_per_page',
+  ];
 
   /**
    * Modules to enable.
@@ -246,6 +251,27 @@ class ExposedFormTest extends ViewTestBase {
       $this->assertCacheContext('url');
       $this->assertOptionSelected('edit-type', $argument);
     }
+  }
+
+  /**
+   * Test the exposed block functionality while also present in the view as
+   * exposed filters.
+   */
+  public function testExposedBlockWithFilterInView() {
+    $this->drupalCreateContentType(['type' => 'page']);
+
+    $view = Views::getView('test_exposed_block_render_in_view');
+    $view->setDisplay('page_1');
+
+    $this->drupalPlaceBlock('views_exposed_filter_block:test_exposed_block_render_in_view-page_1');
+    $this->drupalGet('test_exposed_block_render_in_view');
+
+    // Test that there are two exposed filter forms on the page.
+    $elements = $this->xpath('//form[@id=:id]', [
+      ':id' => $this->getExpectedExposedFormId($view),
+    ]);
+
+    $this->assertEquals(count($elements), 2, 'Two exposed filter forms found.');
   }
 
   /**
