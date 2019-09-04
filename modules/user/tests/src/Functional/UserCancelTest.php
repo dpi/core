@@ -278,7 +278,6 @@ class UserCancelTest extends BrowserTestBase {
    * Delete account and anonymize all content.
    */
   public function testUserAnonymize() {
-    $node_storage = $this->container->get('entity_type.manager')->getStorage('node');
     $this->config('user.settings')->set('cancel_method', 'user_cancel_reassign')->save();
     // Create comment field on page.
     $this->addDefaultCommentField('node', 'page');
@@ -308,16 +307,6 @@ class UserCancelTest extends BrowserTestBase {
     ]);
     $comment->save();
 
-    // Create a node with two revisions, the initial one belonging to the
-    // cancelling user.
-    $revision_node = $this->drupalCreateNode(['uid' => $account->id()]);
-    $revision = $revision_node->getRevisionId();
-    $settings = get_object_vars($revision_node);
-    $settings['revision'] = 1;
-    // Set new/current revision to someone else.
-    $settings['uid'] = 1;
-    $revision_node = $this->drupalCreateNode($settings);
-
     // Attempt to cancel account.
     $this->drupalGet('user/' . $account->id() . '/edit');
     $this->drupalPostForm(NULL, NULL, t('Cancel account'));
@@ -338,7 +327,7 @@ class UserCancelTest extends BrowserTestBase {
     $storage->resetCache([$comment->id()]);
     $test_comment = $storage->load($comment->id());
     $this->assertTrue(($test_comment->getOwnerId() == 0 && $test_comment->isPublished()), 'Comment of the user has been attributed to anonymous user.');
-    $this->assertEqual($test_comment->getAuthorName(), $anonymous_user->getDisplayName(), 'Comment of the user has been attributed to anonymous user name.');
+    $this->assertEqual($test_comment->getAuthorName(), User::getAnonymousUser()->getDisplayName(), 'Comment of the user has been attributed to anonymous user name.');
 
     // Confirm that the confirmation message made it through to the end user.
     $this->assertRaw(t('%name has been deleted.', ['%name' => $account->getAccountName()]), "Confirmation message displayed to user.");
