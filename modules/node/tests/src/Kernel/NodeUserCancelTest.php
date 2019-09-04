@@ -38,19 +38,19 @@ class NodeUserCancelTest extends KernelTestBase {
     $nodeStorage = \Drupal::entityTypeManager()->getStorage('node');
 
     $nodeType = NodeType::create([
-      'type' => strtolower($this->randomMachineName()),
-      'name' => $this->randomMachineName(),
+      'type' => 'test',
+      'name' => 'test',
       'revision' => TRUE,
     ]);
     $nodeType->save();
 
-    $user1 = User::create(['name' => $this->randomMachineName()]);
+    $user1 = User::create(['name' => 'test user 1']);
     $user1->save();
-    $user2 = User::create(['name' => $this->randomMachineName()]);
+    $user2 = User::create(['name' => 'test user 2']);
     $user2->save();
 
     $node = Node::create([
-      'title' => $this->randomMachineName(),
+      'title' => 'test node',
       'type' => $nodeType->id(),
     ]);
     $node

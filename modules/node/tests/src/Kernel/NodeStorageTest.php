@@ -21,6 +21,13 @@ class NodeStorageTest extends KernelTestBase {
   public static $modules = ['node', 'user', 'system', 'field'];
 
   /**
+   * An unsaved node for testing.
+   *
+   * @var \Drupal\node\NodeInterface
+   */
+  protected $testNode;
+
+  /**
    * {@inheritdoc}
    */
   protected function setUp() {
@@ -29,6 +36,17 @@ class NodeStorageTest extends KernelTestBase {
     $this->installEntitySchema('user');
     $this->installSchema('system', 'sequences');
     $this->installSchema('node', ['node_access']);
+
+    $nodeType = NodeType::create([
+      'type' => 'test',
+      'name' => 'test',
+      'revision' => TRUE,
+    ]);
+    $nodeType->save();
+    $this->testNode = Node::create([
+      'title' => 'test node',
+      'type' => $nodeType->id(),
+    ]);
   }
 
   /**
@@ -37,18 +55,10 @@ class NodeStorageTest extends KernelTestBase {
    * @covers ::userRevisionIds
    */
   public function testUserRevisionIds() {
-    $nodeType = NodeType::create([
-      'type' => strtolower($this->randomMachineName()),
-      'name' => $this->randomMachineName(),
-      'revision' => TRUE,
-    ]);
-    $nodeType->save();
-    $node = Node::create([
-      'title' => $this->randomMachineName(),
-      'type' => $nodeType->id(),
-    ]);
-    $owner = User::create(['name' => $this->randomMachineName()]);
+    $owner = User::create(['name' => 'test user']);
     $owner->save();
+
+    $node = $this->testNode;
     $node->setOwner($owner)->save();
 
     /** @var \Drupal\node\NodeStorageInterface $nodeStorage */
@@ -63,18 +73,10 @@ class NodeStorageTest extends KernelTestBase {
    * @covers ::userRevisionAuthorRevisionIds
    */
   public function testUserRevisionAuthorRevisionIds() {
-    $nodeType = NodeType::create([
-      'type' => strtolower($this->randomMachineName()),
-      'name' => $this->randomMachineName(),
-      'revision' => TRUE,
-    ]);
-    $nodeType->save();
-    $node = Node::create([
-      'title' => $this->randomMachineName(),
-      'type' => $nodeType->id(),
-    ]);
-    $user1 = User::create(['name' => $this->randomMachineName()]);
+    $user1 = User::create(['name' => 'test user 1']);
     $user1->save();
+
+    $node = $this->testNode;
     $node
       ->setOwner($user1)
       ->setRevisionUser($user1)
@@ -82,7 +84,7 @@ class NodeStorageTest extends KernelTestBase {
     $firstRevisionId = $node->getRevisionId();
 
     // Create another revision owned by another user.
-    $user2 = User::create(['name' => $this->randomMachineName()]);
+    $user2 = User::create(['name' => 'test user 2']);
     $user2->save();
     $node->setNewRevision();
     $node->setRevisionUser($user2);
