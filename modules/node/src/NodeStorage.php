@@ -37,6 +37,16 @@ class NodeStorage extends SqlContentEntityStorage implements NodeStorageInterfac
   /**
    * {@inheritdoc}
    */
+  public function userRevisionAuthorRevisionIds(AccountInterface $account) {
+    return $this->database->query(
+      'SELECT vid FROM {' . $this->getRevisionTable() . '} WHERE revision_uid = :uid ORDER BY vid',
+      [':uid' => $account->id()]
+    )->fetchCol();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function countDefaultLanguageRevisions(NodeInterface $node) {
     return $this->database->query('SELECT COUNT(*) FROM {' . $this->getRevisionDataTable() . '} WHERE nid = :nid AND default_langcode = 1', [':nid' => $node->id()])->fetchField();
   }

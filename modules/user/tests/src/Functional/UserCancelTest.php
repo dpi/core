@@ -334,17 +334,6 @@ class UserCancelTest extends BrowserTestBase {
     $user_storage->resetCache([$account->id()]);
     $this->assertFalse($user_storage->load($account->id()), 'User is not found in the database.');
 
-    // Confirm that user's content has been attributed to anonymous user.
-    $anonymous_user = User::getAnonymousUser();
-    $node_storage->resetCache([$node->id()]);
-    $test_node = $node_storage->load($node->id());
-    $this->assertTrue(($test_node->getOwnerId() == 0 && $test_node->isPublished()), 'Node of the user has been attributed to anonymous user.');
-    $test_node = node_revision_load($revision, TRUE);
-    $this->assertTrue(($test_node->getRevisionUser()->id() == 0 && $test_node->isPublished()), 'Node revision of the user has been attributed to anonymous user.');
-    $node_storage->resetCache([$revision_node->id()]);
-    $test_node = $node_storage->load($revision_node->id());
-    $this->assertTrue(($test_node->getOwnerId() != 0 && $test_node->isPublished()), "Current revision of the user's node was not attributed to anonymous user.");
-
     $storage = \Drupal::entityTypeManager()->getStorage('comment');
     $storage->resetCache([$comment->id()]);
     $test_comment = $storage->load($comment->id());

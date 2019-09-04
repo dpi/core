@@ -773,11 +773,12 @@ function node_user_cancel($edit, UserInterface $account, $method) {
     case 'user_cancel_reassign':
       // Anonymize all of the nodes for this old account.
       module_load_include('inc', 'node', 'node.admin');
-      $vids = \Drupal::entityTypeManager()->getStorage('node')->userRevisionIds($account);
-      node_mass_update($vids, [
-        'uid' => 0,
-        'revision_uid' => 0,
-      ], NULL, TRUE, TRUE);
+      /** @var \Drupal\node\NodeStorageInterface $nodeStorage */
+      $nodeStorage = \Drupal::entityTypeManager()->getStorage('node');
+      // Reassign node ownership.
+      node_mass_update($nodeStorage->userRevisionIds($account), ['uid' => 0], NULL, TRUE, TRUE);
+      // Reassign revision authors.
+      node_mass_update($nodeStorage->userRevisionAuthorRevisionIds($account), ['revision_uid' => 0], NULL, TRUE, TRUE);
       break;
   }
 }

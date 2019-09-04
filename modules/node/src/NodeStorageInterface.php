@@ -23,7 +23,7 @@ interface NodeStorageInterface extends ContentEntityStorageInterface {
   public function revisionIds(NodeInterface $node);
 
   /**
-   * Gets a list of revision IDs having a given user as node author.
+   * Gets a list of revision IDs where a user is the node author.
    *
    * @param \Drupal\Core\Session\AccountInterface $account
    *   The user entity.
@@ -32,6 +32,17 @@ interface NodeStorageInterface extends ContentEntityStorageInterface {
    *   Node revision IDs (in ascending order).
    */
   public function userRevisionIds(AccountInterface $account);
+
+  /**
+   * Gets a list of revision IDs having a given user as revision author.
+   *
+   * @param \Drupal\Core\Session\AccountInterface $account
+   *   The user entity.
+   *
+   * @return int[]
+   *   Node revision IDs (in ascending order).
+   */
+  public function userRevisionAuthorRevisionIds(AccountInterface $account);
 
   /**
    * Counts the number of revisions in the default language.
