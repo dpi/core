@@ -28,7 +28,7 @@ interface UserCancellationInterface {
   const USER_CANCEL_METHOD_DELETE = 'user_cancel_delete';
 
   /**
-   * Cancel a user accour.
+   * Cancel a user.
    *
    * Since the user cancellation process needs to be run in a batch, either
    * Form API will invoke it, or batch_process() needs to be invoked after
@@ -40,8 +40,6 @@ interface UserCancellationInterface {
    *   The account cancellation method.
    * @param array $options
    *   An array of additional options.
-   *
-   * @see _user_cancel()
    */
   public function cancelUser(UserInterface $user, $method, array $options);
 
