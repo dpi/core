@@ -8,6 +8,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Url;
 use Drupal\user\Form\UserPasswordResetForm;
+use Drupal\user\UserCancellationBatch;
 use Drupal\user\UserDataInterface;
 use Drupal\user\UserInterface;
 use Drupal\user\UserStorageInterface;
@@ -329,7 +330,11 @@ class UserController extends ControllerBase {
         $edit = [
           'user_cancel_notify' => isset($account_data['cancel_notify']) ? $account_data['cancel_notify'] : $this->config('user.settings')->get('notify.status_canceled'),
         ];
-        user_cancel($edit, $user->id(), $account_data['cancel_method']);
+
+        /** @var \Drupal\user\UserCancellationBatch $batchUserCancellation */
+        $batchUserCancellation = \Drupal::service('class_resolver')->getInstanceFromDefinition(UserCancellationBatch::class);
+        $batchUserCancellation->batchCancelUser($user, $account_data['cancel_method'], $edit);
+
         // Since user_cancel() is not invoked via Form API, batch processing
         // needs to be invoked manually and should redirect to the front page
         // after completion.

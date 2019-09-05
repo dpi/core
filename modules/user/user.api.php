@@ -6,6 +6,7 @@
  */
 
 use Drupal\Core\Session\AccountInterface;
+use Drupal\user\UserCancellationInterface;
 use Drupal\user\UserInterface;
 
 /**
@@ -23,8 +24,9 @@ use Drupal\user\UserInterface;
  * Modules may add further methods via hook_user_cancel_methods_alter().
  *
  * This hook is NOT invoked for the 'user_cancel_delete' account cancellation
- * method. To react to that method, implement hook_ENTITY_TYPE_predelete() or
- * hook_ENTITY_TYPE_delete() for user entities instead.
+ * method. To react to that method, implement hook_entity_predelete(),
+ * hook_entity_delete(), hook_ENTITY_TYPE_predelete() or
+ * hook_ENTITY_TYPE_delete() instead.
  *
  * Expensive operations should be added to the global account cancellation batch
  * by using batch_set().
@@ -41,7 +43,7 @@ use Drupal\user\UserInterface;
  */
 function hook_user_cancel($edit, UserInterface $account, $method) {
   switch ($method) {
-    case 'user_cancel_block_unpublish':
+    case UserCancellationInterface::USER_CANCEL_METHOD_BLOCK_AND_UNPUBLISH:
       // Unpublish nodes (current revisions).
       module_load_include('inc', 'node', 'node.admin');
       $nodes = \Drupal::entityQuery('node')
@@ -50,7 +52,7 @@ function hook_user_cancel($edit, UserInterface $account, $method) {
       node_mass_update($nodes, ['status' => 0], NULL, TRUE);
       break;
 
-    case 'user_cancel_reassign':
+    case UserCancellationInterface::USER_CANCEL_METHOD_REASSIGN_ANONYMOUS:
       // Anonymize nodes (current revisions).
       module_load_include('inc', 'node', 'node.admin');
       $nodes = \Drupal::entityQuery('node')

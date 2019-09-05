@@ -14,6 +14,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\history\HistoryRenderCallback;
+use Drupal\user\UserCancellationInterface;
 use Drupal\user\UserInterface;
 
 /**
@@ -164,7 +165,7 @@ function history_node_delete(EntityInterface $node) {
  */
 function history_user_cancel($edit, UserInterface $account, $method) {
   switch ($method) {
-    case 'user_cancel_reassign':
+    case UserCancellationInterface::USER_CANCEL_METHOD_REASSIGN_ANONYMOUS:
       \Drupal::database()->delete('history')
         ->condition('uid', $account->id())
         ->execute();
