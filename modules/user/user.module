@@ -678,10 +678,6 @@ function user_pass_rehash(UserInterface $account, $timestamp) {
 /**
  * Cancel a user account.
  *
- * Since the user cancellation process needs to be run in a batch, either
- * Form API will invoke it, or batch_process() needs to be invoked after calling
- * this function and should define the path to redirect to.
- *
  * @param array $edit
  *   An array of submitted form values.
  * @param int $uid
@@ -700,13 +696,6 @@ function user_cancel($edit, $uid, $method) {
     return;
   }
 
-  // Initialize batch (to set title).
-  $batch = [
-    'title' => t('Cancelling account'),
-    'operations' => [],
-  ];
-  batch_set($batch);
-
   // When the 'user_cancel_delete' method is used, user_delete() is called,
   // which invokes hook_ENTITY_TYPE_predelete() and hook_ENTITY_TYPE_delete()
   // for the user entity. Modules should use those hooks to respond to the
@@ -716,22 +705,14 @@ function user_cancel($edit, $uid, $method) {
     \Drupal::moduleHandler()->invokeAll('user_cancel', [$edit, $account, $method]);
   }
 
-  // Finish the batch and actually cancel the account.
-  $batch = [
-    'title' => t('Cancelling user account'),
-    'operations' => [
-      ['_user_cancel', [$edit, $account, $method]],
-    ],
-  ];
+  _user_cancel($edit, $account, $method);
 
   // After cancelling account, ensure that user is logged out.
   if ($account->id() == \Drupal::currentUser()->id()) {
     // Batch API stores data in the session, so use the finished operation to
     // manipulate the current user's session id.
-    $batch['finished'] = '_user_cancel_session_regenerate';
+    \_user_cancel_session_regenerate();
   }
-
-  batch_set($batch);
 
   // Batch processing is either handled via Form API or has to be invoked
   // manually.
