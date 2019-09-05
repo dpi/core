@@ -4,7 +4,6 @@ namespace Drupal\user\Form;
 
 use Drupal\Core\Entity\ContentEntityConfirmFormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\user\UserCancellationBatch;
 
 /**
  * Provides a confirmation form for cancelling user account.
@@ -141,9 +140,9 @@ class UserCancelForm extends ContentEntityConfirmFormBase {
     // privileges, no confirmation mail shall be sent, and the user does not
     // attempt to cancel the own account.
     if (!$form_state->isValueEmpty('access') && $form_state->isValueEmpty('user_cancel_confirm') && $this->entity->id() != $this->currentUser()->id()) {
-      /** @var \Drupal\user\UserCancellationBatch $batchUserCancellation */
-      $batchUserCancellation = \Drupal::service('class_resolver')->getInstanceFromDefinition(UserCancellationBatch::class);
-      $batchUserCancellation->batchCancelUser($this->entity, $form_state->getValue('user_cancel_method'), $form_state->getValues());
+      /** @var \Drupal\user\UserCancellationInterface $userCancellation */
+      $userCancellation = \Drupal::service('user.cancellation');
+      $userCancellation->progressiveUserCancellation($this->entity, $form_state->getValue('user_cancel_method'), $form_state->getValues());
 
       $form_state->setRedirectUrl($this->entity->toUrl('collection'));
     }

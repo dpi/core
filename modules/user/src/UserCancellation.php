@@ -2,15 +2,22 @@
 
 namespace Drupal\user;
 
+use Drupal\Core\Batch\BatchBuilder;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\Session\AnonymousUserSession;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\Session\Session;
 
 /**
  * Defines the user cancellation service.
  */
 class UserCancellation implements UserCancellationInterface {
+
+  use StringTranslationTrait;
 
   /**
    * The module handler.
@@ -34,7 +41,28 @@ class UserCancellation implements UserCancellationInterface {
   protected $logger;
 
   /**
-   * Constructs a new UserCancellation.
+   * The messenger service.
+   *
+   * @var \Drupal\Core\Messenger\MessengerInterface
+   */
+  protected $messenger;
+
+  /**
+   * The session.
+   *
+   * @var \Symfony\Component\HttpFoundation\Session\Session
+   */
+  protected $session;
+
+  /**
+   * The user entity storage.
+   *
+   * @var \Drupal\user\UserStorageInterface
+   */
+  protected $userStorage;
+
+  /**
+   * Constructs a new User Cancellation service.
    *
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   The module handler.
@@ -42,44 +70,94 @@ class UserCancellation implements UserCancellationInterface {
    *   The current user.
    * @param \Psr\Log\LoggerInterface $logger
    *   The logger channel for user.
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger
+   *   The messenger service.
+   * @param \Symfony\Component\HttpFoundation\Session\Session $session
+   *   The session.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   The entity type manager.
    */
-  public function __construct(ModuleHandlerInterface $moduleHandler, AccountProxyInterface $currentUser, LoggerInterface $logger) {
+  public function __construct(ModuleHandlerInterface $moduleHandler, AccountProxyInterface $currentUser, LoggerInterface $logger, MessengerInterface $messenger, Session $session, EntityTypeManagerInterface $entityTypeManager) {
     $this->moduleHandler = $moduleHandler;
     $this->currentUser = $currentUser;
     $this->logger = $logger;
+    $this->messenger = $messenger;
+    $this->session = $session;
+    $this->userStorage = $entityTypeManager->getStorage('user');
   }
 
   /**
    * {@inheritdoc}
    */
-  public function cancelUser(UserInterface $user, $method, array $options) {
-    $this->cancelUserHooks($user, $method, $options);
+  public function cancelUser(UserInterface $user, $method, array $options = []) {
+    $this->createBatches($user, $method, TRUE, $options);
+    // Run batches.
+    $batch =& $this->getBatch();
+    $batch['progressive'] = FALSE;
+    $this->processBatch();
+  }
 
-    switch ($method) {
-      case static::USER_CANCEL_METHOD_BLOCK:
-      case static::USER_CANCEL_METHOD_BLOCK_AND_UNPUBLISH:
-      default:
-        $this->blockUser($user, !empty($edit['user_cancel_notify']));
-        break;
+  /**
+   * {@inheritdoc}
+   */
+  public function progressiveUserCancellation(UserInterface $user, $method, array $options = []) {
+    $this->createBatches($user, $method, FALSE, $options);
+  }
 
-      case static::USER_CANCEL_METHOD_REASSIGN_ANONYMOUS:
-      case static::USER_CANCEL_METHOD_DELETE:
-        $this->deleteUser($user, !empty($edit['user_cancel_notify']));
-        break;
-    }
+  /**
+   * Create and set cancellation batches for a user.
+   *
+   * Some hook_user_cancel() implementations may immediately take action, rather
+   * than adding batches to be executed later.
+   *
+   * @param \Drupal\user\UserInterface $user
+   *   The user to cancel.
+   * @param string $method
+   *   The account cancellation method.
+   * @param bool $silent
+   *   Whether messages should be emitted.
+   * @param array $options
+   *   An array of additional options. These values must be serializable.
+   */
+  protected function createBatches(UserInterface $user, $method, $silent, array $options) {
+    // Initialize batch (to set title).
+    $batch = (new BatchBuilder())->setTitle($this->t('Cancelling account'));
+    $this->setBatch($batch->toArray());
 
-    // After cancelling account, ensure that user is logged out. We can't
-    // destroy their session though, as we might have information in it, and we
-    // can't regenerate it because batch API uses the session ID.
+    $this->invokeHooks($user, $method, $options);
+
+    // Actually cancel the account.
+    $batch = (new BatchBuilder())
+      ->setTitle($this->t('Cancelling user account'))
+      ->addOperation(
+        [static::class, 'callbackCancelUser'],
+        [(int) $user->id(), $method, $silent, $options]
+      );
+
+    // After cancelling account, ensure that user is logged out.
     if ($user->id() == $this->currentUser->id()) {
-      $this->currentUser->setAccount(new AnonymousUserSession());
+      // Batch API stores data in the session, so use the finished operation to
+      // manipulate the current user's session id.
+      $batch->setFinishCallback([static::class, 'callbackFinish']);
     }
+
+    $this->setBatch($batch->toArray());
   }
 
   /**
-   * {@inheritdoc}
+   * Dispatches user cancellation hooks.
+   *
+   * Implementors are encouraged to add additional batch sets rather than
+   * executing cancellation related logic immediately.
+   *
+   * @param \Drupal\user\UserInterface $user
+   *   The cancelled user.
+   * @param string $method
+   *   The account cancellation method.
+   * @param array $options
+   *   An array of additional options.
    */
-  public function cancelUserHooks(UserInterface $user, $method, array $options = []) {
+  protected function invokeHooks(UserInterface $user, $method, array $options) {
     // When the delete method is used, entity delete hooks are invoked for the
     // entity. Modules should use those hooks to respond to user deletion.
     if ($method !== static::USER_CANCEL_METHOD_DELETE) {
@@ -88,9 +166,88 @@ class UserCancellation implements UserCancellationInterface {
   }
 
   /**
-   * {@inheritdoc}
+   * Implements callback_batch_operation().
+   *
+   * Last step for cancelling a user account.
+   *
+   * @param int $userId
+   *   The ID of the user account to cancel.
+   * @param string $method
+   *   The account cancellation method.
+   * @param bool $silent
+   *   Whether messages should be emitted.
+   * @param array $options
+   *   An array of additional options.
+   *
+   * @see \callback_batch_operation()
    */
-  public function blockUser(UserInterface $user, $notify = FALSE) {
+  public static function callbackCancelUser(int $userId, $method, $silent, array $options = []) {
+    /** @var static $userCancellation */
+    $userCancellation = \Drupal::service('user.cancellation');
+    $userCancellation->doCancelUser($userId, $method, $silent, $options);
+  }
+
+  /**
+   * Implements callback_batch_operation().
+   *
+   * Last step for cancelling a user account.
+   *
+   * @param int $userId
+   *   The ID of the user account to cancel.
+   * @param string $method
+   *   The account cancellation method.
+   * @param bool $silent
+   *   Whether messages should be emitted.
+   * @param array $options
+   *   An array of submitted form values.
+   *
+   * @see \callback_batch_operation()
+   */
+  protected function doCancelUser(int $userId, $method, $silent, array $options = []) {
+    // In case the user was hard-deleted since this queue item was created.
+    /** @var \Drupal\user\UserInterface $user */
+    $user = $this->userStorage->load($userId);
+    if (!$user) {
+      return;
+    }
+
+    switch ($method) {
+      case UserCancellationInterface::USER_CANCEL_METHOD_BLOCK:
+      case UserCancellationInterface::USER_CANCEL_METHOD_BLOCK_AND_UNPUBLISH:
+      default:
+        $this->blockUser($user, !empty($options['user_cancel_notify']));
+        if (!$silent) {
+          $this->messenger->addStatus($this->t('%name has been disabled.', ['%name' => $user->getDisplayName()]));
+        }
+        break;
+
+      case UserCancellationInterface::USER_CANCEL_METHOD_REASSIGN_ANONYMOUS:
+      case UserCancellationInterface::USER_CANCEL_METHOD_DELETE:
+        $this->deleteUser($user, !empty($options['user_cancel_notify']));
+        if (!$silent) {
+          $this->messenger->addStatus($this->t('%name has been deleted.', ['%name' => $user->getDisplayName()]));
+        }
+        break;
+    }
+
+    // After cancelling account, ensure that user is logged out. We can't
+    // destroy their session though, as we might have information in it, and we
+    // can't regenerate it because batch API uses the session ID, we will
+    // regenerate it in ::cancelUserBatchFinish().
+    if ($user->id() == $this->currentUser->id()) {
+      $this->currentUser->setAccount(new AnonymousUserSession());
+    }
+  }
+
+  /**
+   * Block a user.
+   *
+   * @param \Drupal\user\UserInterface $user
+   *   The user to block.
+   * @param bool $notify
+   *   Whether to notify the user it was blocked.
+   */
+  protected function blockUser(UserInterface $user, $notify = FALSE) {
     // Send account blocked notification if option was checked.
     if ($notify) {
       $this->mail($user, 'status_blocked');
@@ -101,15 +258,42 @@ class UserCancellation implements UserCancellationInterface {
   }
 
   /**
-   * {@inheritdoc}
+   * Delete a user.
+   *
+   * @param \Drupal\user\UserInterface $user
+   *   The user to delete.
+   * @param bool $notify
+   *   Whether to notify the user it was deleted.
    */
-  public function deleteUser(UserInterface $user, $notify = FALSE) {
+  protected function deleteUser(UserInterface $user, $notify = FALSE) {
     // Send account canceled notification if option was checked.
     if ($notify) {
       $this->mail($user, 'status_canceled');
     }
     $user->delete();
     $this->logger->notice('Deleted user: %name %email.', ['%name' => $user->getAccountName(), '%email' => '<' . $user->getEmail() . '>']);
+  }
+
+  /**
+   * Implements callback_batch_finished().
+   *
+   * Finished batch processing callback for cancelling a user account.
+   *
+   * @see ::batchCancelUser()
+   */
+  public static function callbackFinish() {
+    /** @var static $userCancellation */
+    $userCancellation = \Drupal::service('user.cancellation');
+    $userCancellation->doFinish();
+  }
+
+  /**
+   * Finished batch processing callback for cancelling a user account.
+   */
+  protected function doFinish() {
+    // Regenerate the users session instead of calling session_destroy() as we
+    // want to preserve any messages that might have been set.
+    $this->session->migrate();
   }
 
   /**
@@ -126,6 +310,27 @@ class UserCancellation implements UserCancellationInterface {
    */
   protected function mail(UserInterface $user, $operation) {
     return \_user_mail_notify($operation, $user);
+  }
+
+  /**
+   * Proxy to batch getter.
+   */
+  protected function &getBatch() {
+    return \batch_get();
+  }
+
+  /**
+   * Proxy to batch setter.
+   */
+  protected function setBatch(array $batchDefinition) {
+    \batch_set($batchDefinition);
+  }
+
+  /**
+   * Proxy to batch processor.
+   */
+  protected function processBatch() {
+    return \batch_process();
   }
 
 }

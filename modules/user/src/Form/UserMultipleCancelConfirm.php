@@ -206,22 +206,23 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
         if ($uid <= 1) {
           continue;
         }
+
+        $user = $this->userStorage->load($uid);
         // Prevent user administrators from deleting themselves without confirmation.
         if ($uid == $current_user_id) {
           $admin_form_mock = [];
           $admin_form_state = $form_state;
           $admin_form_state->unsetValue('user_cancel_confirm');
-          // The $user global is not a complete user entity, so load the full
-          // entity.
-          $account = $this->userStorage->load($uid);
           $admin_form = $this->entityTypeManager->getFormObject('user', 'cancel');
-          $admin_form->setEntity($account);
+          $admin_form->setEntity($user);
           // Calling this directly required to init form object with $account.
           $admin_form->buildForm($admin_form_mock, $admin_form_state);
           $admin_form->submitForm($admin_form_mock, $admin_form_state);
         }
         else {
-          user_cancel($form_state->getValues(), $uid, $form_state->getValue('user_cancel_method'));
+          /** @var \Drupal\user\UserCancellation $userCancellation */
+          $userCancellation = \Drupal::service('user.cancellation');
+          $userCancellation->progressiveUserCancellation($user, $form_state->getValue('user_cancel_method'), $form_state->getValues());
         }
       }
     }

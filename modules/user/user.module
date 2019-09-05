@@ -22,7 +22,6 @@ use Drupal\system\Entity\Action;
 use Drupal\user\Entity\Role;
 use Drupal\user\Entity\User;
 use Drupal\user\RoleInterface;
-use Drupal\user\UserCancellationBatch;
 use Drupal\user\UserCancellationInterface;
 use Drupal\user\UserInterface;
 
@@ -698,9 +697,9 @@ function user_pass_rehash(UserInterface $account, $timestamp) {
  */
 function user_cancel($edit, $uid, $method) {
   $user = User::load($uid);
-  /** @var \Drupal\user\UserCancellationBatch $batchUserCancellation */
-  $batchUserCancellation = \Drupal::service('class_resolver')->getInstanceFromDefinition(UserCancellationBatch::class);
-  $batchUserCancellation->batchCancelUser($user, $method, $edit);
+  /** @var \Drupal\user\UserCancellation $userCancellation */
+  $userCancellation = \Drupal::service('user.cancellation');
+  $userCancellation->progressiveUserCancellation($user, $method, $edit);
 }
 
 /**
@@ -723,9 +722,9 @@ function user_cancel($edit, $uid, $method) {
  *   User Cancellation service instead.
  */
 function _user_cancel($edit, $account, $method) {
-  /** @var \Drupal\user\UserCancellationBatch $batchUserCancellation */
-  $batchUserCancellation = \Drupal::service('class_resolver')->getInstanceFromDefinition(UserCancellationBatch::class);
-  $batchUserCancellation::callbackBatchCancelUser($account->id(), $method, $edit);
+  /** @var \Drupal\user\UserCancellation $userCancellation */
+  $userCancellation = \Drupal::service('user.cancellation');
+  $userCancellation::callbackCancelUser($account->id(), $method, FALSE, $edit);
 }
 
 /**

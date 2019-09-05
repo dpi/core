@@ -17,22 +17,25 @@ use Drupal\user\UserInterface;
 /**
  * Act on user account cancellations.
  *
- * This hook is invoked from user_cancel() before a user account is canceled.
- * Depending on the account cancellation method, the module should either do
- * nothing, unpublish content, or anonymize content. See user_cancel_methods()
- * for the list of default account cancellation methods provided by User module.
- * Modules may add further methods via hook_user_cancel_methods_alter().
+ * This hook is invoked by User Cancellation service before a user account is
+ * canceled. Depending on the account cancellation method, implementors should
+ * either do nothing, unpublish content, or anonymize content.
+ * See user_cancel_methods() for the list of default account cancellation
+ * methods provided by User module. Modules may add further methods via
+ * hook_user_cancel_methods_alter().
  *
  * This hook is NOT invoked for the 'user_cancel_delete' account cancellation
  * method. To react to that method, implement hook_entity_predelete(),
  * hook_entity_delete(), hook_ENTITY_TYPE_predelete() or
  * hook_ENTITY_TYPE_delete() instead.
  *
+ * Implementors are encouraged to add expensive operations as additional batch
+ * sets rather than executing cancellation related logic immediately.
  * Expensive operations should be added to the global account cancellation batch
  * by using batch_set().
  *
  * @param array $edit
- *   The array of form values submitted by the user.
+ *   An array of additional options.
  * @param \Drupal\user\UserInterface $account
  *   The user object on which the operation is being performed.
  * @param string $method

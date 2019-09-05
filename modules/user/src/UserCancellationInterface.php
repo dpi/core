@@ -30,9 +30,11 @@ interface UserCancellationInterface {
   /**
    * Cancel a user.
    *
-   * Since the user cancellation process needs to be run in a batch, either
-   * Form API will invoke it, or batch_process() needs to be invoked after
-   * calling this function and should define the path to redirect to.
+   * This method may run for a while, designed for headless execution or where
+   * timeouts are guaranteed not to occur.
+   *
+   * If user cancellation is triggered with via Form API,
+   * progressiveUserCancellation should be used instead.
    *
    * @param \Drupal\user\UserInterface $user
    *   The user to cancel.
@@ -44,41 +46,22 @@ interface UserCancellationInterface {
   public function cancelUser(UserInterface $user, $method, array $options);
 
   /**
-   * Dispatches user cancellation hooks.
+   * Cancels a user with progressive Batch API.
+   *
+   * User cancellation for browser execution, designed to be called with forms.
+   *
+   * Executes user cancellation with Batch API where cancellation is executed
+   * over multiple requests.
+   *
+   * In contrast to ::cancelUser, this method will emit messages.
    *
    * @param \Drupal\user\UserInterface $user
-   *   The cancelled user.
+   *   The user to cancel.
    * @param string $method
    *   The account cancellation method.
    * @param array $options
-   *   An array of additional options.
+   *   An array of additional options. These values must be serializable.
    */
-  public function cancelUserHooks(UserInterface $user, $method, array $options = []);
-
-  /**
-   * Block a user.
-   *
-   * @param \Drupal\user\UserInterface $user
-   *   The user to block.
-   * @param bool $notify
-   *   Whether to notify the user it was blocked.
-   *
-   * @internal This method should only be called by Drupal. It is public because
-   *   batch cancellation requires access to it.
-   */
-  public function blockUser(UserInterface $user, $notify = FALSE);
-
-  /**
-   * Delete a user.
-   *
-   * @param \Drupal\user\UserInterface $user
-   *   The user to delete.
-   * @param bool $notify
-   *   Whether to notify the user it was deleted.
-   *
-   * @internal This method should only be called by Drupal. It is public because
-   *   batch cancellation requires access to it.
-   */
-  public function deleteUser(UserInterface $user, $notify = FALSE);
+  public function progressiveUserCancellation(UserInterface $user, $method, array $options = []);
 
 }
