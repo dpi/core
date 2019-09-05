@@ -168,8 +168,6 @@ class UserCancellation implements UserCancellationInterface {
   /**
    * Implements callback_batch_operation().
    *
-   * Last step for cancelling a user account.
-   *
    * @param int $userId
    *   The ID of the user account to cancel.
    * @param string $method
@@ -179,7 +177,7 @@ class UserCancellation implements UserCancellationInterface {
    * @param array $options
    *   An array of additional options.
    *
-   * @see \callback_batch_operation()
+   * @see ::createBatches()
    */
   public static function callbackCancelUser(int $userId, $method, $silent, array $options = []) {
     /** @var static $userCancellation */
@@ -188,9 +186,7 @@ class UserCancellation implements UserCancellationInterface {
   }
 
   /**
-   * Implements callback_batch_operation().
-   *
-   * Last step for cancelling a user account.
+   * Blocks or deletes a user.
    *
    * @param int $userId
    *   The ID of the user account to cancel.
@@ -200,8 +196,6 @@ class UserCancellation implements UserCancellationInterface {
    *   Whether messages should be emitted.
    * @param array $options
    *   An array of submitted form values.
-   *
-   * @see \callback_batch_operation()
    */
   protected function doCancelUser(int $userId, $method, $silent, array $options = []) {
     // In case the user was hard-deleted since this queue item was created.
@@ -277,9 +271,7 @@ class UserCancellation implements UserCancellationInterface {
   /**
    * Implements callback_batch_finished().
    *
-   * Finished batch processing callback for cancelling a user account.
-   *
-   * @see ::batchCancelUser()
+   * @see ::createBatches()
    */
   public static function callbackFinish() {
     /** @var static $userCancellation */
@@ -288,7 +280,7 @@ class UserCancellation implements UserCancellationInterface {
   }
 
   /**
-   * Finished batch processing callback for cancelling a user account.
+   * Finishes batch processing callback for cancelling a user account.
    */
   protected function doFinish() {
     // Regenerate the users session instead of calling session_destroy() as we
