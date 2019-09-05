@@ -220,7 +220,7 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
           $admin_form->submitForm($admin_form_mock, $admin_form_state);
         }
         else {
-          /** @var \Drupal\user\UserCancellation $userCancellation */
+          /** @var \Drupal\user\UserCancellationInterface $userCancellation */
           $userCancellation = \Drupal::service('user.cancellation');
           $userCancellation->progressiveUserCancellation($user, $form_state->getValue('user_cancel_method'), $form_state->getValues());
         }

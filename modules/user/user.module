@@ -722,7 +722,7 @@ function user_cancel($edit, $uid, $method) {
  *   User Cancellation service instead.
  */
 function _user_cancel($edit, $account, $method) {
-  /** @var \Drupal\user\UserCancellation $userCancellation */
+  /** @var \Drupal\user\UserCancellationInterface $userCancellation */
   $userCancellation = \Drupal::service('user.cancellation');
   $userCancellation::callbackCancelUser($account->id(), $method, FALSE, $edit);
 }
