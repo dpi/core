@@ -697,7 +697,7 @@ function user_pass_rehash(UserInterface $account, $timestamp) {
  */
 function user_cancel($edit, $uid, $method) {
   $user = User::load($uid);
-  /** @var \Drupal\user\UserCancellation $userCancellation */
+  /** @var \Drupal\user\UserCancellationInterface $userCancellation */
   $userCancellation = \Drupal::service('user.cancellation');
   $userCancellation->progressiveUserCancellation($user, $method, $edit);
 }
