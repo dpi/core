@@ -9,6 +9,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Url;
 use Drupal\Core\TempStore\PrivateTempStoreFactory;
+use Drupal\user\UserCancellationInterface;
 use Drupal\user\UserStorageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -47,6 +48,13 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
   protected $entityTypeManager;
 
   /**
+   * The user cancellation service.
+   *
+   * @var \Drupal\user\UserCancellationInterface
+   */
+  protected $userCancellation;
+
+  /**
    * Constructs a new UserMultipleCancelConfirm.
    *
    * @param \Drupal\Core\TempStore\PrivateTempStoreFactory $temp_store_factory
@@ -55,11 +63,14 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
    *   The user storage.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
+   * @param \Drupal\user\UserCancellationInterface|null $userCancellation
+   *   The user cancellation service.
    */
-  public function __construct(PrivateTempStoreFactory $temp_store_factory, UserStorageInterface $user_storage, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(PrivateTempStoreFactory $temp_store_factory, UserStorageInterface $user_storage, EntityTypeManagerInterface $entity_type_manager, UserCancellationInterface $userCancellation = NULL) {
     $this->tempStoreFactory = $temp_store_factory;
     $this->userStorage = $user_storage;
     $this->entityTypeManager = $entity_type_manager;
+    $this->userCancellation = $userCancellation ?: \Drupal::service('user.cancellation');
   }
 
   /**
@@ -69,7 +80,8 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
     return new static(
       $container->get('tempstore.private'),
       $container->get('entity_type.manager')->getStorage('user'),
-      $container->get('entity_type.manager')
+      $container->get('entity_type.manager'),
+      $container->get('user.cancellation')
     );
   }
 
@@ -220,9 +232,7 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
           $admin_form->submitForm($admin_form_mock, $admin_form_state);
         }
         else {
-          /** @var \Drupal\user\UserCancellationInterface $userCancellation */
-          $userCancellation = \Drupal::service('user.cancellation');
-          $userCancellation->progressiveUserCancellation($user, $form_state->getValue('user_cancel_method'), $form_state->getValues());
+          $this->userCancellation->progressiveUserCancellation($user, $form_state->getValue('user_cancel_method'), $form_state->getValues());
         }
       }
     }
