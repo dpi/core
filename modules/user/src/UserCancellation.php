@@ -160,7 +160,7 @@ class UserCancellation implements UserCancellationInterface {
   protected function invokeHooks(UserInterface $user, $method, array $options) {
     // When the delete method is used, entity delete hooks are invoked for the
     // entity. Modules should use those hooks to respond to user deletion.
-    if ($method !== static::USER_CANCEL_METHOD_DELETE) {
+    if ($method !== static::METHOD_DELETE) {
       $this->moduleHandler->invokeAll('user_cancel', [$options, $user, $method]);
     }
   }
@@ -209,8 +209,8 @@ class UserCancellation implements UserCancellationInterface {
     }
 
     switch ($method) {
-      case UserCancellationInterface::USER_CANCEL_METHOD_BLOCK:
-      case UserCancellationInterface::USER_CANCEL_METHOD_BLOCK_AND_UNPUBLISH:
+      case UserCancellationInterface::METHOD_BLOCK:
+      case UserCancellationInterface::METHOD_BLOCK_AND_UNPUBLISH:
       default:
         $this->blockUser($user, !empty($options['user_cancel_notify']));
         if (!$silent) {
@@ -218,8 +218,8 @@ class UserCancellation implements UserCancellationInterface {
         }
         break;
 
-      case UserCancellationInterface::USER_CANCEL_METHOD_REASSIGN_ANONYMOUS:
-      case UserCancellationInterface::USER_CANCEL_METHOD_DELETE:
+      case UserCancellationInterface::METHOD_REASSIGN_ANONYMOUS:
+      case UserCancellationInterface::METHOD_DELETE:
         $this->deleteUser($user, !empty($options['user_cancel_notify']));
         if (!$silent) {
           $this->messenger->addStatus($this->t('%name has been deleted.', ['%name' => $user->getDisplayName()]));

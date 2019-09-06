@@ -762,7 +762,7 @@ function node_ranking() {
  */
 function node_user_cancel($edit, UserInterface $account, $method) {
   switch ($method) {
-    case UserCancellationInterface::USER_CANCEL_METHOD_BLOCK_AND_UNPUBLISH:
+    case UserCancellationInterface::METHOD_BLOCK_AND_UNPUBLISH:
       // Unpublish nodes (current revisions).
       $nids = \Drupal::entityQuery('node')
         ->condition('uid', $account->id())
@@ -771,7 +771,7 @@ function node_user_cancel($edit, UserInterface $account, $method) {
       node_mass_update($nids, ['status' => 0], NULL, TRUE);
       break;
 
-    case UserCancellationInterface::USER_CANCEL_METHOD_REASSIGN_ANONYMOUS:
+    case UserCancellationInterface::METHOD_REASSIGN_ANONYMOUS:
       // Anonymize all of the nodes for this old account.
       module_load_include('inc', 'node', 'node.admin');
       $vids = \Drupal::entityTypeManager()->getStorage('node')->userRevisionIds($account);

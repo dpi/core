@@ -758,19 +758,19 @@ function user_cancel_methods() {
   $user_settings = \Drupal::config('user.settings');
   $anonymous_name = $user_settings->get('anonymous');
   $methods = [
-    UserCancellationInterface::USER_CANCEL_METHOD_BLOCK => [
+    UserCancellationInterface::METHOD_BLOCK => [
       'title' => t('Disable the account and keep its content.'),
       'description' => t('Your account will be blocked and you will no longer be able to log in. All of your content will remain attributed to your username.'),
     ],
-    UserCancellationInterface::USER_CANCEL_METHOD_BLOCK_AND_UNPUBLISH => [
+    UserCancellationInterface::METHOD_BLOCK_AND_UNPUBLISH => [
       'title' => t('Disable the account and unpublish its content.'),
       'description' => t('Your account will be blocked and you will no longer be able to log in. All of your content will be hidden from everyone but administrators.'),
     ],
-    UserCancellationInterface::USER_CANCEL_METHOD_REASSIGN_ANONYMOUS => [
+    UserCancellationInterface::METHOD_REASSIGN_ANONYMOUS => [
       'title' => t('Delete the account and make its content belong to the %anonymous-name user.', ['%anonymous-name' => $anonymous_name]),
       'description' => t('Your account will be removed and all account information deleted. All of your content will be assigned to the %anonymous-name user.', ['%anonymous-name' => $anonymous_name]),
     ],
-    UserCancellationInterface::USER_CANCEL_METHOD_DELETE => [
+    UserCancellationInterface::METHOD_DELETE => [
       'title' => t('Delete the account and its content.'),
       'description' => t('Your account will be removed and all account information deleted. All of your content will also be deleted.'),
       'access' => \Drupal::currentUser()->hasPermission('administer users'),

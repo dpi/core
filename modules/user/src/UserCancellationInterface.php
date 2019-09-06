@@ -10,22 +10,22 @@ interface UserCancellationInterface {
   /**
    * Blocks the user from logging in.
    */
-  const USER_CANCEL_METHOD_BLOCK = 'user_cancel_block';
+  const METHOD_BLOCK = 'user_cancel_block';
 
   /**
    * Blocks the user and unpublishes all content it owns.
    */
-  const USER_CANCEL_METHOD_BLOCK_AND_UNPUBLISH = 'user_cancel_block_unpublish';
+  const METHOD_BLOCK_AND_UNPUBLISH = 'user_cancel_block_unpublish';
 
   /**
    * Deletes user, all content is attributed to anonymous.
    */
-  const USER_CANCEL_METHOD_REASSIGN_ANONYMOUS = 'user_cancel_reassign';
+  const METHOD_REASSIGN_ANONYMOUS = 'user_cancel_reassign';
 
   /**
    * Deletes user and all content it owns.
    */
-  const USER_CANCEL_METHOD_DELETE = 'user_cancel_delete';
+  const METHOD_DELETE = 'user_cancel_delete';
 
   /**
    * Cancel a user.

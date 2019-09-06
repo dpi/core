@@ -46,7 +46,7 @@ use Drupal\user\UserInterface;
  */
 function hook_user_cancel($edit, UserInterface $account, $method) {
   switch ($method) {
-    case UserCancellationInterface::USER_CANCEL_METHOD_BLOCK_AND_UNPUBLISH:
+    case UserCancellationInterface::METHOD_BLOCK_AND_UNPUBLISH:
       // Unpublish nodes (current revisions).
       module_load_include('inc', 'node', 'node.admin');
       $nodes = \Drupal::entityQuery('node')
@@ -55,7 +55,7 @@ function hook_user_cancel($edit, UserInterface $account, $method) {
       node_mass_update($nodes, ['status' => 0], NULL, TRUE);
       break;
 
-    case UserCancellationInterface::USER_CANCEL_METHOD_REASSIGN_ANONYMOUS:
+    case UserCancellationInterface::METHOD_REASSIGN_ANONYMOUS:
       // Anonymize nodes (current revisions).
       module_load_include('inc', 'node', 'node.admin');
       $nodes = \Drupal::entityQuery('node')
