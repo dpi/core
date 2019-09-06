@@ -3,7 +3,7 @@
 namespace Drupal\user;
 
 /**
- * Defines the user cancellation service.
+ * Defines interface for the user cancellation service.
  */
 interface UserCancellationInterface {
 
@@ -33,8 +33,8 @@ interface UserCancellationInterface {
    * This method may run for a while, designed for headless execution or where
    * timeouts are guaranteed not to occur.
    *
-   * If user cancellation is triggered with via Form API,
-   * progressiveUserCancellation should be used instead.
+   * If user cancellation is triggered via Form API, progressiveUserCancellation
+   * should be used instead.
    *
    * @param \Drupal\user\UserInterface $user
    *   The user to cancel.
@@ -53,7 +53,7 @@ interface UserCancellationInterface {
    * Executes user cancellation with Batch API where cancellation is executed
    * over multiple requests.
    *
-   * In contrast to ::cancelUser, this method will emit messages.
+   * In contrast to ::cancelUser(), this method will emit messages.
    *
    * @param \Drupal\user\UserInterface $user
    *   The user to cancel.

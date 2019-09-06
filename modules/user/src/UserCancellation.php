@@ -177,6 +177,9 @@ class UserCancellation implements UserCancellationInterface {
    * @param array $options
    *   An array of additional options.
    *
+   * @internal method is specific to this implementation and may be modified or
+   *   removed at any time.
+   *
    * @see ::createBatches()
    */
   public static function callbackCancelUser(int $userId, $method, $silent, array $options = []) {
@@ -270,6 +273,9 @@ class UserCancellation implements UserCancellationInterface {
 
   /**
    * Implements callback_batch_finished().
+   *
+   * @internal method is specific to this implementation and may be modified or
+   *   removed at any time.
    *
    * @see ::createBatches()
    */
