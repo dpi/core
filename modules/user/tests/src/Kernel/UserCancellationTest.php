@@ -340,7 +340,7 @@ class UserCancellationTest extends KernelTestBase {
       /**
        * {@inheritdoc}
        */
-      public function mail($method, $args) {
+      protected function mail(UserInterface $user, $operation) {
         static::$mailCalls[] = func_get_args();
       }
 
