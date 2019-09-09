@@ -696,6 +696,7 @@ function user_pass_rehash(UserInterface $account, $timestamp) {
  *   User Cancellation service instead.
  */
 function user_cancel($edit, $uid, $method) {
+  @trigger_error('\user_cancel() is deprecated in Drupal 8.8.x and will be removed before Drupal 9.0.0.', E_USER_DEPRECATED);
   $user = User::load($uid);
   /** @var \Drupal\user\UserCancellationInterface $userCancellation */
   $userCancellation = \Drupal::service('user.cancellation');
@@ -722,6 +723,7 @@ function user_cancel($edit, $uid, $method) {
  *   User Cancellation service instead.
  */
 function _user_cancel($edit, $account, $method) {
+  @trigger_error('\_user_cancel() is deprecated in Drupal 8.8.x and will be removed before Drupal 9.0.0.', E_USER_DEPRECATED);
   /** @var \Drupal\user\UserCancellationInterface $userCancellation */
   $userCancellation = \Drupal::service('user.cancellation');
   $userCancellation::callbackCancelUser($account->id(), $method, FALSE, $edit);
@@ -738,6 +740,7 @@ function _user_cancel($edit, $account, $method) {
  *   User Cancellation service instead.
  */
 function _user_cancel_session_regenerate() {
+  @trigger_error('\_user_cancel_session_regenerate() is deprecated in Drupal 8.8.x and will be removed before Drupal 9.0.0.', E_USER_DEPRECATED);
   // Regenerate the users session instead of calling session_destroy() as we
   // want to preserve any messages that might have been set.
   \Drupal::service('session')->migrate();

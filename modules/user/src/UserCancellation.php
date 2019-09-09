@@ -9,6 +9,7 @@ use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\Session\AnonymousUserSession;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\StringTranslation\TranslationInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Session\Session;
 
@@ -76,14 +77,17 @@ class UserCancellation implements UserCancellationInterface {
    *   The session.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
    *   The entity type manager.
+   * @param \Drupal\Core\StringTranslation\TranslationInterface $stringTranslation
+   *   The string translation service.
    */
-  public function __construct(ModuleHandlerInterface $moduleHandler, AccountProxyInterface $currentUser, LoggerInterface $logger, MessengerInterface $messenger, Session $session, EntityTypeManagerInterface $entityTypeManager) {
+  public function __construct(ModuleHandlerInterface $moduleHandler, AccountProxyInterface $currentUser, LoggerInterface $logger, MessengerInterface $messenger, Session $session, EntityTypeManagerInterface $entityTypeManager, TranslationInterface $stringTranslation) {
     $this->moduleHandler = $moduleHandler;
     $this->currentUser = $currentUser;
     $this->logger = $logger;
     $this->messenger = $messenger;
     $this->session = $session;
     $this->userStorage = $entityTypeManager->getStorage('user');
+    $this->stringTranslation = $stringTranslation;
   }
 
   /**
@@ -205,13 +209,13 @@ class UserCancellation implements UserCancellationInterface {
     /** @var \Drupal\user\UserInterface $user */
     $user = $this->userStorage->load($userId);
     if (!$user) {
+      $this->logger->notice('User %user_id deleted before cancellation could complete.', ['%user_id' => $userId]);
       return;
     }
 
     switch ($method) {
       case UserCancellationInterface::METHOD_BLOCK:
       case UserCancellationInterface::METHOD_BLOCK_AND_UNPUBLISH:
-      default:
         $this->blockUser($user, !empty($options['user_cancel_notify']));
         if (!$silent) {
           $this->messenger->addStatus($this->t('%name has been disabled.', ['%name' => $user->getDisplayName()]));

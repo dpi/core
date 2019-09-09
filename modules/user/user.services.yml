@@ -73,7 +73,7 @@ services:
     arguments: ['@current_user']
   user.cancellation:
     class: Drupal\user\UserCancellation
-    arguments: ['@module_handler', '@current_user', '@logger.channel.user', '@messenger', '@session', '@entity_type.manager']
+    arguments: ['@module_handler', '@current_user', '@logger.channel.user', '@messenger', '@session', '@entity_type.manager', '@string_translation']
   logger.channel.user:
     parent: logger.channel_base
     arguments: ['user']

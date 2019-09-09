@@ -53,10 +53,6 @@ class UserCancelForm extends ContentEntityConfirmFormBase {
    *
    * @param \Drupal\Core\Entity\EntityRepositoryInterface $entity_repository
    *   The entity repository.
-   * @param \Drupal\Core\Session\AccountInterface $current_user
-   *   The current user.
-   * @param \Drupal\Core\Render\RendererInterface $renderer
-   *   The renderer.
    * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $entity_type_bundle_info
    *   The entity type bundle service.
    * @param \Drupal\Component\Datetime\TimeInterface $time
@@ -64,7 +60,7 @@ class UserCancelForm extends ContentEntityConfirmFormBase {
    * @param \Drupal\user\UserCancellationInterface|null $userCancellation
    *   The user cancellation service.
    */
-  public function __construct(EntityRepositoryInterface $entity_repository, AccountInterface $current_user, RendererInterface $renderer, EntityTypeBundleInfoInterface $entity_type_bundle_info = NULL, TimeInterface $time = NULL, UserCancellationInterface $userCancellation = NULL) {
+  public function __construct(EntityRepositoryInterface $entity_repository, EntityTypeBundleInfoInterface $entity_type_bundle_info = NULL, TimeInterface $time = NULL, UserCancellationInterface $userCancellation = NULL) {
     parent::__construct($entity_repository, $entity_type_bundle_info, $time);
     $this->userCancellation = $userCancellation ?: \Drupal::service('user.cancellation');
   }
