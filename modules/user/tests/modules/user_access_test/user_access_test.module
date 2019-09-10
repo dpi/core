@@ -15,21 +15,29 @@ use Drupal\user\Entity\User;
  * Implements hook_ENTITY_TYPE_access() for entity type "user".
  */
 function user_access_test_user_access(User $entity, $operation, $account) {
+  $access = AccessResult::neutral();
   if ($entity->getAccountName() == "no_edit" && $operation == "update") {
     // Deny edit access.
-    return AccessResult::forbidden();
+    $access = AccessResult::forbidden();
   }
   if ($entity->getAccountName() == "no_delete" && $operation == "delete") {
     // Deny delete access.
-    return AccessResult::forbidden();
+    $access = AccessResult::forbidden();
+  }
+  if ($entity->getAccountName() == "no_view_label" && $operation == "view label") {
+    // Deny view label access.
+    $access = AccessResult::forbidden();
+  }
+  if (isset($entity->testAccessAddCacheTags)) {
+    $access->addCacheTags($entity->testAccessAddCacheTags);
   }
 
   // Account with role sub-admin can manage users with no roles.
   if (count($entity->getRoles()) == 1) {
-    return AccessResult::allowedIfHasPermission($account, 'sub-admin');
+    $access = AccessResult::allowedIfHasPermission($account, 'sub-admin');
   }
 
-  return AccessResult::neutral();
+  return $access;
 }
 
 /**
