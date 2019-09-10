@@ -83,6 +83,12 @@ class MediaAccessControlHandler extends EntityAccessControlHandler {
         }
         return AccessResult::neutral("The following permissions are required: 'delete any media' OR 'delete own media' OR '$type: delete any media' OR '$type: delete own media'.")->cachePerPermissions();
 
+      case 'view all revisions':
+        if ($account->hasPermission('view all media revisions')) {
+          return AccessResult::allowed()->cachePerPermissions();
+        }
+        return AccessResult::neutral("The following permissions are required: 'view all media revisions'.")->cachePerPermissions();
+
       default:
         return AccessResult::neutral()->cachePerPermissions();
     }

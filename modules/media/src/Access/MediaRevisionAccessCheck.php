@@ -103,7 +103,7 @@ class MediaRevisionAccessCheck implements AccessInterface {
 
     if (!isset($this->access[$cid])) {
       // Perform basic permission checks first.
-      if (!$account->hasPermission('view all media revisions') && !$account->hasPermission('administer media')) {
+      if (!$media->access('view all revisions') && !$account->hasPermission('administer media')) {
         $this->access[$cid] = FALSE;
         return FALSE;
       }
