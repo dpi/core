@@ -311,28 +311,28 @@ class UserCancellation implements UserCancellationInterface {
    *   See \Drupal\Core\Mail\MailManagerInterface::mail() for details.
    */
   protected function mail(UserInterface $user, $operation) {
-    return \_user_mail_notify($operation, $user);
+    return _user_mail_notify($operation, $user);
   }
 
   /**
    * Proxy to batch getter.
    */
   protected function &getBatch() {
-    return \batch_get();
+    return batch_get();
   }
 
   /**
    * Proxy to batch setter.
    */
   protected function setBatch(array $batchDefinition) {
-    \batch_set($batchDefinition);
+    batch_set($batchDefinition);
   }
 
   /**
    * Proxy to batch processor.
    */
   protected function processBatch() {
-    return \batch_process();
+    return batch_process();
   }
 
 }
