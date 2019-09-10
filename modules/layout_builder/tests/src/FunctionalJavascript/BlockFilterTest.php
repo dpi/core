@@ -53,8 +53,8 @@ class BlockFilterTest extends WebDriverTestBase {
     $assert_session->addressEquals("$field_ui_prefix/display/default/layout");
 
     // Open the block listing.
-    $assert_session->linkExists('Add Block');
-    $this->clickLink('Add Block');
+    $assert_session->linkExists('Add block');
+    $this->clickLink('Add block');
     $assert_session->assertWaitOnAjaxRequest();
 
     // Get all blocks, for assertions later.
@@ -117,7 +117,7 @@ class BlockFilterTest extends WebDriverTestBase {
     });
 
     // Test Drupal.announce() message when all blocks are listed.
-    $filter->setValue('');;
+    $filter->setValue('');
     $this->assertAnnounceContains('All available blocks are listed.');
     // Confirm the Content Fields category remains collapsed after filtering.
     $this->assertFalse($promoteToFrontPageLink->isVisible());

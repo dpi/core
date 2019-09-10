@@ -315,6 +315,9 @@ services:
     public: false
     tags:
       - { name: backend_overridable }
+  config.storage.export:
+    class: Drupal\Core\Config\ReadOnlyStorage
+    arguments: ['@config.storage']
   # @deprecated in Drupal 8.0.x and will be removed before 9.0.0. Use
   #   config.storage.sync instead.
   # @see https://www.drupal.org/node/2574957
@@ -533,7 +536,7 @@ services:
     class: Drupal\Core\Extension\RequiredModuleUninstallValidator
     tags:
       - { name: module_install.uninstall_validator }
-    arguments: ['@string_translation']
+    arguments: ['@string_translation', '@extension.list.module']
     lazy: true
   theme_handler:
     class: Drupal\Core\Extension\ThemeHandler
@@ -552,7 +555,7 @@ services:
     class: Drupal\Core\Cache\MemoryCache\MemoryCache
   entity_type.manager:
     class: Drupal\Core\Entity\EntityTypeManager
-    arguments: ['@container.namespaces', '@module_handler', '@cache.discovery', '@string_translation', '@class_resolver']
+    arguments: ['@container.namespaces', '@module_handler', '@cache.discovery', '@string_translation', '@class_resolver', '@entity.last_installed_schema.repository']
     parent: container.trait
     tags:
       - { name: plugin_manager_cache_clear }
@@ -564,7 +567,7 @@ services:
     arguments: ['@entity_type.manager', '@language_manager', '@module_handler', '@typed_data_manager', '@cache.discovery']
   entity.repository:
     class: Drupal\Core\Entity\EntityRepository
-    arguments: ['@entity_type.manager', '@language_manager']
+    arguments: ['@entity_type.manager', '@language_manager', '@context.repository']
   entity_display.repository:
     class: Drupal\Core\Entity\EntityDisplayRepository
     arguments: ['@entity_type.manager', '@module_handler', '@cache.discovery', '@language_manager']
@@ -1005,7 +1008,7 @@ services:
     class: Drupal\Core\ParamConverter\EntityConverter
     tags:
       - { name: paramconverter }
-    arguments: ['@entity_type.manager', '@language_manager', '@entity.repository']
+    arguments: ['@entity_type.manager', '@entity.repository']
   paramconverter.entity_revision:
     class: Drupal\Core\ParamConverter\EntityRevisionParamConverter
     tags:
@@ -1016,7 +1019,7 @@ services:
     tags:
       # Use a higher priority than EntityConverter, see the class for details.
       - { name: paramconverter, priority: 5 }
-    arguments: ['@entity_type.manager', '@config.factory', '@router.admin_context', '@language_manager', '@entity.repository']
+    arguments: ['@entity_type.manager', '@config.factory', '@router.admin_context', '@entity.repository']
     lazy: true
   route_subscriber.module:
     class: Drupal\Core\EventSubscriber\ModuleRouteSubscriber
@@ -1090,13 +1093,13 @@ services:
       - { name: render.main_content_renderer, format: html }
   main_content_renderer.ajax:
     class: Drupal\Core\Render\MainContent\AjaxRenderer
-    arguments: ['@element_info']
+    arguments: ['@element_info', '@renderer']
     tags:
       - { name: render.main_content_renderer, format: drupal_ajax }
       - { name: render.main_content_renderer, format: iframeupload }
   main_content_renderer.dialog:
     class: Drupal\Core\Render\MainContent\DialogRenderer
-    arguments: ['@title_resolver']
+    arguments: ['@title_resolver', '@renderer']
     tags:
       - { name: render.main_content_renderer, format: drupal_dialog }
   main_content_renderer.off_canvas:
@@ -1111,7 +1114,7 @@ services:
       - { name: render.main_content_renderer, format: drupal_dialog.off_canvas_top }
   main_content_renderer.modal:
     class: Drupal\Core\Render\MainContent\ModalRenderer
-    arguments: ['@title_resolver']
+    arguments: ['@title_resolver', '@renderer']
     tags:
       - { name: render.main_content_renderer, format: drupal_modal }
   controller.form:
@@ -1262,7 +1265,7 @@ services:
     class: Drupal\Core\EventSubscriber\ConfigImportSubscriber
     tags:
       - { name: event_subscriber }
-    arguments: ['@theme_handler']
+    arguments: ['@theme_handler', '@extension.list.module']
   config_snapshot_subscriber:
     class: Drupal\Core\EventSubscriber\ConfigSnapshotSubscriber
     tags:
@@ -1527,6 +1530,7 @@ services:
     arguments: ['@private_key', '@cache.bootstrap', '@cache.static']
   current_user:
     class: Drupal\Core\Session\AccountProxy
+    arguments: ['@event_dispatcher']
   session_configuration:
     class: Drupal\Core\Session\SessionConfiguration
     arguments: ['%session.storage.options%']
@@ -1565,25 +1569,27 @@ services:
     arguments: [ '@state' ]
   asset.css.collection_optimizer:
     class: Drupal\Core\Asset\CssCollectionOptimizer
-    arguments: [ '@asset.css.collection_grouper', '@asset.css.optimizer', '@asset.css.dumper', '@state' ]
+    arguments: [ '@asset.css.collection_grouper', '@asset.css.optimizer', '@asset.css.dumper', '@state', '@file_system']
   asset.css.optimizer:
     class: Drupal\Core\Asset\CssOptimizer
   asset.css.collection_grouper:
     class: Drupal\Core\Asset\CssCollectionGrouper
   asset.css.dumper:
     class: Drupal\Core\Asset\AssetDumper
+    arguments: ['@file_system']
   asset.js.collection_renderer:
     class: Drupal\Core\Asset\JsCollectionRenderer
     arguments: [ '@state' ]
   asset.js.collection_optimizer:
     class: Drupal\Core\Asset\JsCollectionOptimizer
-    arguments: [ '@asset.js.collection_grouper', '@asset.js.optimizer', '@asset.js.dumper', '@state' ]
+    arguments: [ '@asset.js.collection_grouper', '@asset.js.optimizer', '@asset.js.dumper', '@state', '@file_system']
   asset.js.optimizer:
     class: Drupal\Core\Asset\JsOptimizer
   asset.js.collection_grouper:
     class: Drupal\Core\Asset\JsCollectionGrouper
   asset.js.dumper:
     class: Drupal\Core\Asset\AssetDumper
+    arguments: ['@file_system']
   library.discovery:
     class: Drupal\Core\Asset\LibraryDiscovery
     arguments: ['@library.discovery.collector']
@@ -1594,7 +1600,7 @@ services:
       - { name: needs_destruction }
   library.discovery.parser:
     class: Drupal\Core\Asset\LibraryDiscoveryParser
-    arguments: ['@app.root', '@module_handler', '@theme.manager']
+    arguments: ['@app.root', '@module_handler', '@theme.manager', '@stream_wrapper_manager']
   library.dependency_resolver:
     class: Drupal\Core\Asset\LibraryDependencyResolver
     arguments: ['@library.discovery']

@@ -22,7 +22,10 @@
   .block-views-blockrecipe-collections-block .views-col {
     width: 25%;
     max-width: 13rem;
-    text-align: left;
+    text-align: left; /* LTR */
+  }
+  [dir="rtl"] .block-views-blockrecipe-collections-block .views-col {
+    text-align: right;
   }
 }
 .block-views-blockrecipe-collections-block .views-row {
@@ -38,6 +41,6 @@
 .block-views-blockrecipe-collections-block .views-row a:focus,
 .block-views-blockrecipe-collections-block .views-row a:hover {
   text-decoration: underline;
-  background: transparent;
   outline-color: #fff;
+  background: transparent;
 }

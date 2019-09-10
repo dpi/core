@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\locale\Functional;
 
+use Drupal\Core\Url;
 use Drupal\Core\Database\Database;
 use Drupal\language\Entity\ConfigurableLanguage;
 use Drupal\Tests\BrowserTestBase;
@@ -97,7 +98,7 @@ class LocaleTranslationUiTest extends BrowserTestBase {
     $this->drupalPostForm('admin/config/regional/translate', $edit, t('Save translations'));
     $this->assertText(t('The strings have been saved.'), 'The strings have been saved.');
     $url_bits = explode('?', $this->getUrl());
-    $this->assertEqual($url_bits[0], \Drupal::url('locale.translate_page', [], ['absolute' => TRUE]), 'Correct page redirection.');
+    $this->assertEqual($url_bits[0], Url::fromRoute('locale.translate_page', [], ['absolute' => TRUE])->toString(), 'Correct page redirection.');
     $search = [
       'string' => $name,
       'langcode' => $langcode,
@@ -263,7 +264,7 @@ class LocaleTranslationUiTest extends BrowserTestBase {
     $this->assertTrue($result = file_exists($js_file), new FormattableMarkup('JavaScript file created: %file', ['%file' => $result ? $js_file : 'not found']));
 
     // Test JavaScript translation rebuilding.
-    file_unmanaged_delete($js_file);
+    \Drupal::service('file_system')->delete($js_file);
     $this->assertTrue($result = !file_exists($js_file), new FormattableMarkup('JavaScript file deleted: %file', ['%file' => $result ? $js_file : 'found']));
     _locale_rebuild_js($langcode);
     $this->assertTrue($result = file_exists($js_file), new FormattableMarkup('JavaScript file rebuilt: %file', ['%file' => $result ? $js_file : 'not found']));

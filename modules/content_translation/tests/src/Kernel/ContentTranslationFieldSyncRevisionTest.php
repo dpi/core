@@ -93,7 +93,7 @@ class ContentTranslationFieldSyncRevisionTest extends EntityKernelTestBase {
     $this->contentTranslationManager = $this->container->get('content_translation.manager');
     $this->contentTranslationManager->setEnabled($entity_type_id, $entity_type_id, TRUE);
 
-    $this->storage = $this->entityManager->getStorage($entity_type_id);
+    $this->storage = $this->entityTypeManager->getStorage($entity_type_id);
 
     foreach ($this->getTestFiles('image') as $file) {
       $entity = File::create((array) $file + ['status' => 1]);
@@ -365,6 +365,16 @@ class ContentTranslationFieldSyncRevisionTest extends EntityKernelTestBase {
     $this->assertEmpty($violations);
     $this->storage->save($it_revision);
     $this->assertLatestRevisionFieldValues($entity_id, [26, 3, 3, 'Alt 3 EN', 'Alt 4 IT']);
+  }
+
+  /**
+   * Test changing the default language of an entity.
+   */
+  public function testChangeDefaultLanguageNonTranslatableFieldsHidden() {
+    $this->setUntranslatableFieldWidgetsDisplay(FALSE);
+    $entity = $this->saveNewEntity();
+    $entity->langcode = 'it';
+    $this->assertCount(0, $entity->validate());
   }
 
   /**

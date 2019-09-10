@@ -3,46 +3,6 @@
  */
 (($, Drupal) => {
   /**
-   * Adds hover effect to media items.
-   *
-   * @type {Drupal~behavior}
-   *
-   * @prop {Drupal~behaviorAttach} attach
-   *   Attaches behavior to add a class when hovering over media items.
-   */
-  Drupal.behaviors.MediaLibraryHover = {
-    attach(context) {
-      $('.js-click-to-select-trigger, .js-click-to-select-checkbox', context)
-        .once('media-library-item-hover')
-        .on('mouseover mouseout', ({ currentTarget, type }) => {
-          $(currentTarget)
-            .closest('.media-library-item')
-            .toggleClass('is-hover', type === 'mouseover');
-        });
-    },
-  };
-
-  /**
-   * Adds focus effect to media items.
-   *
-   * @type {Drupal~behavior}
-   *
-   * @prop {Drupal~behaviorAttach} attach
-   *   Attaches behavior to add a focus effect to media items.
-   */
-  Drupal.behaviors.MediaLibraryFocus = {
-    attach(context) {
-      $('.js-click-to-select-checkbox input', context)
-        .once('media-library-item-focus')
-        .on('focus blur', ({ currentTarget, type }) => {
-          $(currentTarget)
-            .closest('.media-library-item')
-            .toggleClass('is-focus', type === 'focus');
-        });
-    },
-  };
-
-  /**
    * Adds checkbox to select all items in the library.
    *
    * @type {Drupal~behavior}
@@ -55,14 +15,14 @@
       const $view = $('.js-media-library-view', context).once(
         'media-library-select-all',
       );
-      if ($view.length && $view.find('.media-library-item').length) {
+      if ($view.length && $view.find('.js-media-library-item').length) {
         const $checkbox = $(
           '<input type="checkbox" class="form-checkbox" />',
         ).on('click', ({ currentTarget }) => {
           // Toggle all checkboxes.
           const $checkboxes = $(currentTarget)
             .closest('.media-library-view')
-            .find('.media-library-item input[type="checkbox"]');
+            .find('.js-media-library-item input[type="checkbox"]');
           $checkboxes
             .prop('checked', $(currentTarget).prop('checked'))
             .trigger('change');
@@ -79,7 +39,7 @@
         ).text(Drupal.t('Select all media'));
         $label.prepend($checkbox);
         $view
-          .find('.media-library-item')
+          .find('.js-media-library-item')
           .first()
           .before($label);
       }

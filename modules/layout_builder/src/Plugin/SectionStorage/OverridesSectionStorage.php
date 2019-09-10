@@ -5,6 +5,7 @@ namespace Drupal\layout_builder\Plugin\SectionStorage;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
+use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
@@ -33,16 +34,17 @@ use Symfony\Component\Routing\RouteCollection;
  * @SectionStorage(
  *   id = "overrides",
  *   weight = -20,
+ *   handles_permission_check = TRUE,
  *   context_definitions = {
- *     "entity" = @ContextDefinition("entity"),
- *     "view_mode" = @ContextDefinition("string"),
+ *     "entity" = @ContextDefinition("entity", constraints = {
+ *       "EntityHasField" = \Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage::FIELD_NAME,
+ *     }),
+ *     "view_mode" = @ContextDefinition("string", default_value = "default"),
  *   }
  * )
  *
  * @internal
- *   Layout Builder is currently experimental and should only be leveraged by
- *   experimental modules and development releases of contributed modules.
- *   See https://www.drupal.org/core/experimental for more information.
+ *   Plugin classes are internal.
  */
 class OverridesSectionStorage extends SectionStorageBase implements ContainerFactoryPluginInterface, OverridesSectionStorageInterface, SectionStorageLocalTaskProviderInterface {
 
@@ -75,14 +77,34 @@ class OverridesSectionStorage extends SectionStorageBase implements ContainerFac
   protected $sectionStorageManager;
 
   /**
+   * The entity repository.
+   *
+   * @var \Drupal\Core\Entity\EntityRepositoryInterface
+   */
+  protected $entityRepository;
+
+  /**
+   * The current user.
+   *
+   * @var \Drupal\Core\Session\AccountInterface
+   */
+  protected $currentUser;
+
+  /**
    * {@inheritdoc}
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, EntityFieldManagerInterface $entity_field_manager, SectionStorageManagerInterface $section_storage_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, EntityFieldManagerInterface $entity_field_manager, SectionStorageManagerInterface $section_storage_manager, EntityRepositoryInterface $entity_repository, AccountInterface $current_user = NULL) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     $this->entityTypeManager = $entity_type_manager;
     $this->entityFieldManager = $entity_field_manager;
     $this->sectionStorageManager = $section_storage_manager;
+    $this->entityRepository = $entity_repository;
+    if (!$current_user) {
+      @trigger_error('The current_user service must be passed to OverridesSectionStorage::__construct(), it is required before Drupal 9.0.0.', E_USER_DEPRECATED);
+      $current_user = \Drupal::currentUser();
+    }
+    $this->currentUser = $current_user;
   }
 
   /**
@@ -95,7 +117,9 @@ class OverridesSectionStorage extends SectionStorageBase implements ContainerFac
       $plugin_definition,
       $container->get('entity_type.manager'),
       $container->get('entity_field.manager'),
-      $container->get('plugin.manager.layout_builder.section_storage')
+      $container->get('plugin.manager.layout_builder.section_storage'),
+      $container->get('entity.repository'),
+      $container->get('current_user')
     );
   }
 
@@ -163,7 +187,7 @@ class OverridesSectionStorage extends SectionStorageBase implements ContainerFac
     @trigger_error('\Drupal\layout_builder\SectionStorageInterface::getSectionListFromId() is deprecated in Drupal 8.7.0 and will be removed before Drupal 9.0.0. The section list should be derived from context. See https://www.drupal.org/node/3016262.', E_USER_DEPRECATED);
     if (strpos($id, '.') !== FALSE) {
       list($entity_type_id, $entity_id) = explode('.', $id, 2);
-      $entity = $this->entityTypeManager->getStorage($entity_type_id)->load($entity_id);
+      $entity = $this->entityRepository->getActive($entity_type_id, $entity_id);
       if ($entity instanceof FieldableEntityInterface && $entity->hasField(static::FIELD_NAME)) {
         return $entity->get(static::FIELD_NAME);
       }
@@ -216,7 +240,7 @@ class OverridesSectionStorage extends SectionStorageBase implements ContainerFac
       return NULL;
     }
 
-    $entity = $this->entityTypeManager->getStorage($entity_type_id)->load($entity_id);
+    $entity = $this->entityRepository->getActive($entity_type_id, $entity_id);
     if ($entity instanceof FieldableEntityInterface && $entity->hasField(static::FIELD_NAME)) {
       return $entity;
     }
@@ -348,9 +372,50 @@ class OverridesSectionStorage extends SectionStorageBase implements ContainerFac
    * {@inheritdoc}
    */
   public function access($operation, AccountInterface $account = NULL, $return_as_object = FALSE) {
-    $default_section_storage = $this->getDefaultSectionStorage();
-    $result = AccessResult::allowedIf($default_section_storage->isLayoutBuilderEnabled())->addCacheableDependency($default_section_storage);
+    if ($account === NULL) {
+      $account = $this->currentUser;
+    }
+
+    $entity = $this->getEntity();
+
+    // Create an access result that will allow access to the layout if one of
+    // these conditions applies:
+    // 1. The user can configure any layouts.
+    $any_access = AccessResult::allowedIfHasPermission($account, 'configure any layout');
+    // 2. The user can configure layouts on all items of the bundle type.
+    $bundle_access = AccessResult::allowedIfHasPermission($account, "configure all {$entity->bundle()} {$entity->getEntityTypeId()} layout overrides");
+    // 3. The user can configure layouts items of this bundle type they can edit
+    //    AND the user has access to edit this entity.
+    $edit_only_bundle_access = AccessResult::allowedIfHasPermission($account, "configure editable {$entity->bundle()} {$entity->getEntityTypeId()} layout overrides");
+    $edit_only_bundle_access = $edit_only_bundle_access->andIf($entity->access('update', $account, TRUE));
+
+    $result = $any_access
+      ->orIf($bundle_access)
+      ->orIf($edit_only_bundle_access);
+
+    // Access also depends on the default being enabled.
+    $result = $result->andIf($this->getDefaultSectionStorage()->access($operation, $account, TRUE));
+    $result = $this->handleTranslationAccess($result, $operation, $account);
     return $return_as_object ? $result : $result->isAllowed();
+  }
+
+  /**
+   * Handles access checks related to translations.
+   *
+   * @param \Drupal\Core\Access\AccessResult $result
+   *   The access result.
+   * @param string $operation
+   *   The operation to be performed.
+   * @param \Drupal\Core\Session\AccountInterface $account
+   *   The user for which to check access.
+   *
+   * @return \Drupal\Core\Access\AccessResultInterface
+   *   The access result.
+   */
+  protected function handleTranslationAccess(AccessResult $result, $operation, AccountInterface $account) {
+    $entity = $this->getEntity();
+    // Access is always denied on non-default translations.
+    return $result->andIf(AccessResult::allowedIf(!($entity instanceof TranslatableInterface && !$entity->isDefaultTranslation())))->addCacheableDependency($entity);
   }
 
   /**
@@ -360,7 +425,17 @@ class OverridesSectionStorage extends SectionStorageBase implements ContainerFac
     $default_section_storage = $this->getDefaultSectionStorage();
     $cacheability->addCacheableDependency($default_section_storage)->addCacheableDependency($this);
     // Check that overrides are enabled and have at least one section.
-    return $default_section_storage->isOverridable() && count($this);
+    return $default_section_storage->isOverridable() && $this->isOverridden();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isOverridden() {
+    // If there are any sections at all, including a blank one, this section
+    // storage has been overridden. Do not use count() as it does not include
+    // blank sections.
+    return !empty($this->getSections());
   }
 
 }

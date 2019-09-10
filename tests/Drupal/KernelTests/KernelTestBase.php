@@ -22,11 +22,14 @@ use Drupal\Tests\ConfigTestTrait;
 use Drupal\Tests\PhpunitCompatibilityTrait;
 use Drupal\Tests\RandomGeneratorTrait;
 use Drupal\Tests\TestRequirementsTrait;
+use PHPUnit\Framework\Exception;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpFoundation\Request;
 use org\bovigo\vfs\vfsStream;
 use org\bovigo\vfs\visitor\vfsStreamPrintVisitor;
+use Symfony\Cmf\Component\Routing\RouteObjectInterface;
+use Symfony\Component\Routing\Route;
 
 /**
  * Base class for functional integration tests.
@@ -66,6 +69,8 @@ use org\bovigo\vfs\visitor\vfsStreamPrintVisitor;
  * @see \Drupal\Tests\KernelTestBase::installEntitySchema()
  * @see \Drupal\Tests\KernelTestBase::installSchema()
  * @see \Drupal\Tests\BrowserTestBase
+ *
+ * @ingroup testing
  */
 abstract class KernelTestBase extends TestCase implements ServiceProviderInterface {
 
@@ -290,15 +295,12 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     $this->siteDirectory = vfsStream::url('root/' . $test_site_path);
 
     mkdir($this->siteDirectory . '/files', 0775);
-    mkdir($this->siteDirectory . '/files/config/' . CONFIG_SYNC_DIRECTORY, 0775, TRUE);
+    mkdir($this->siteDirectory . '/files/config/sync', 0775, TRUE);
 
     $settings = Settings::getInstance() ? Settings::getAll() : [];
     $settings['file_public_path'] = $this->siteDirectory . '/files';
+    $settings['config_sync_directory'] = $this->siteDirectory . '/files/config/sync';
     new Settings($settings);
-
-    $GLOBALS['config_directories'] = [
-      CONFIG_SYNC_DIRECTORY => $this->siteDirectory . '/files/config/sync',
-    ];
   }
 
   /**
@@ -331,17 +333,6 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
 
     $modules = self::getModulesToEnable(get_class($this));
 
-    // Prepare a precompiled container for all tests of this class.
-    // Substantially improves performance, since ContainerBuilder::compile()
-    // is very expensive. Encourages testing best practices (small tests).
-    // Normally a setUpBeforeClass() operation, but object scope is required to
-    // inject $this test class instance as a service provider (see above).
-    $rc = new \ReflectionClass(get_class($this));
-    $test_method_count = count(array_filter($rc->getMethods(), function ($method) {
-      // PHPUnit's @test annotations are intentionally ignored/not supported.
-      return strpos($method->getName(), 'test') === 0;
-    }));
-
     // Bootstrap the kernel. Do not use createFromRequest() to retain Settings.
     $kernel = new DrupalKernel('testing', $this->classLoader, FALSE);
     $kernel->setSitePath($this->siteDirectory);
@@ -353,9 +344,11 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     // DrupalKernel::boot() is not sufficient as it does not invoke preHandle(),
     // which is required to initialize legacy global variables.
     $request = Request::create('/');
-    $kernel->prepareLegacyRequest($request);
+    $kernel->boot();
+    $request->attributes->set(RouteObjectInterface::ROUTE_OBJECT, new Route('<none>'));
+    $request->attributes->set(RouteObjectInterface::ROUTE_NAME, '<none>');
+    $kernel->preHandle($request);
 
-    // register() is only called if a new container was built/compiled.
     $this->container = $kernel->getContainer();
 
     // Ensure database tasks have been run.
@@ -369,8 +362,6 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     if ($modules) {
       $this->container->get('module_handler')->loadAll();
     }
-
-    $this->container->get('request_stack')->push($request);
 
     // Setup the destion to the be frontpage by default.
     \Drupal::destination()->set('/');
@@ -487,7 +478,7 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
    * @return \Drupal\Core\Extension\Extension[]
    *   Extension objects for $modules, keyed by module name.
    *
-   * @throws \PHPUnit_Framework_Exception
+   * @throws \PHPUnit\Framework\Exception
    *   If a module is not available.
    *
    * @see \Drupal\Tests\KernelTestBase::enableModules()
@@ -500,7 +491,7 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     $list = $discovery->scan('module');
     foreach ($modules as $name) {
       if (!isset($list[$name])) {
-        throw new \PHPUnit_Framework_Exception("Unavailable module: '$name'. If this module needs to be downloaded separately, annotate the test class with '@requires module $name'.");
+        throw new Exception("Unavailable module: '$name'. If this module needs to be downloaded separately, annotate the test class with '@requires module $name'.");
       }
       $extensions[$name] = $list[$name];
     }
@@ -599,9 +590,6 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     if ($this->container) {
       $this->container->get('kernel')->shutdown();
     }
-
-    // Fail in case any (new) shutdown functions exist.
-    $this->assertCount(0, drupal_register_shutdown_function(), 'Unexpected Drupal shutdown callbacks exist after running shutdown functions.');
 
     parent::assertPostConditions();
   }
@@ -719,7 +707,7 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
       if (empty($schema)) {
         // BC layer to avoid some contrib tests to fail.
         if ($module == 'system') {
-          @trigger_error('Special handling of system module schemas in \Drupal\KernelTests\KernelTestBase::installSchema has been deprecated in Drupal 8.7.x, remove any calls to this method that use invalid schema names. See https://www.drupal.org/project/drupal/issues/2794347.', E_USER_DEPRECATED);
+          @trigger_error('Special handling of system module schemas in \Drupal\KernelTests\KernelTestBase::installSchema has been deprecated in Drupal 8.7.x, remove any calls to this method that use invalid schema names. See https://www.drupal.org/node/3003360.', E_USER_DEPRECATED);
           continue;
         }
         throw new \LogicException("$module module does not define a schema for table '$table'.");
@@ -1052,7 +1040,7 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
           return Settings::get('file_private_path');
 
         case 'temp_files_directory':
-          return file_directory_temp();
+          return \Drupal::service('file_system')->getTempDirectory();
 
         case 'translation_files_directory':
           return Settings::get('file_public_path', \Drupal::service('site.path') . '/translations');
@@ -1060,9 +1048,9 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     }
 
     if ($name === 'configDirectories') {
-      trigger_error(sprintf("KernelTestBase::\$%s no longer exists. Use config_get_config_directory() directly instead.", $name), E_USER_DEPRECATED);
+      trigger_error(sprintf("KernelTestBase::\$%s no longer exists. Use Settings::get('config_sync_directory') directly instead.", $name), E_USER_DEPRECATED);
       return [
-        CONFIG_SYNC_DIRECTORY => config_get_config_directory(CONFIG_SYNC_DIRECTORY),
+        CONFIG_SYNC_DIRECTORY => Settings::get('config_sync_directory'),
       ];
     }
 

@@ -10,9 +10,9 @@ use Drupal\Core\Render\Element;
 use Drupal\Core\Render\Element\RenderElement;
 use Drupal\Core\Url;
 use Drupal\layout_builder\Context\LayoutBuilderContextTrait;
+use Drupal\layout_builder\LayoutBuilderHighlightTrait;
 use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
 use Drupal\layout_builder\OverridesSectionStorageInterface;
-use Drupal\layout_builder\Section;
 use Drupal\layout_builder\SectionStorageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -20,11 +20,15 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * Defines a render element for building the Layout Builder UI.
  *
  * @RenderElement("layout_builder")
+ *
+ * @internal
+ *   Plugin classes are internal.
  */
 class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInterface {
 
   use AjaxHelperTrait;
   use LayoutBuilderContextTrait;
+  use LayoutBuilderHighlightTrait;
 
   /**
    * The layout tempstore repository.
@@ -121,8 +125,14 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
     }
     $output[] = $this->buildAddSectionLink($section_storage, $count);
     $output['#attached']['library'][] = 'layout_builder/drupal.layout_builder';
+    // As the Layout Builder UI is typically displayed using the frontend theme,
+    // it is not marked as an administrative page at the route level even though
+    // it performs an administrative task. Mark this as an administrative page
+    // for JavaScript.
+    $output['#attached']['drupalSettings']['path']['currentPathIsAdmin'] = TRUE;
     $output['#type'] = 'container';
     $output['#attributes']['id'] = 'layout-builder';
+    $output['#attributes']['class'][] = 'layout-builder';
     // Mark this UI as uncacheable.
     $output['#cache']['max-age'] = 0;
     return $output;
@@ -139,20 +149,10 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
     if ($this->layoutTempstoreRepository->has($section_storage)) {
       $this->messenger->addWarning($this->t('You have unsaved changes.'));
     }
-    // Only add sections if the layout is new and empty.
-    elseif ($section_storage->count() === 0) {
-      $sections = [];
-      // If this is an empty override, copy the sections from the corresponding
-      // default.
-      if ($section_storage instanceof OverridesSectionStorageInterface) {
-        $sections = $section_storage->getDefaultSectionStorage()->getSections();
-      }
-
-      // For an empty layout, begin with a single section of one column.
-      if (!$sections) {
-        $sections[] = new Section('layout_onecol');
-      }
-
+    // If the layout is an override that has not yet been overridden, copy the
+    // sections from the corresponding default.
+    elseif ($section_storage instanceof OverridesSectionStorageInterface && !$section_storage->isOverridden()) {
+      $sections = $section_storage->getDefaultSectionStorage()->getSections();
       foreach ($sections as $section) {
         $section_storage->appendSection($section);
       }
@@ -179,20 +179,20 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
     // layout or an empty layout.
     if ($delta === count($section_storage)) {
       if ($delta === 0) {
-        $title = $this->t('Add Section');
+        $title = $this->t('Add section');
       }
       else {
-        $title = $this->t('Add Section <span class="visually-hidden">at end of layout</span>');
+        $title = $this->t('Add section <span class="visually-hidden">at end of layout</span>');
       }
     }
     // If the delta and the count are different, it is either the beginning of
     // the layout or in between two sections.
     else {
       if ($delta === 0) {
-        $title = $this->t('Add Section <span class="visually-hidden">at start of layout</span>');
+        $title = $this->t('Add section <span class="visually-hidden">at start of layout</span>');
       }
       else {
-        $title = $this->t('Add Section <span class="visually-hidden">between @first and @second</span>', ['@first' => $delta, '@second' => $delta + 1]);
+        $title = $this->t('Add section <span class="visually-hidden">between @first and @second</span>', ['@first' => $delta, '@second' => $delta + 1]);
       }
     }
 
@@ -208,7 +208,11 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
           ],
           [
             'attributes' => [
-              'class' => ['use-ajax', 'new-section__link'],
+              'class' => [
+                'use-ajax',
+                'layout-builder__link',
+                'layout-builder__link--add',
+              ],
               'data-dialog-type' => 'dialog',
               'data-dialog-renderer' => 'off_canvas',
             ],
@@ -217,7 +221,8 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
       ],
       '#type' => 'container',
       '#attributes' => [
-        'class' => ['new-section'],
+        'class' => ['layout-builder__add-section'],
+        'data-layout-builder-highlight-id' => $this->sectionAddHighlightId($delta),
       ],
     ];
   }
@@ -239,6 +244,9 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
     $section = $section_storage->getSection($delta);
 
     $layout = $section->getLayout();
+    $layout_settings = $section->getLayoutSettings();
+    $section_label = !empty($layout_settings['label']) ? $layout_settings['label'] : $this->t('Section @section', ['@section' => $delta + 1]);
+
     $build = $section->toRenderArray($this->getAvailableContexts($section_storage), TRUE);
     $layout_definition = $layout->getPluginDefinition();
 
@@ -246,8 +254,10 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
     foreach ($layout_definition->getRegions() as $region => $info) {
       if (!empty($build[$region])) {
         foreach (Element::children($build[$region]) as $uuid) {
-          $build[$region][$uuid]['#attributes']['class'][] = 'draggable';
+          $build[$region][$uuid]['#attributes']['class'][] = 'js-layout-builder-block';
+          $build[$region][$uuid]['#attributes']['class'][] = 'layout-builder-block';
           $build[$region][$uuid]['#attributes']['data-layout-block-uuid'] = $uuid;
+          $build[$region][$uuid]['#attributes']['data-layout-builder-highlight-id'] = $this->blockUpdateHighlightId($uuid);
           $build[$region][$uuid]['#contextual_links'] = [
             'layout_builder_block' => [
               'route_parameters' => [
@@ -257,6 +267,13 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
                 'region' => $region,
                 'uuid' => $uuid,
               ],
+              // Add metadata about the current operations available in
+              // contextual links. This will invalidate the client-side cache of
+              // links that were cached before the 'move' link was added.
+              // @see layout_builder.links.contextual.yml
+              'metadata' => [
+                'operations' => 'move:update:remove',
+              ],
             ],
           ];
         }
@@ -265,7 +282,7 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
       $build[$region]['layout_builder_add_block']['link'] = [
         '#type' => 'link',
         // Add one to the current delta since it is zero-indexed.
-        '#title' => $this->t('Add Block <span class="visually-hidden">in section @section, @region region</span>', ['@section' => $delta + 1, '@region' => $region_labels[$region]]),
+        '#title' => $this->t('Add block <span class="visually-hidden">in @section, @region region</span>', ['@section' => $section_label, '@region' => $region_labels[$region]]),
         '#url' => Url::fromRoute('layout_builder.choose_block',
           [
             'section_storage_type' => $storage_type,
@@ -275,7 +292,11 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
           ],
           [
             'attributes' => [
-              'class' => ['use-ajax', 'new-block__link'],
+              'class' => [
+                'use-ajax',
+                'layout-builder__link',
+                'layout-builder__link--add',
+              ],
               'data-dialog-type' => 'dialog',
               'data-dialog-renderer' => 'off_canvas',
             ],
@@ -283,27 +304,83 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
         ),
       ];
       $build[$region]['layout_builder_add_block']['#type'] = 'container';
-      $build[$region]['layout_builder_add_block']['#attributes'] = ['class' => ['new-block']];
+      $build[$region]['layout_builder_add_block']['#attributes'] = [
+        'class' => ['layout-builder__add-block'],
+        'data-layout-builder-highlight-id' => $this->blockAddHighlightId($delta, $region),
+      ];
       $build[$region]['layout_builder_add_block']['#weight'] = 1000;
       $build[$region]['#attributes']['data-region'] = $region;
-      $build[$region]['#attributes']['class'][] = 'layout-builder--layout__region';
+      $build[$region]['#attributes']['class'][] = 'layout-builder__region';
+      $build[$region]['#attributes']['class'][] = 'js-layout-builder-region';
+      $build[$region]['#attributes']['role'] = 'group';
+      $build[$region]['#attributes']['aria-label'] = $this->t('@region region in @section', [
+        '@region' => $info['label'],
+        '@section' => $section_label,
+      ]);
+
+      // Get weights of all children for use by the region label.
+      $weights = array_map(function ($a) {
+        return isset($a['#weight']) ? $a['#weight'] : 0;
+      }, $build[$region]);
+
+      // The region label is made visible when the move block dialog is open.
+      $build[$region]['region_label'] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'class' => ['layout__region-info', 'layout-builder__region-label'],
+          // A more detailed version of this information is already read by
+          // screen readers, so this label can be hidden from them.
+          'aria-hidden' => TRUE,
+        ],
+        '#markup' => $this->t('Region: @region', ['@region' => $info['label']]),
+        // Ensures the region label is displayed first.
+        '#weight' => min($weights) - 1,
+      ];
     }
 
     $build['#attributes']['data-layout-update-url'] = Url::fromRoute('layout_builder.move_block', [
       'section_storage_type' => $storage_type,
       'section_storage' => $storage_id,
     ])->toString();
+
     $build['#attributes']['data-layout-delta'] = $delta;
-    $build['#attributes']['class'][] = 'layout-builder--layout';
+    $build['#attributes']['class'][] = 'layout-builder__layout';
+    $build['#attributes']['data-layout-builder-highlight-id'] = $this->sectionUpdateHighlightId($delta);
 
     return [
       '#type' => 'container',
       '#attributes' => [
-        'class' => ['layout-section'],
+        'class' => ['layout-builder__section'],
+        'role' => 'group',
+        'aria-label' => $section_label,
+      ],
+      'remove' => [
+        '#type' => 'link',
+        '#title' => $this->t('Remove @section', ['@section' => $section_label]),
+        '#url' => Url::fromRoute('layout_builder.remove_section', [
+          'section_storage_type' => $storage_type,
+          'section_storage' => $storage_id,
+          'delta' => $delta,
+        ]),
+        '#attributes' => [
+          'class' => [
+            'use-ajax',
+            'layout-builder__link',
+            'layout-builder__link--remove',
+          ],
+          'data-dialog-type' => 'dialog',
+          'data-dialog-renderer' => 'off_canvas',
+        ],
+      ],
+      // The section label is added to sections without a "Configure section"
+      // link, and is only visible when the move block dialog is open.
+      'section_label' => [
+        '#markup' => $this->t('<span class="layout-builder__section-label" aria-hidden="true">@section</span>', ['@section' => $section_label]),
+        '#access' => !$layout instanceof PluginFormInterface,
       ],
       'configure' => [
         '#type' => 'link',
-        '#title' => $this->t('Configure section'),
+        '#title' => $this->t('Configure @section', ['@section' => $section_label]),
         '#access' => $layout instanceof PluginFormInterface,
         '#url' => Url::fromRoute('layout_builder.configure_section', [
           'section_storage_type' => $storage_type,
@@ -311,26 +388,16 @@ class LayoutBuilder extends RenderElement implements ContainerFactoryPluginInter
           'delta' => $delta,
         ]),
         '#attributes' => [
-          'class' => ['use-ajax', 'configure-section'],
+          'class' => [
+            'use-ajax',
+            'layout-builder__link',
+            'layout-builder__link--configure',
+          ],
           'data-dialog-type' => 'dialog',
           'data-dialog-renderer' => 'off_canvas',
         ],
       ],
-      'remove' => [
-        '#type' => 'link',
-        '#title' => $this->t('Remove section <span class="visually-hidden">@section</span>', ['@section' => $delta + 1]),
-        '#url' => Url::fromRoute('layout_builder.remove_section', [
-          'section_storage_type' => $storage_type,
-          'section_storage' => $storage_id,
-          'delta' => $delta,
-        ]),
-        '#attributes' => [
-          'class' => ['use-ajax', 'remove-section'],
-          'data-dialog-type' => 'dialog',
-          'data-dialog-renderer' => 'off_canvas',
-        ],
-      ],
-      'layout-section' => $build,
+      'layout-builder__section' => $build,
     ];
   }
 

@@ -7,12 +7,14 @@ use Drupal\Core\Plugin\Context\ContextDefinition;
 use Drupal\Core\Plugin\Context\EntityContext;
 use Drupal\entity_test\Entity\EntityTest;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\language\Entity\ConfigurableLanguage;
 use Drupal\layout_builder\DefaultsSectionStorageInterface;
 use Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay;
 use Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage;
 use Drupal\layout_builder\Section;
 use Drupal\layout_builder\SectionComponent;
 use Drupal\layout_builder\SectionListInterface;
+use Drupal\Tests\user\Traits\UserCreationTrait;
 
 /**
  * @coversDefaultClass \Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage
@@ -20,6 +22,8 @@ use Drupal\layout_builder\SectionListInterface;
  * @group layout_builder
  */
 class OverridesSectionStorageTest extends KernelTestBase {
+
+  use UserCreationTrait;
 
   /**
    * {@inheritdoc}
@@ -31,6 +35,7 @@ class OverridesSectionStorageTest extends KernelTestBase {
     'field',
     'system',
     'user',
+    'language',
   ];
 
   /**
@@ -46,6 +51,7 @@ class OverridesSectionStorageTest extends KernelTestBase {
   protected function setUp() {
     parent::setUp();
 
+    $this->setUpCurrentUser();
     $this->installSchema('system', ['key_value_expire']);
     $this->installEntitySchema('entity_test');
 
@@ -59,14 +65,14 @@ class OverridesSectionStorageTest extends KernelTestBase {
    *
    * @param bool $expected
    *   The expected outcome of ::access().
-   * @param string $operation
-   *   The operation to pass to ::access().
    * @param bool $is_enabled
    *   Whether Layout Builder is enabled for this display.
    * @param array $section_data
    *   Data to store as the sections value for Layout Builder.
+   * @param string[] $permissions
+   *   An array of permissions to grant to the user.
    */
-  public function testAccess($expected, $operation, $is_enabled, array $section_data) {
+  public function testAccess($expected, $is_enabled, array $section_data, array $permissions) {
     $display = LayoutBuilderEntityViewDisplay::create([
       'targetEntityType' => 'entity_test',
       'bundle' => 'entity_test',
@@ -83,10 +89,30 @@ class OverridesSectionStorageTest extends KernelTestBase {
     $entity = EntityTest::create([OverridesSectionStorage::FIELD_NAME => $section_data]);
     $entity->save();
 
+    $account = $this->setUpCurrentUser([], $permissions);
+
     $this->plugin->setContext('entity', EntityContext::fromEntity($entity));
     $this->plugin->setContext('view_mode', new Context(new ContextDefinition('string'), 'default'));
-    $result = $this->plugin->access($operation);
+
+    // Check access with both the global current user as well as passing one in.
+    $result = $this->plugin->access('view');
     $this->assertSame($expected, $result);
+    $result = $this->plugin->access('view', $account);
+    $this->assertSame($expected, $result);
+
+    // Create a translation.
+    ConfigurableLanguage::createFromLangcode('es')->save();
+    $entity = EntityTest::load($entity->id());
+    $translation = $entity->addTranslation('es');
+    $translation->save();
+    $this->plugin->setContext('entity', EntityContext::fromEntity($translation));
+
+    // Perform the same checks again but with a non default translation which
+    // should always deny access.
+    $result = $this->plugin->access('view');
+    $this->assertSame(FALSE, $result);
+    $result = $this->plugin->access('view', $account);
+    $this->assertSame(FALSE, $result);
   }
 
   /**
@@ -94,21 +120,53 @@ class OverridesSectionStorageTest extends KernelTestBase {
    */
   public function providerTestAccess() {
     $section_data = [
-      new Section('layout_default', [], [
+      new Section('layout_onecol', [], [
         'first-uuid' => new SectionComponent('first-uuid', 'content', ['id' => 'foo']),
       ]),
     ];
 
     // Data provider values are:
     // - the expected outcome of the call to ::access()
-    // - the operation
     // - whether Layout Builder has been enabled for this display
-    // - whether this display has any section data.
+    // - any section data
+    // - any permissions to grant to the user.
     $data = [];
-    $data['view, disabled, no data'] = [FALSE, 'view', FALSE, []];
-    $data['view, enabled, no data'] = [TRUE, 'view', TRUE, []];
-    $data['view, disabled, data'] = [FALSE, 'view', FALSE, $section_data];
-    $data['view, enabled, data'] = [TRUE, 'view', TRUE, $section_data];
+    $data['disabled, no data, no permissions'] = [
+      FALSE, FALSE, [], [],
+    ];
+    $data['disabled, data, no permissions'] = [
+      FALSE, FALSE, $section_data, [],
+    ];
+    $data['enabled, no data, no permissions'] = [
+      FALSE, TRUE, [], [],
+    ];
+    $data['enabled, data, no permissions'] = [
+      FALSE, TRUE, $section_data, [],
+    ];
+    $data['enabled, no data, configure any layout'] = [
+      TRUE, TRUE, [], ['configure any layout'],
+    ];
+    $data['enabled, data, configure any layout'] = [
+      TRUE, TRUE, $section_data, ['configure any layout'],
+    ];
+    $data['enabled, no data, bundle overrides'] = [
+      TRUE, TRUE, [], ['configure all entity_test entity_test layout overrides'],
+    ];
+    $data['enabled, data, bundle overrides'] = [
+      TRUE, TRUE, $section_data, ['configure all entity_test entity_test layout overrides'],
+    ];
+    $data['enabled, no data, bundle edit overrides, no edit access'] = [
+      FALSE, TRUE, [], ['configure editable entity_test entity_test layout overrides'],
+    ];
+    $data['enabled, data, bundle edit overrides, no edit access'] = [
+      FALSE, TRUE, $section_data, ['configure editable entity_test entity_test layout overrides'],
+    ];
+    $data['enabled, no data, bundle edit overrides, edit access'] = [
+      TRUE, TRUE, [], ['configure editable entity_test entity_test layout overrides', 'administer entity_test content'],
+    ];
+    $data['enabled, data, bundle edit overrides, edit access'] = [
+      TRUE, TRUE, $section_data, ['configure editable entity_test entity_test layout overrides', 'administer entity_test content'],
+    ];
     return $data;
   }
 
@@ -158,7 +216,8 @@ class OverridesSectionStorageTest extends KernelTestBase {
    */
   public function testSetSectionList() {
     $section_list = $this->prophesize(SectionListInterface::class);
-    $this->setExpectedException(\Exception::class, '\Drupal\layout_builder\SectionStorageInterface::setSectionList() must no longer be called. The section list should be derived from context. See https://www.drupal.org/node/3016262.');
+    $this->expectException(\Exception::class);
+    $this->expectExceptionMessage('\Drupal\layout_builder\SectionStorageInterface::setSectionList() must no longer be called. The section list should be derived from context. See https://www.drupal.org/node/3016262.');
     $this->plugin->setSectionList($section_list->reveal());
   }
 
@@ -209,6 +268,38 @@ class OverridesSectionStorageTest extends KernelTestBase {
     $this->assertSame(['entity', 'view_mode'], array_keys($result));
     $this->assertSame($entity, $result['entity']->getContextValue());
     $this->assertSame('default', $result['view_mode']->getContextValue());
+  }
+
+  /**
+   * @covers ::isOverridden
+   */
+  public function testIsOverridden() {
+    $display = LayoutBuilderEntityViewDisplay::create([
+      'targetEntityType' => 'entity_test',
+      'bundle' => 'entity_test',
+      'mode' => 'default',
+      'status' => TRUE,
+    ]);
+    $display
+      ->enableLayoutBuilder()
+      ->setOverridable()
+      ->save();
+
+    $entity = EntityTest::create();
+    $entity->set(OverridesSectionStorage::FIELD_NAME, [new Section('layout_onecol')]);
+    $entity->save();
+    $entity = EntityTest::load($entity->id());
+
+    $context = EntityContext::fromEntity($entity);
+    $this->plugin->setContext('entity', $context);
+
+    $this->assertTrue($this->plugin->isOverridden());
+    $this->plugin->removeSection(0);
+    $this->assertTrue($this->plugin->isOverridden());
+    $this->plugin->removeAllSections(TRUE);
+    $this->assertTrue($this->plugin->isOverridden());
+    $this->plugin->removeAllSections();
+    $this->assertFalse($this->plugin->isOverridden());
   }
 
 }

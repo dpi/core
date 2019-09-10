@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\block\Functional\Views;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Core\Site\Settings;
@@ -70,10 +71,10 @@ class DisplayBlockTest extends ViewTestBase {
     // Test that the block was given a default category corresponding to its
     // base table.
     $arguments = [
-      ':href' => \Drupal::Url('block.admin_add', [
+      ':href' => Url::fromRoute('block.admin_add', [
         'plugin_id' => 'views_block:' . $edit['id'] . '-block_1',
         'theme' => 'classy',
-      ]),
+      ])->toString(),
       ':category' => 'Lists (Views)',
     ];
     $this->drupalGet('admin/structure/block');
@@ -107,20 +108,20 @@ class DisplayBlockTest extends ViewTestBase {
     $this->assertTrue(!empty($elements), 'The test block appears in the custom category.');
 
     $arguments = [
-      ':href' => \Drupal::Url('block.admin_add', [
+      ':href' => Url::fromRoute('block.admin_add', [
         'plugin_id' => 'views_block:' . $edit['id'] . '-block_2',
         'theme' => 'classy',
-      ]),
+      ])->toString(),
       ':category' => 'Lists (Views)',
     ];
     $elements = $this->xpath($pattern, $arguments);
     $this->assertTrue(!empty($elements), 'The first duplicated test block remains in the original category.');
 
     $arguments = [
-      ':href' => \Drupal::Url('block.admin_add', [
+      ':href' => Url::fromRoute('block.admin_add', [
         'plugin_id' => 'views_block:' . $edit['id'] . '-block_3',
         'theme' => 'classy',
-      ]),
+      ])->toString(),
       ':category' => $category,
     ];
     $elements = $this->xpath($pattern, $arguments);
@@ -366,8 +367,8 @@ class DisplayBlockTest extends ViewTestBase {
     $cached_id = 'block:block=' . $cached_block->id() . ':langcode=en|entity.view.edit_form:view=test_view_block:location=block&name=test_view_block&display_id=block_1&langcode=en';
     $cached_id_token = Crypt::hmacBase64($cached_id, Settings::getHashSalt() . $this->container->get('private_key')->get());
     // @see \Drupal\contextual\Tests\ContextualDynamicContextTest:assertContextualLinkPlaceHolder()
-    $this->assertRaw('<div' . new Attribute(['data-contextual-id' => $id, 'data-contextual-token' => $id_token]) . '></div>', format_string('Contextual link placeholder with id @id exists.', ['@id' => $id]));
-    $this->assertRaw('<div' . new Attribute(['data-contextual-id' => $cached_id, 'data-contextual-token' => $cached_id_token]) . '></div>', format_string('Contextual link placeholder with id @id exists.', ['@id' => $cached_id]));
+    $this->assertRaw('<div' . new Attribute(['data-contextual-id' => $id, 'data-contextual-token' => $id_token]) . '></div>', new FormattableMarkup('Contextual link placeholder with id @id exists.', ['@id' => $id]));
+    $this->assertRaw('<div' . new Attribute(['data-contextual-id' => $cached_id, 'data-contextual-token' => $cached_id_token]) . '></div>', new FormattableMarkup('Contextual link placeholder with id @id exists.', ['@id' => $cached_id]));
 
     // Get server-rendered contextual links.
     // @see \Drupal\contextual\Tests\ContextualDynamicContextTest:renderContextualLinks()

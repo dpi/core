@@ -2,11 +2,11 @@
 
 namespace Drupal\Tests\taxonomy\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Component\Utility\Tags;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\taxonomy\Entity\Term;
-use Drupal\taxonomy\Entity\Vocabulary;
 
 /**
  * Tests load, save and delete for taxonomy terms.
@@ -60,12 +60,14 @@ class TermTest extends TaxonomyTestBase {
     $this->createEntityReferenceField('node', 'article', $field_name, NULL, 'taxonomy_term', 'default', $handler_settings, FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED);
     $this->field = FieldConfig::loadByName('node', 'article', $field_name);
 
-    entity_get_form_display('node', 'article', 'default')
+    /** @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface $display_repository */
+    $display_repository = \Drupal::service('entity_display.repository');
+    $display_repository->getFormDisplay('node', 'article')
       ->setComponent($field_name, [
         'type' => 'options_select',
       ])
       ->save();
-    entity_get_display('node', 'article', 'default')
+    $display_repository->getViewDisplay('node', 'article')
       ->setComponent($field_name, [
         'type' => 'entity_reference_label',
       ])
@@ -130,7 +132,7 @@ class TermTest extends TaxonomyTestBase {
     $term1 = $this->createTerm($this->vocabulary);
     $terms_array = [];
 
-    $taxonomy_storage = $this->container->get('entity.manager')->getStorage('taxonomy_term');
+    $taxonomy_storage = $this->container->get('entity_type.manager')->getStorage('taxonomy_term');
 
     // Create 40 terms. Terms 1-12 get parent of $term1. All others are
     // individual terms.
@@ -221,7 +223,8 @@ class TermTest extends TaxonomyTestBase {
   public function testNodeTermCreationAndDeletion() {
     // Enable tags in the vocabulary.
     $field = $this->field;
-    entity_get_form_display($field->getTargetEntityTypeId(), $field->getTargetBundle(), 'default')
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay($field->getTargetEntityTypeId(), $field->getTargetBundle())
       ->setComponent($field->getName(), [
         'type' => 'entity_reference_autocomplete_tags',
         'settings' => [
@@ -255,7 +258,7 @@ class TermTest extends TaxonomyTestBase {
     foreach ($terms as $term) {
       $this->assertText($term, 'The term appears on the node preview.');
     }
-    $tree = $this->container->get('entity.manager')->getStorage('taxonomy_term')->loadTree($this->vocabulary->id());
+    $tree = $this->container->get('entity_type.manager')->getStorage('taxonomy_term')->loadTree($this->vocabulary->id());
     $this->assertTrue(empty($tree), 'The terms are not created on preview.');
 
     // taxonomy.module does not maintain its static caches.
@@ -302,10 +305,10 @@ class TermTest extends TaxonomyTestBase {
     $this->drupalGet('node/' . $node->id());
 
     foreach ($term_names as $term_name) {
-      $this->assertText($term_name, format_string('The term %name appears on the node page after two terms, %deleted1 and %deleted2, were deleted.', ['%name' => $term_name, '%deleted1' => $term_objects['term1']->getName(), '%deleted2' => $term_objects['term2']->getName()]));
+      $this->assertText($term_name, new FormattableMarkup('The term %name appears on the node page after two terms, %deleted1 and %deleted2, were deleted.', ['%name' => $term_name, '%deleted1' => $term_objects['term1']->getName(), '%deleted2' => $term_objects['term2']->getName()]));
     }
-    $this->assertNoText($term_objects['term1']->getName(), format_string('The deleted term %name does not appear on the node page.', ['%name' => $term_objects['term1']->getName()]));
-    $this->assertNoText($term_objects['term2']->getName(), format_string('The deleted term %name does not appear on the node page.', ['%name' => $term_objects['term2']->getName()]));
+    $this->assertNoText($term_objects['term1']->getName(), new FormattableMarkup('The deleted term %name does not appear on the node page.', ['%name' => $term_objects['term1']->getName()]));
+    $this->assertNoText($term_objects['term2']->getName(), new FormattableMarkup('The deleted term %name does not appear on the node page.', ['%name' => $term_objects['term2']->getName()]));
   }
 
   /**
@@ -394,7 +397,7 @@ class TermTest extends TaxonomyTestBase {
     $this->createTerm($this->vocabulary);
     $this->createTerm($this->vocabulary);
 
-    $taxonomy_storage = $this->container->get('entity.manager')->getStorage('taxonomy_term');
+    $taxonomy_storage = $this->container->get('entity_type.manager')->getStorage('taxonomy_term');
 
     // Fetch the created terms in the default alphabetical order, i.e. term1
     // precedes term2 alphabetically, and term2 precedes term3.
@@ -476,7 +479,7 @@ class TermTest extends TaxonomyTestBase {
     $this->assertEqual($edit['description[0][value]'], $term->getDescription(), 'Term description was successfully saved.');
     // Check that the parent tid is still there. The other parent (<root>) is
     // not added by \Drupal\taxonomy\TermStorageInterface::loadParents().
-    $parents = $this->container->get('entity.manager')->getStorage('taxonomy_term')->loadParents($term->id());
+    $parents = $this->container->get('entity_type.manager')->getStorage('taxonomy_term')->loadParents($term->id());
     $parent = reset($parents);
     $this->assertEqual($edit['parent[]'][1], $parent->id(), 'Term parents were successfully saved.');
   }
@@ -547,7 +550,8 @@ class TermTest extends TaxonomyTestBase {
   public function testReSavingTags() {
     // Enable tags in the vocabulary.
     $field = $this->field;
-    entity_get_form_display($field->getTargetEntityTypeId(), $field->getTargetBundle(), 'default')
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay($field->getTargetEntityTypeId(), $field->getTargetBundle())
       ->setComponent($field->getName(), [
         'type' => 'entity_reference_autocomplete_tags',
       ])

@@ -35,6 +35,13 @@ class OptionsWidgetsTest extends FieldTestBase {
    */
   protected $card2;
 
+  /**
+   * A field storage with float values to use in this test class.
+   *
+   * @var \Drupal\field\Entity\FieldStorageConfig
+   */
+  protected $float;
+
   protected function setUp() {
     parent::setUp();
 
@@ -76,6 +83,22 @@ class OptionsWidgetsTest extends FieldTestBase {
     ]);
     $this->card2->save();
 
+    // Field storage with list of float values.
+    $this->float = FieldStorageConfig::create([
+      'field_name' => 'float',
+      'entity_type' => 'entity_test',
+      'type' => 'list_float',
+      'cardinality' => 1,
+      'settings' => [
+        'allowed_values' => [
+          '0.0' => '0.0',
+          '1.5' => '1.5',
+          '2.0' => '2.0',
+        ],
+      ],
+    ]);
+    $this->float->save();
+
     // Create a web user.
     $this->drupalLogin($this->drupalCreateUser(['view test entity', 'administer entity_test content']));
   }
@@ -90,7 +113,8 @@ class OptionsWidgetsTest extends FieldTestBase {
       'bundle' => 'entity_test',
     ]);
     $field->save();
-    entity_get_form_display('entity_test', 'entity_test', 'default')
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay('entity_test', 'entity_test')
       ->setComponent($this->card1->getName(), [
         'type' => 'options_buttons',
       ])
@@ -147,7 +171,8 @@ class OptionsWidgetsTest extends FieldTestBase {
       'bundle' => 'entity_test',
     ]);
     $field->save();
-    entity_get_form_display('entity_test', 'entity_test', 'default')
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay('entity_test', 'entity_test')
       ->setComponent($this->card2->getName(), [
         'type' => 'options_buttons',
       ])
@@ -237,7 +262,8 @@ class OptionsWidgetsTest extends FieldTestBase {
       'required' => TRUE,
     ]);
     $field->save();
-    entity_get_form_display('entity_test', 'entity_test', 'default')
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay('entity_test', 'entity_test')
       ->setComponent($this->card1->getName(), [
         'type' => 'options_select',
       ])
@@ -336,7 +362,8 @@ class OptionsWidgetsTest extends FieldTestBase {
       'bundle' => 'entity_test',
     ]);
     $field->save();
-    entity_get_form_display('entity_test', 'entity_test', 'default')
+    \Drupal::service('entity_display.repository')
+      ->getFormDisplay('entity_test', 'entity_test')
       ->setComponent($this->card2->getName(), [
         'type' => 'options_select',
       ])
@@ -448,6 +475,53 @@ class OptionsWidgetsTest extends FieldTestBase {
   }
 
   /**
+   * Tests the 'options_select' widget (float values).
+   */
+  public function testSelectListFloat() {
+
+    // Create an instance of the 'float value' field.
+    $field = FieldConfig::create([
+      'field_storage' => $this->float,
+      'bundle' => 'entity_test',
+      'required' => TRUE,
+    ]);
+    $field->save();
+
+    $this->container
+      ->get('entity_type.manager')
+      ->getStorage('entity_form_display')
+      ->load('entity_test.entity_test.default')
+      ->setComponent($this->float->getName(), ['type' => 'options_select'])
+      ->save();
+
+    // Create an entity.
+    $entity = EntityTest::create([
+      'user_id' => 1,
+      'name' => $this->randomMachineName(),
+    ]);
+    $entity->save();
+
+    // Display form.
+    $this->drupalGet('entity_test/manage/' . $entity->id() . '/edit');
+
+    // With no field data, nothing is selected.
+    $this->assertFalse($this->assertSession()->optionExists('float', 0)->isSelected());
+    $this->assertFalse($this->assertSession()->optionExists('float', 1.5)->isSelected());
+    $this->assertFalse($this->assertSession()->optionExists('float', 2)->isSelected());
+
+    // Submit form.
+    $edit = ['float' => 1.5];
+    $this->drupalPostForm(NULL, $edit, t('Save'));
+    $this->assertFieldValues($entity, 'float', [1.5]);
+
+    // Display form: check that the right options are selected.
+    $this->drupalGet('entity_test/manage/' . $entity->id() . '/edit');
+    $this->assertFalse($this->assertSession()->optionExists('float', 0)->isSelected());
+    $this->assertTrue($this->assertSession()->optionExists('float', 1.5)->isSelected());
+    $this->assertFalse($this->assertSession()->optionExists('float', 2)->isSelected());
+  }
+
+  /**
    * Tests the 'options_select' and 'options_button' widget for empty value.
    */
   public function testEmptyValue() {
@@ -458,8 +532,11 @@ class OptionsWidgetsTest extends FieldTestBase {
     ]);
     $field->save();
 
+    /** @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface $display_repository */
+    $display_repository = \Drupal::service('entity_display.repository');
+
     // Change it to the check boxes/radio buttons widget.
-    entity_get_form_display('entity_test', 'entity_test', 'default')
+    $display_repository->getFormDisplay('entity_test', 'entity_test')
       ->setComponent($this->card1->getName(), [
         'type' => 'options_buttons',
       ])
@@ -478,7 +555,7 @@ class OptionsWidgetsTest extends FieldTestBase {
     $this->assertTrue($this->xpath('//div[@id=:id]//label[@for=:for and text()=:label]', [':id' => 'edit-card-1', ':for' => 'edit-card-1-none', ':label' => 'N/A']), 'A test radio button has a "N/A" choice.');
 
     // Change it to the select widget.
-    entity_get_form_display('entity_test', 'entity_test', 'default')
+    $display_repository->getFormDisplay('entity_test', 'entity_test')
       ->setComponent($this->card1->getName(), [
         'type' => 'options_select',
       ])

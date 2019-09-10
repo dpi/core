@@ -109,7 +109,7 @@ class NodeRevisionsAllTest extends NodeTestBase {
    * Checks node revision operations.
    */
   public function testRevisions() {
-    $node_storage = $this->container->get('entity.manager')->getStorage('node');
+    $node_storage = $this->container->get('entity_type.manager')->getStorage('node');
     $nodes = $this->nodes;
     $logs = $this->revisionLogs;
 
@@ -179,7 +179,7 @@ class NodeRevisionsAllTest extends NodeTestBase {
       ]),
       'Revision deleted.');
     $connection = Database::getConnection();
-    $this->assertTrue(db_query('SELECT COUNT(vid) FROM {node_revision} WHERE nid = :nid and vid = :vid',
+    $this->assertTrue($connection->query('SELECT COUNT(vid) FROM {node_revision} WHERE nid = :nid and vid = :vid',
       [':nid' => $node->id(), ':vid' => $nodes[1]->getRevisionId()])->fetchField() == 0,
       'Revision not found.');
 

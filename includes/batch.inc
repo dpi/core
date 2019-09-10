@@ -43,7 +43,7 @@ function _batch_page(Request $request) {
     $batch = \Drupal::service('batch.storage')->load($request_id);
     if (!$batch) {
       \Drupal::messenger()->addError(t('No active batch.'));
-      return new RedirectResponse(\Drupal::url('<front>', [], ['absolute' => TRUE]));
+      return new RedirectResponse(Url::fromRoute('<front>', [], ['absolute' => TRUE])->toString());
     }
   }
 
@@ -364,7 +364,7 @@ function _batch_process() {
       // If possible, estimate remaining processing time.
       '@estimate'   => ($current > 0) ? \Drupal::service('date.formatter')->formatInterval(($elapsed * ($total - $current) / $current) / 1000) : '-',
     ];
-    $message = strtr($progress_message, $values);
+    $message    = strtr($progress_message, $values);
 
     return [$percentage, $message, $task_message];
   }

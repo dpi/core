@@ -234,7 +234,7 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
         $this->entity = $reloaded_entity;
 
         // Set a default value on the fields.
-        $this->entity->set('field_rest_test', ['value' => 'All the faith he had had had had no effect on the outcome of his life.']);
+        $this->entity->set('field_rest_test', ['value' => 'All the faith they had had had had no effect on the outcome of their life.']);
         $this->entity->set('field_rest_test_multivalue', [['value' => 'One'], ['value' => 'Two']]);
         $this->entity->set('rest_test_validation', ['value' => 'allowed value']);
         $this->entity->save();
@@ -1141,13 +1141,13 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
     $this->assertResourceErrorResponse(403, "Access denied on updating field 'field_rest_test'.", $response);
 
     // DX: 403 when entity trying to update an entity's ID field.
-    $request_options[RequestOptions::BODY] = $this->serializer->encode($this->makeNormalizationInvalid($this->getNormalizedPatchEntity(), 'id'), static::$format);;
+    $request_options[RequestOptions::BODY] = $this->serializer->encode($this->makeNormalizationInvalid($this->getNormalizedPatchEntity(), 'id'), static::$format);
     $response = $this->request('PATCH', $url, $request_options);
     $this->assertResourceErrorResponse(403, "Access denied on updating field '{$this->entity->getEntityType()->getKey('id')}'. The entity ID cannot be changed.", $response);
 
     if ($this->entity->getEntityType()->hasKey('uuid')) {
       // DX: 403 when entity trying to update an entity's UUID field.
-      $request_options[RequestOptions::BODY] = $this->serializer->encode($this->makeNormalizationInvalid($this->getNormalizedPatchEntity(), 'uuid'), static::$format);;
+      $request_options[RequestOptions::BODY] = $this->serializer->encode($this->makeNormalizationInvalid($this->getNormalizedPatchEntity(), 'uuid'), static::$format);
       $response = $this->request('PATCH', $url, $request_options);
       $this->assertResourceErrorResponse(403, "Access denied on updating field '{$this->entity->getEntityType()->getKey('uuid')}'. The entity UUID cannot be changed.", $response);
     }
@@ -1241,7 +1241,7 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
     // Ensure that fields do not get deleted if they're not present in the PATCH
     // request. Test this using the configurable field that we added, but which
     // is not sent in the PATCH request.
-    $this->assertSame('All the faith he had had had had no effect on the outcome of his life.', $updated_entity->get('field_rest_test')->value);
+    $this->assertSame('All the faith they had had had had no effect on the outcome of their life.', $updated_entity->get('field_rest_test')->value);
 
     // Multi-value field: remove item 0. Then item 1 becomes item 0.
     $normalization_multi_value_tests = $this->getNormalizedPatchEntity();
@@ -1538,8 +1538,13 @@ abstract class EntityResourceTestBase extends ResourceTestBase {
     else {
       // This is the desired response.
       $this->assertSame(406, $response->getStatusCode());
-      $this->stringContains('?_format=' . static::$format . '>; rel="alternate"; type="' . static::$mimeType . '"', $response->getHeader('Link'));
-      $this->stringContains('?_format=foobar>; rel="alternate"', $response->getHeader('Link'));
+      $actual_link_header = $response->getHeader('Link');
+      if ($actual_link_header) {
+        $this->assertTrue(is_array($actual_link_header));
+        $expected_type = explode(';', static::$mimeType)[0];
+        $this->assertContains('?_format=' . static::$format . '>; rel="alternate"; type="' . $expected_type . '"', $actual_link_header[0]);
+        $this->assertContains('?_format=foobar>; rel="alternate"', $actual_link_header[0]);
+      }
     }
   }
 

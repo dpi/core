@@ -114,7 +114,7 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $this->clickLink('Layout');
     $this->markCurrentPage();
     $assert_session->pageTextContains('The node body');
-    $assert_session->linkExists('Add Section');
+    $assert_session->linkExists('Add section');
 
     // Add a new block.
     $this->openAddBlockForm('Powered by Drupal');
@@ -123,9 +123,9 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $page->checkField('settings[label_display]');
 
     // Save the new block, and ensure it is displayed on the page.
-    $page->pressButton('Add Block');
+    $page->pressButton('Add block');
     $assert_session->assertWaitOnAjaxRequest();
-    $this->assertNoElementAfterWait('#drupal-off-canvas');
+    $assert_session->assertNoElementAfterWait('css', '#drupal-off-canvas');
     $assert_session->addressEquals($layout_url);
     $assert_session->pageTextContains('Powered by Drupal');
     $assert_session->pageTextContains('This is the label');
@@ -149,8 +149,8 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $this->drupalGet($layout_url);
     $this->markCurrentPage();
 
-    $assert_session->linkExists('Add Section');
-    $this->clickLink('Add Section');
+    $assert_session->linkExists('Add section');
+    $this->clickLink('Add section');
     $this->assertNotEmpty($assert_session->waitForElementVisible('named', ['link', 'Two column']));
 
     $this->clickLink('Two column');
@@ -158,7 +158,7 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $page->pressButton('Add section');
     $assert_session->assertWaitOnAjaxRequest();
 
-    $this->assertNoElementAfterWait('.layout__region--second .block-system-powered-by-block');
+    $assert_session->assertNoElementAfterWait('css', '.layout__region--second .block-system-powered-by-block');
     $assert_session->elementTextNotContains('css', '.layout__region--second', 'Powered by Drupal');
 
     // Drag the block to a region in different section.
@@ -190,7 +190,7 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $page->fillField('settings[label]', 'This is the new label');
     $page->pressButton('Update');
     $assert_session->assertWaitOnAjaxRequest();
-    $this->assertNoElementAfterWait('#drupal-off-canvas');
+    $assert_session->assertNoElementAfterWait('css', '#drupal-off-canvas');
 
     $assert_session->addressEquals($layout_url);
     $assert_session->pageTextContains('Powered by Drupal');
@@ -200,13 +200,14 @@ class LayoutBuilderTest extends WebDriverTestBase {
     // Remove a block.
     $this->clickContextualLink('.block-system-powered-by-block', 'Remove block');
     $this->assertOffCanvasFormAfterWait('layout_builder_remove_block');
-
+    $assert_session->pageTextContains('Are you sure you want to remove the This is the new label block?');
+    $assert_session->pageTextContains('This action cannot be undone.');
     $page->pressButton('Remove');
     $assert_session->assertWaitOnAjaxRequest();
-    $this->assertNoElementAfterWait('#drupal-off-canvas');
+    $assert_session->assertNoElementAfterWait('css', '#drupal-off-canvas');
 
     $assert_session->pageTextNotContains('Powered by Drupal');
-    $assert_session->linkExists('Add Block');
+    $assert_session->linkExists('Add block');
     $assert_session->addressEquals($layout_url);
     $this->assertPageNotReloaded();
 
@@ -218,33 +219,35 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $this->markCurrentPage();
 
     $this->openAddBlockForm('My custom block');
-    $page->pressButton('Add Block');
+    $page->pressButton('Add block');
     $assert_session->assertWaitOnAjaxRequest();
     $assert_session->pageTextContains('This is the block content');
 
     // Remove both sections.
-    $assert_session->linkExists('Remove section');
-    $this->clickLink('Remove section');
+    $assert_session->linkExists('Remove Section 1');
+    $this->clickLink('Remove Section 1');
     $this->assertOffCanvasFormAfterWait('layout_builder_remove_section');
+    $assert_session->pageTextContains('Are you sure you want to remove section 1?');
+    $assert_session->pageTextContains('This action cannot be undone.');
     $page->pressButton('Remove');
     $assert_session->assertWaitOnAjaxRequest();
 
-    $assert_session->linkExists('Remove section');
-    $this->clickLink('Remove section');
+    $assert_session->linkExists('Remove Section 1');
+    $this->clickLink('Remove Section 1');
     $this->assertOffCanvasFormAfterWait('layout_builder_remove_section');
     $page->pressButton('Remove');
     $assert_session->assertWaitOnAjaxRequest();
 
     $assert_session->pageTextNotContains('This is the block content');
-    $assert_session->linkNotExists('Add Block');
+    $assert_session->linkNotExists('Add block');
     $this->assertPageNotReloaded();
 
     $page->pressButton('Save layout');
 
-    // Removing all sections results in the default layout display being used.
+    // Removing all sections results in no layout being used.
     $assert_session->addressEquals($node_url);
-    $assert_session->elementExists('css', '.layout.layout--onecol');
-    $assert_session->pageTextContains('The node body');
+    $assert_session->elementNotExists('css', '.layout');
+    $assert_session->pageTextNotContains('The node body');
   }
 
   /**
@@ -271,8 +274,8 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $this->drupalGet($layout_url);
     $this->markCurrentPage();
 
-    $assert_session->linkExists('Add Section');
-    $this->clickLink('Add Section');
+    $assert_session->linkExists('Add section');
+    $this->clickLink('Add section');
     $assert_session->assertWaitOnAjaxRequest();
     $assert_session->elementExists('css', '#drupal-off-canvas');
 
@@ -281,8 +284,8 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $assert_session->assertWaitOnAjaxRequest();
 
     // Add another section.
-    $assert_session->linkExists('Add Section');
-    $this->clickLink('Add Section');
+    $assert_session->linkExists('Add section');
+    $this->clickLink('Add section');
     $assert_session->assertWaitOnAjaxRequest();
     $assert_session->elementExists('css', '#drupal-off-canvas');
 
@@ -293,18 +296,18 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $page->pressButton('Add section');
     $assert_session->assertWaitOnAjaxRequest();
 
-    $this->assertNoElementAfterWait('#drupal-off-canvas');
+    $assert_session->assertNoElementAfterWait('css', '#drupal-off-canvas');
     $assert_session->pageTextContains('Default');
-    $assert_session->linkExists('Add Block');
+    $assert_session->linkExists('Add block');
 
     // Configure the existing section.
-    $assert_session->linkExists('Configure section');
-    $this->clickLink('Configure section');
+    $assert_session->linkExists('Configure Section 1');
+    $this->clickLink('Configure Section 1');
     $this->assertOffCanvasFormAfterWait('layout_builder_configure_section');
     $page->fillField('layout_settings[setting_1]', 'Test setting value');
     $page->pressButton('Update');
     $assert_session->assertWaitOnAjaxRequest();
-    $this->assertNoElementAfterWait('#drupal-off-canvas');
+    $assert_session->assertNoElementAfterWait('css', '#drupal-off-canvas');
     $assert_session->pageTextContains('Test setting value');
     $this->assertPageNotReloaded();
   }
@@ -338,6 +341,7 @@ class LayoutBuilderTest extends WebDriverTestBase {
     ]));
     $assert_session->linkExists('One column');
     $this->clickLink('One column');
+    $page->pressButton('Add section');
 
     // Add a block.
     $this->drupalGet(Url::fromRoute('layout_builder.add_block', [
@@ -347,10 +351,10 @@ class LayoutBuilderTest extends WebDriverTestBase {
       'region' => 'content',
       'plugin_id' => 'system_powered_by_block',
     ]));
-    $this->assertNoElementAfterWait('#drupal-off-canvas');
+    $assert_session->assertNoElementAfterWait('css', '#drupal-off-canvas');
     $page->fillField('settings[label]', 'The block label');
     $page->fillField('settings[label_display]', TRUE);
-    $page->pressButton('Add Block');
+    $page->pressButton('Add block');
 
     $assert_session->addressEquals($layout_url);
     $assert_session->pageTextContains('Powered by Drupal');
@@ -366,29 +370,7 @@ class LayoutBuilderTest extends WebDriverTestBase {
     $assert_session->addressEquals($layout_url);
     $assert_session->pageTextNotContains('Powered by Drupal');
     $assert_session->pageTextNotContains('The block label');
-    $assert_session->linkNotExists('Add Block');
-  }
-
-  /**
-   * Waits for an element to be removed from the page.
-   *
-   * @param string $selector
-   *   CSS selector.
-   * @param int $timeout
-   *   (optional) Timeout in milliseconds, defaults to 10000.
-   * @param string $message
-   *   (optional) Custom message to display with the assertion.
-   *
-   * @todo: Remove after https://www.drupal.org/project/drupal/issues/2892440
-   */
-  public function assertNoElementAfterWait($selector, $timeout = 10000, $message = '') {
-    $page = $this->getSession()->getPage();
-    if ($message === '') {
-      $message = "Element '$selector' was not on the page after wait.";
-    }
-    $this->assertTrue($page->waitFor($timeout / 1000, function () use ($page, $selector) {
-      return empty($page->find('css', $selector));
-    }), $message);
+    $assert_session->linkNotExists('Add block');
   }
 
   /**
@@ -461,8 +443,8 @@ class LayoutBuilderTest extends WebDriverTestBase {
    */
   private function openAddBlockForm($block_title) {
     $assert_session = $this->assertSession();
-    $assert_session->linkExists('Add Block');
-    $this->clickLink('Add Block');
+    $assert_session->linkExists('Add block');
+    $this->clickLink('Add block');
     $assert_session->assertWaitOnAjaxRequest();
     $this->assertNotEmpty($assert_session->waitForElementVisible('named', ['link', $block_title]));
     $this->clickLink($block_title);

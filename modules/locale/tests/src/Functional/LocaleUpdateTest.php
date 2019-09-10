@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\locale\Functional;
 
+use Drupal\Core\Database\Database;
 use Drupal\Core\Language\LanguageInterface;
 
 /**
@@ -24,25 +25,6 @@ class LocaleUpdateTest extends LocaleUpdateBase {
     // file that come with the locale_test module (test.de.po) and can therefore
     // not be chosen randomly.
     $this->addLanguage('de');
-  }
-
-  /**
-   * Checks if a list of translatable projects gets build.
-   */
-  public function testUpdateProjects() {
-    module_load_include('compare.inc', 'locale');
-
-    // Make the test modules look like a normal custom module. i.e. make the
-    // modules not hidden. locale_test_system_info_alter() modifies the project
-    // info of the locale_test and locale_test_translate modules.
-    \Drupal::state()->set('locale.test_system_info_alter', TRUE);
-    $this->resetAll();
-
-    // Check if interface translation data is collected from hook_info.
-    $projects = locale_translation_project_list();
-    $this->assertFalse(isset($projects['locale_test_translate']), 'Hidden module not found');
-    $this->assertEqual($projects['locale_test']['info']['interface translation server pattern'], 'core/modules/locale/test/test.%language.po', 'Interface translation parameter found in project info.');
-    $this->assertEqual($projects['locale_test']['name'], 'locale_test', format_string('%key found in project info.', ['%key' => 'interface translation project']));
   }
 
   /**
@@ -365,14 +347,15 @@ class LocaleUpdateTest extends LocaleUpdateBase {
     $this->assertTranslation('Extraday', 'extra dag', 'nl');
 
     // Check if the language data is added to the database.
-    $result = db_query("SELECT project FROM {locale_file} WHERE langcode='nl'")->fetchField();
+    $connection = Database::getConnection();
+    $result = $connection->query("SELECT project FROM {locale_file} WHERE langcode='nl'")->fetchField();
     $this->assertTrue($result, 'Files added to file history');
 
     // Remove a language.
     $this->drupalPostForm('admin/config/regional/language/delete/nl', [], t('Delete'));
 
     // Check if the language data is removed from the database.
-    $result = db_query("SELECT project FROM {locale_file} WHERE langcode='nl'")->fetchField();
+    $result = $connection->query("SELECT project FROM {locale_file} WHERE langcode='nl'")->fetchField();
     $this->assertFalse($result, 'Files removed from file history');
 
     // Check that the Dutch translation is gone.

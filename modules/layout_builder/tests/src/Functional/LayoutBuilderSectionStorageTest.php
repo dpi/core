@@ -26,10 +26,6 @@ class LayoutBuilderSectionStorageTest extends BrowserTestBase {
   protected function setUp() {
     parent::setUp();
 
-    // @todo The Layout Builder UI relies on local tasks; fix in
-    //   https://www.drupal.org/project/drupal/issues/2917777.
-    $this->drupalPlaceBlock('local_tasks_block');
-
     $this->createContentType(['type' => 'bundle_with_section_field']);
     $this->createNode([
       'type' => 'bundle_with_section_field',
@@ -66,11 +62,11 @@ class LayoutBuilderSectionStorageTest extends BrowserTestBase {
 
     // Add a block to the defaults.
     $page->clickLink('Manage layout');
-    $page->clickLink('Add Block');
+    $page->clickLink('Add block');
     $page->clickLink('Powered by Drupal');
     $page->fillField('settings[label]', 'Defaults block title');
     $page->checkField('settings[label_display]');
-    $page->pressButton('Add Block');
+    $page->pressButton('Add block');
     $page->pressButton('Save layout');
 
     $this->drupalGet('node/1');

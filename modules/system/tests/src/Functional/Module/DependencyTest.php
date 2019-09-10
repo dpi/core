@@ -103,6 +103,29 @@ class DependencyTest extends ModuleTestBase {
   }
 
   /**
+   * Tests enabling modules with different core version specifications.
+   */
+  public function testCoreCompatibility() {
+    $assert_session = $this->assertSession();
+
+    // Test incompatible 'core_version_requirement'.
+    $this->drupalGet('admin/modules');
+    $assert_session->fieldDisabled('modules[system_incompatible_core_version_test_1x][enable]');
+    $assert_session->fieldDisabled('modules[system_core_incompatible_semver_test][enable]');
+
+    // Test compatible 'core_version_requirement' and compatible 'core'.
+    $this->drupalGet('admin/modules');
+    $assert_session->fieldEnabled('modules[common_test][enable]');
+    $assert_session->fieldEnabled('modules[system_core_semver_test][enable]');
+
+    // Ensure the modules can actually be installed.
+    $edit['modules[common_test][enable]'] = 'common_test';
+    $edit['modules[system_core_semver_test][enable]'] = 'system_core_semver_test';
+    $this->drupalPostForm('admin/modules', $edit, t('Install'));
+    $this->assertModules(['common_test', 'system_core_semver_test'], TRUE);
+  }
+
+  /**
    * Tests enabling a module that depends on a module which fails hook_requirements().
    */
   public function testEnableRequirementsFailureDependency() {
@@ -182,10 +205,10 @@ class DependencyTest extends ModuleTestBase {
     // Ensure taxonomy has been loaded into the test-runner after forum was
     // enabled.
     \Drupal::moduleHandler()->load('taxonomy');
-    $terms = entity_load_multiple_by_properties('taxonomy_term', ['vid' => $vid]);
-    foreach ($terms as $term) {
-      $term->delete();
-    }
+    $storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
+    $terms = $storage->loadByProperties(['vid' => $vid]);
+    $storage->delete($terms);
+
     // Uninstall the forum module, and check that taxonomy now can also be
     // uninstalled.
     $edit = ['uninstall[forum]' => 'forum'];

@@ -14,6 +14,7 @@ use Drupal\layout_builder\SectionStorage\SectionStorageTrait;
  * Defines a item list class for layout section fields.
  *
  * @internal
+ *   Plugin classes are internal.
  *
  * @see \Drupal\layout_builder\Plugin\Field\FieldType\LayoutSectionItem
  */
@@ -22,11 +23,17 @@ class LayoutSectionItemList extends FieldItemList implements SectionListInterfac
   use SectionStorageTrait;
 
   /**
+   * Numerically indexed array of field items.
+   *
+   * @var \Drupal\layout_builder\Plugin\Field\FieldType\LayoutSectionItem[]
+   */
+  protected $list = [];
+
+  /**
    * {@inheritdoc}
    */
   public function getSections() {
     $sections = [];
-    /** @var \Drupal\layout_builder\Plugin\Field\FieldType\LayoutSectionItem $item */
     foreach ($this->list as $delta => $item) {
       $sections[$delta] = $item->section;
     }
@@ -62,6 +69,18 @@ class LayoutSectionItemList extends FieldItemList implements SectionListInterfac
   /**
    * {@inheritdoc}
    */
+  public function preSave() {
+    parent::preSave();
+    // Loop through each section and reconstruct it to ensure that all default
+    // values are present.
+    foreach ($this->list as $delta => $item) {
+      $item->section = Section::fromArray($item->section->toArray());
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function equals(FieldItemListInterface $list_to_compare) {
     if (!$list_to_compare instanceof LayoutSectionItemList) {
       return FALSE;
@@ -77,7 +96,9 @@ class LayoutSectionItemList extends FieldItemList implements SectionListInterfac
   }
 
   /**
-   * {@inheritdoc}
+   * Overrides \Drupal\Core\Field\FieldItemListInterface::defaultAccess().
+   *
+   * @ingroup layout_builder_access
    */
   public function defaultAccess($operation = 'view', AccountInterface $account = NULL) {
     // @todo Allow access in https://www.drupal.org/node/2942975.

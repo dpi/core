@@ -3,6 +3,7 @@
 namespace Drupal\taxonomy;
 
 use Drupal\Core\Entity\ContentEntityForm;
+use Drupal\Core\Entity\EntityConstraintViolationListInterface;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
@@ -17,9 +18,9 @@ class TermForm extends ContentEntityForm {
    */
   public function form(array $form, FormStateInterface $form_state) {
     $term = $this->entity;
-    $vocab_storage = $this->entityManager->getStorage('taxonomy_vocabulary');
+    $vocab_storage = $this->entityTypeManager->getStorage('taxonomy_vocabulary');
     /** @var \Drupal\taxonomy\TermStorageInterface $taxonomy_storage */
-    $taxonomy_storage = $this->entityManager->getStorage('taxonomy_term');
+    $taxonomy_storage = $this->entityTypeManager->getStorage('taxonomy_term');
     $vocabulary = $vocab_storage->load($term->bundle());
 
     $parent = array_keys($taxonomy_storage->loadParents($term->id()));
@@ -119,6 +120,31 @@ class TermForm extends ContentEntityForm {
     $term->parent = array_keys($form_state->getValue('parent'));
 
     return $term;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getEditedFieldNames(FormStateInterface $form_state) {
+    return array_merge(['parent', 'weight'], parent::getEditedFieldNames($form_state));
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function flagViolations(EntityConstraintViolationListInterface $violations, array $form, FormStateInterface $form_state) {
+    // Manually flag violations of fields not handled by the form display. This
+    // is necessary as entity form displays only flag violations for fields
+    // contained in the display.
+    // @see ::form()
+    foreach ($violations->getByField('parent') as $violation) {
+      $form_state->setErrorByName('parent', $violation->getMessage());
+    }
+    foreach ($violations->getByField('weight') as $violation) {
+      $form_state->setErrorByName('weight', $violation->getMessage());
+    }
+
+    parent::flagViolations($violations, $form, $form_state);
   }
 
   /**

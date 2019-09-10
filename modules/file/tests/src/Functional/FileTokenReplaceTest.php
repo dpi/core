@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\file\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\file\Entity\File;
@@ -18,7 +19,7 @@ class FileTokenReplaceTest extends FileFieldTestBase {
    * Creates a file, then tests the tokens generated from it.
    */
   public function testFileTokenReplacement() {
-    $node_storage = $this->container->get('entity.manager')->getStorage('node');
+    $node_storage = $this->container->get('entity_type.manager')->getStorage('node');
     $token_service = \Drupal::token();
     $language_interface = \Drupal::languageManager()->getCurrentLanguage();
     /** @var \Drupal\Core\Datetime\DateFormatterInterface $date_formatter */
@@ -31,7 +32,7 @@ class FileTokenReplaceTest extends FileFieldTestBase {
 
     $test_file = $this->getTestFile('text');
     // Coping a file to test uploads with non-latin filenames.
-    $filename = drupal_dirname($test_file->getFileUri()) . '/текстовый файл.txt';
+    $filename = \Drupal::service('file_system')->dirname($test_file->getFileUri()) . '/текстовый файл.txt';
     $test_file = file_copy($test_file, $filename);
 
     // Create a new node with the uploaded file.
@@ -81,7 +82,7 @@ class FileTokenReplaceTest extends FileFieldTestBase {
     foreach ($tests as $input => $expected) {
       $bubbleable_metadata = new BubbleableMetadata();
       $output = $token_service->replace($input, ['file' => $file], ['langcode' => $language_interface->getId()], $bubbleable_metadata);
-      $this->assertEqual($output, $expected, format_string('Sanitized file token %token replaced.', ['%token' => $input]));
+      $this->assertEqual($output, $expected, new FormattableMarkup('Sanitized file token %token replaced.', ['%token' => $input]));
       $this->assertEqual($bubbleable_metadata, $metadata_tests[$input]);
     }
 
@@ -93,7 +94,7 @@ class FileTokenReplaceTest extends FileFieldTestBase {
 
     foreach ($tests as $input => $expected) {
       $output = $token_service->replace($input, ['file' => $file], ['langcode' => $language_interface->getId(), 'sanitize' => FALSE]);
-      $this->assertEqual($output, $expected, format_string('Unsanitized file token %token replaced.', ['%token' => $input]));
+      $this->assertEqual($output, $expected, new FormattableMarkup('Unsanitized file token %token replaced.', ['%token' => $input]));
     }
   }
 

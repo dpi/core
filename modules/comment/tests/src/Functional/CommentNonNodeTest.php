@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\comment\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\comment\CommentInterface;
 use Drupal\comment\Entity\Comment;
 use Drupal\comment\Entity\CommentType;
@@ -61,7 +62,7 @@ class CommentNonNodeTest extends BrowserTestBase {
     $this->addDefaultCommentField('entity_test', 'entity_test');
 
     // Verify that bundles are defined correctly.
-    $bundles = \Drupal::entityManager()->getBundleInfo('comment');
+    $bundles = \Drupal::service('entity_type.bundle.info')->getBundleInfo('comment');
     $this->assertEqual($bundles['comment']['label'], 'Comment settings');
 
     // Create test user.
@@ -122,7 +123,8 @@ class CommentNonNodeTest extends BrowserTestBase {
     }
 
     // Determine the visibility of subject form field.
-    if (entity_get_form_display('comment', 'comment', 'default')->getComponent('subject')) {
+    $display_repository = $this->container->get('entity_display.repository');
+    if ($display_repository->getFormDisplay('comment', 'comment')->getComponent('subject')) {
       // Subject input allowed.
       $edit['subject[0][value]'] = $subject;
     }
@@ -225,10 +227,10 @@ class CommentNonNodeTest extends BrowserTestBase {
 
     if ($operation == 'delete') {
       $this->drupalPostForm(NULL, [], t('Delete'));
-      $this->assertRaw(\Drupal::translation()->formatPlural(1, 'Deleted 1 comment.', 'Deleted @count comments.'), format_string('Operation "@operation" was performed on comment.', ['@operation' => $operation]));
+      $this->assertRaw(\Drupal::translation()->formatPlural(1, 'Deleted 1 comment.', 'Deleted @count comments.'), new FormattableMarkup('Operation "@operation" was performed on comment.', ['@operation' => $operation]));
     }
     else {
-      $this->assertText(t('The update has been performed.'), format_string('Operation "@operation" was performed on comment.', ['@operation' => $operation]));
+      $this->assertText(t('The update has been performed.'), new FormattableMarkup('Operation "@operation" was performed on comment.', ['@operation' => $operation]));
     }
   }
 

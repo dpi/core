@@ -6,15 +6,20 @@ use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Field\TypedData\FieldItemDataDefinition;
+use Drupal\Core\File\Exception\FileWriteException;
+use Drupal\Core\File\FileSystemInterface;
+use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\ElementInfoManagerInterface;
 use Drupal\Core\Render\RendererInterface;
+use Drupal\Core\Url;
 use Drupal\file\FileInterface;
 use Drupal\file\Plugin\Field\FieldType\FileFieldItemList;
 use Drupal\file\Plugin\Field\FieldType\FileItem;
 use Drupal\media\MediaInterface;
 use Drupal\media\MediaTypeInterface;
 use Drupal\media_library\MediaLibraryUiBuilder;
+use Drupal\media_library\OpenerResolverInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -42,6 +47,13 @@ class FileUploadForm extends AddFormBase {
   protected $renderer;
 
   /**
+   * The file system service.
+   *
+   * @var \Drupal\Core\File\FileSystemInterface
+   */
+  protected $fileSystem;
+
+  /**
    * Constructs a new FileUploadForm.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -52,11 +64,16 @@ class FileUploadForm extends AddFormBase {
    *   The element info manager.
    * @param \Drupal\Core\Render\RendererInterface $renderer
    *   The renderer service.
+   * @param \Drupal\Core\File\FileSystemInterface $file_system
+   *   The file system service.
+   * @param \Drupal\media_library\OpenerResolverInterface $opener_resolver
+   *   The opener resolver.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, MediaLibraryUiBuilder $library_ui_builder, ElementInfoManagerInterface $element_info, RendererInterface $renderer) {
-    parent::__construct($entity_type_manager, $library_ui_builder);
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, MediaLibraryUiBuilder $library_ui_builder, ElementInfoManagerInterface $element_info, RendererInterface $renderer, FileSystemInterface $file_system, OpenerResolverInterface $opener_resolver = NULL) {
+    parent::__construct($entity_type_manager, $library_ui_builder, $opener_resolver);
     $this->elementInfo = $element_info;
     $this->renderer = $renderer;
+    $this->fileSystem = $file_system;
   }
 
   /**
@@ -67,7 +84,9 @@ class FileUploadForm extends AddFormBase {
       $container->get('entity_type.manager'),
       $container->get('media_library.ui_builder'),
       $container->get('element_info'),
-      $container->get('renderer')
+      $container->get('renderer'),
+      $container->get('file_system'),
+      $container->get('media_library.opener_resolver')
     );
   }
 
@@ -93,22 +112,30 @@ class FileUploadForm extends AddFormBase {
    * {@inheritdoc}
    */
   protected function buildInputElement(array $form, FormStateInterface $form_state) {
-    $form['#attributes']['class'][] = 'media-library-add-form-upload';
+    $form['#attributes']['class'][] = 'media-library-add-form--upload';
 
     // Create a file item to get the upload validators.
     $media_type = $this->getMediaType($form_state);
     $item = $this->createFileItem($media_type);
 
     /** @var \Drupal\media_library\MediaLibraryState $state */
-    $state = $form_state->get('media_library_state');
+    $state = $this->getMediaLibraryState($form_state);
     if (!$state->hasSlotsAvailable()) {
       return $form;
     }
 
     $slots = $state->getAvailableSlots();
 
+    // Add a container to group the input elements for styling purposes.
+    $form['container'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => ['media-library-add-form__input-wrapper'],
+      ],
+    ];
+
     $process = (array) $this->elementInfo->getInfoProperty('managed_file', '#process', []);
-    $form['upload'] = [
+    $form['container']['upload'] = [
       '#type' => 'managed_file',
       '#title' => $this->formatPlural($slots, 'Add file', 'Add files'),
       // @todo Move validation in https://www.drupal.org/node/2988215
@@ -121,7 +148,7 @@ class FileUploadForm extends AddFormBase {
 
     $file_upload_help = [
       '#theme' => 'file_upload_help',
-      '#upload_validators' => $form['upload']['#upload_validators'],
+      '#upload_validators' => $form['container']['upload']['#upload_validators'],
       '#cardinality' => $slots,
     ];
 
@@ -130,7 +157,7 @@ class FileUploadForm extends AddFormBase {
     // upload help in the same way, so any theming improvements made to file
     // fields would also be applied to this upload field.
     // @see \Drupal\file\Plugin\Field\FieldWidget\FileWidget::formElement()
-    $form['upload']['#description'] = $this->renderer->renderPlain($file_upload_help);
+    $form['container']['upload']['#description'] = $this->renderer->renderPlain($file_upload_help);
 
     return $form;
   }
@@ -176,9 +203,27 @@ class FileUploadForm extends AddFormBase {
    */
   public function processUploadElement(array $element, FormStateInterface $form_state) {
     $element['upload_button']['#submit'] = ['::uploadButtonSubmit'];
+    // Limit the validation errors to make sure
+    // FormValidator::handleErrorsWithLimitedValidation doesn't remove the
+    // current selection from the form state.
+    // @see Drupal\Core\Form\FormValidator::handleErrorsWithLimitedValidation()
+    $element['upload_button']['#limit_validation_errors'] = [
+      ['upload'],
+      ['current_selection'],
+    ];
     $element['upload_button']['#ajax'] = [
       'callback' => '::updateFormCallback',
       'wrapper' => 'media-library-wrapper',
+      // Add a fixed URL to post the form since AJAX forms are automatically
+      // posted to <current> instead of $form['#action'].
+      // @todo Remove when https://www.drupal.org/project/drupal/issues/2504115
+      //   is fixed.
+      'url' => Url::fromRoute('media_library.ui'),
+      'options' => [
+        'query' => $this->getMediaLibraryState($form_state)->all() + [
+          FormBuilderInterface::AJAX_FORM_REQUEST => TRUE,
+        ],
+      ],
     ];
     return $element;
   }
@@ -209,15 +254,15 @@ class FileUploadForm extends AddFormBase {
     // Create a file item to get the upload location.
     $item = $this->createFileItem($media_type);
     $upload_location = $item->getUploadLocation();
-    if (!file_prepare_directory($upload_location, FILE_CREATE_DIRECTORY)) {
-      throw new \Exception("The destination directory '$upload_location' is not writable");
+    if (!$this->fileSystem->prepareDirectory($upload_location, FileSystemInterface::CREATE_DIRECTORY)) {
+      throw new FileWriteException("The destination directory '$upload_location' is not writable");
     }
     $file = file_move($file, $upload_location);
     if (!$file) {
       throw new \RuntimeException("Unable to move file to '$upload_location'");
     }
 
-    return parent::createMediaFromValue($media_type, $media_storage, $source_field_name, $file)->setName($file->getFilename());
+    return parent::createMediaFromValue($media_type, $media_storage, $source_field_name, $file);
   }
 
   /**

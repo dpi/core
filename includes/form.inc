@@ -625,10 +625,12 @@ function template_preprocess_form_element_label(&$variables) {
  *   if (empty($context['sandbox'])) {
  *     $context['sandbox']['progress'] = 0;
  *     $context['sandbox']['current_id'] = 0;
- *     $context['sandbox']['max'] = db_query('SELECT COUNT(DISTINCT id) FROM {example}')->fetchField();
+ *     $context['sandbox']['max'] = \Drupal::database()
+ *       ->query('SELECT COUNT(DISTINCT id) FROM {example}')
+ *       ->fetchField();
  *   }
  *   $limit = 5;
- *   $result = db_select('example')
+ *   $result = \Drupal::database()->select('example')
  *     ->fields('example', array('id'))
  *     ->condition('id', $context['sandbox']['current_id'], '>')
  *     ->orderBy('id')
@@ -837,7 +839,7 @@ function batch_process($redirect = NULL, Url $url = NULL, $redirect_callback = N
 
     // Assign an arbitrary id: don't rely on a serial column in the 'batch'
     // table, since non-progressive batches skip database storage completely.
-    $batch['id'] = \Drupal::database()->nextId();;
+    $batch['id'] = \Drupal::database()->nextId();
 
     // Move operations to a job queue. Non-progressive batches will use a
     // memory-based queue.

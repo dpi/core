@@ -31,7 +31,13 @@
   Drupal.behaviors.MediaLibraryTabs = {
     attach: function attach(context) {
       var $menu = $('.js-media-library-menu');
-      $menu.find('a', context).once('media-library-menu-item').on('click', function (e) {
+      $menu.find('a', context).once('media-library-menu-item').on('keypress', function (e) {
+        if (e.which === 32) {
+          e.preventDefault();
+          e.stopPropagation();
+          $(e.currentTarget).trigger('click');
+        }
+      }).on('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -70,14 +76,77 @@
 
         $menu.find('.active-tab').remove();
         $menu.find('a').removeClass('active');
-        $(e.currentTarget).addClass('active').html(Drupal.t('@title<span class="active-tab visually-hidden"> (active tab)</span>', { '@title': $(e.currentTarget).html() }));
+        $(e.currentTarget).addClass('active').html(Drupal.t('<span class="visually-hidden">Show </span>@title<span class="visually-hidden"> media</span><span class="active-tab visually-hidden"> (selected)</span>', { '@title': $(e.currentTarget).data('title') }));
+
+        Drupal.announce(Drupal.t('Showing @title media.', {
+          '@title': $(e.currentTarget).data('title')
+        }));
+      });
+    }
+  };
+
+  Drupal.behaviors.MediaLibraryViewsDisplay = {
+    attach: function attach(context) {
+      var $view = $(context).hasClass('.js-media-library-view') ? $(context) : $('.js-media-library-view', context);
+
+      $view.closest('.views-element-container').attr('id', 'media-library-view');
+
+      $('.views-display-link-widget, .views-display-link-widget_table', context).once('media-library-views-display-link').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        var $link = $(e.currentTarget);
+
+        var loadingAnnouncement = '';
+        var displayAnnouncement = '';
+        var focusSelector = '';
+        if ($link.hasClass('views-display-link-widget')) {
+          loadingAnnouncement = Drupal.t('Loading grid view.');
+          displayAnnouncement = Drupal.t('Changed to grid view.');
+          focusSelector = '.views-display-link-widget';
+        } else if ($link.hasClass('views-display-link-widget_table')) {
+          loadingAnnouncement = Drupal.t('Loading table view.');
+          displayAnnouncement = Drupal.t('Changed to table view.');
+          focusSelector = '.views-display-link-widget_table';
+        }
+
+        var ajaxObject = Drupal.ajax({
+          wrapper: 'media-library-view',
+          url: e.currentTarget.href,
+          dialogType: 'ajax',
+          progress: {
+            type: 'fullscreen',
+            message: loadingAnnouncement || Drupal.t('Please wait...')
+          }
+        });
+
+        if (displayAnnouncement || focusSelector) {
+          var success = ajaxObject.success;
+          ajaxObject.success = function (response, status) {
+            success.bind(this)(response, status);
+
+            if (focusSelector) {
+              $(focusSelector).focus();
+            }
+
+            if (displayAnnouncement) {
+              Drupal.announce(displayAnnouncement);
+            }
+          };
+        }
+
+        ajaxObject.execute();
+
+        if (loadingAnnouncement) {
+          Drupal.announce(loadingAnnouncement);
+        }
       });
     }
   };
 
   Drupal.behaviors.MediaLibraryItemSelection = {
     attach: function attach(context, settings) {
-      var $form = $('.js-media-library-views-form', context);
+      var $form = $('.js-media-library-views-form, .js-media-library-add-form', context);
       var currentSelection = Drupal.MediaLibrary.currentSelection;
 
       if (!$form.length) {
@@ -85,6 +154,22 @@
       }
 
       var $mediaItems = $('.js-media-library-item input[type="checkbox"]', $form);
+
+      function disableItems($items) {
+        $items.prop('disabled', true).closest('.js-media-library-item').addClass('media-library-item--disabled');
+      }
+
+      function enableItems($items) {
+        $items.prop('disabled', false).closest('.js-media-library-item').removeClass('media-library-item--disabled');
+      }
+
+      function updateSelectionCount(remaining) {
+        var selectItemsText = remaining < 0 ? Drupal.formatPlural(currentSelection.length, '1 item selected', '@count items selected') : Drupal.formatPlural(remaining, '@selected of @count item selected', '@selected of @count items selected', {
+          '@selected': currentSelection.length
+        });
+
+        $('.js-media-library-selected-count').html(selectItemsText);
+      }
 
       $mediaItems.once('media-item-change').on('change', function (e) {
         var id = e.currentTarget.value;
@@ -99,33 +184,12 @@
         }
 
         $form.find('#media-library-modal-selection').val(currentSelection.join()).trigger('change');
+
+        $('.js-media-library-add-form-current-selection').val(currentSelection.join());
       });
 
-      function disableItems($items) {
-        $items.prop('disabled', true).closest('.js-media-library-item').addClass('media-library-item--disabled');
-      }
-
-      function enableItems($items) {
-        $items.prop('disabled', false).closest('.js-media-library-item').removeClass('media-library-item--disabled');
-      }
-
-      function updateSelectionInfo(remaining) {
-        var $buttonPane = $('.media-library-widget-modal .ui-dialog-buttonpane');
-        if (!$buttonPane.length) {
-          return;
-        }
-
-        var latestCount = Drupal.theme('mediaLibrarySelectionCount', Drupal.MediaLibrary.currentSelection, remaining);
-        var $existingCount = $buttonPane.find('.media-library-selected-count');
-        if ($existingCount.length) {
-          $existingCount.replaceWith(latestCount);
-        } else {
-          $buttonPane.append(latestCount);
-        }
-      }
-
       $('#media-library-modal-selection', $form).once('media-library-selection-change').on('change', function (e) {
-        updateSelectionInfo(settings.media_library.selection_remaining);
+        updateSelectionCount(settings.media_library.selection_remaining);
 
         if (currentSelection.length === settings.media_library.selection_remaining) {
           disableItems($mediaItems.not(':checked'));
@@ -139,8 +203,13 @@
         $form.find('input[type="checkbox"][value="' + value + '"]').prop('checked', true).trigger('change');
       });
 
-      $(window).once('media-library-toggle-buttons').on('dialog:aftercreate', function () {
-        updateSelectionInfo(settings.media_library.selection_remaining);
+      $(window).once('media-library-selection-info').on('dialog:aftercreate', function () {
+        var $buttonPane = $('.media-library-widget-modal .ui-dialog-buttonpane');
+        if (!$buttonPane.length) {
+          return;
+        }
+        $buttonPane.append(Drupal.theme('mediaLibrarySelectionCount'));
+        updateSelectionCount(settings.media_library.selection_remaining);
       });
     }
   };
@@ -153,13 +222,7 @@
     }
   };
 
-  Drupal.theme.mediaLibrarySelectionCount = function (selection, remaining) {
-    var selectItemsText = Drupal.formatPlural(remaining, '@selected of @count item selected', '@selected of @count items selected', {
-      '@selected': selection.length
-    });
-    if (remaining === -1) {
-      selectItemsText = Drupal.formatPlural(selection.length, '1 item selected', '@count items selected');
-    }
-    return '<div class="media-library-selected-count" aria-live="polite">' + selectItemsText + '</div>';
+  Drupal.theme.mediaLibrarySelectionCount = function () {
+    return '<div class="media-library-selected-count js-media-library-selected-count" role="status" aria-live="polite" aria-atomic="true"></div>';
   };
 })(jQuery, Drupal, window);

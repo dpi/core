@@ -5,15 +5,15 @@
  * API functions for installing modules and themes.
  */
 
-use Drupal\Core\Extension\Dependency;
-use Drupal\Component\Utility\Unicode;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Utility\OpCodeCache;
+use Drupal\Component\Utility\Unicode;
 use Drupal\Component\Utility\UrlHelper;
+use Drupal\Core\Extension\Dependency;
 use Drupal\Core\Extension\ExtensionDiscovery;
-use Drupal\Core\Extension\ModuleHandler;
+use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Site\Settings;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * Requirement severity -- Informational message only.
@@ -107,7 +107,7 @@ function drupal_install_profile_distribution_name() {
   }
   // At all other times, we load the profile via standard methods.
   else {
-    $profile = drupal_get_profile();
+    $profile = \Drupal::installProfile();
     $info = system_get_info('module', $profile);
   }
   return isset($info['distribution']['name']) ? $info['distribution']['name'] : 'Drupal';
@@ -132,7 +132,7 @@ function drupal_install_profile_distribution_version() {
   }
   // At all other times, we load the profile via standard methods.
   else {
-    $profile = drupal_get_profile();
+    $profile = \Drupal::installProfile();
     $info = system_get_info('module', $profile);
     return $info['version'];
   }
@@ -166,9 +166,11 @@ function drupal_get_database_types() {
 
   // The internal database driver name is any valid PHP identifier.
   $mask = '/^' . DRUPAL_PHP_FUNCTION_PATTERN . '$/';
-  $files = file_scan_directory(DRUPAL_ROOT . '/core/lib/Drupal/Core/Database/Driver', $mask, ['recurse' => FALSE]);
+  /** @var \Drupal\Core\File\FileSystemInterface $file_system */
+  $file_system = \Drupal::service('file_system');
+  $files = $file_system->scanDirectory(DRUPAL_ROOT . '/core/lib/Drupal/Core/Database/Driver', $mask, ['recurse' => FALSE]);
   if (is_dir(DRUPAL_ROOT . '/drivers/lib/Drupal/Driver/Database')) {
-    $files += file_scan_directory(DRUPAL_ROOT . '/drivers/lib/Drupal/Driver/Database/', $mask, ['recurse' => FALSE]);
+    $files += $file_system->scanDirectory(DRUPAL_ROOT . '/drivers/lib/Drupal/Driver/Database/', $mask, ['recurse' => FALSE]);
   }
   foreach ($files as $file) {
     if (file_exists($file->uri . '/Install/Tasks.php')) {
@@ -204,16 +206,14 @@ function drupal_get_database_types() {
  *   are dumped up to a stdClass object. The object can have value, required
  *   and comment properties.
  *   @code
- *   $settings['config_directories'] = array(
- *     CONFIG_SYNC_DIRECTORY => (object) array(
- *       'value' => 'config_hash/sync',
- *       'required' => TRUE,
- *     ),
+ *   $settings['settings']['config_sync_directory'] = (object) array(
+ *     'value' => 'config_hash/sync',
+ *     'required' => TRUE,
  *   );
  *   @endcode
  *   gets dumped as:
  *   @code
- *   $config_directories['sync'] = 'config_hash/sync'
+ *   $settings['config_sync_directory'] = 'config_hash/sync'
  *   @endcode
  */
 function drupal_rewrite_settings($settings = [], $settings_file = NULL) {
@@ -479,10 +479,13 @@ function _drupal_rewrite_settings_dump_one(\stdClass $variable, $prefix = '', $s
 /**
  * Creates the config directory and ensures it is operational.
  *
- * @see install_settings_form_submit()
- * @see update_prepare_d8_bootstrap()
+ * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. There is no
+ *   replacement.
+ *
+ * @see https://www.drupal.org/node/3018145
  */
 function drupal_install_config_directories() {
+  @trigger_error('drupal_install_config_directories() is deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. There is no replacement. See https://www.drupal.org/node/3018145.', E_USER_DEPRECATED);
   global $config_directories, $install_state;
 
   // If settings.php does not contain a config sync directory name we need to
@@ -511,7 +514,7 @@ function drupal_install_config_directories() {
   // public files directory, which has already been verified to be writable
   // itself. But if it somehow fails anyway, the installation cannot proceed.
   // Bail out using a similar error message as in system_requirements().
-  if (!file_prepare_directory($config_directories[CONFIG_SYNC_DIRECTORY], FILE_CREATE_DIRECTORY)
+  if (!\Drupal::service('file_system')->prepareDirectory($config_directories[CONFIG_SYNC_DIRECTORY], FileSystemInterface::CREATE_DIRECTORY)
     && !file_exists($config_directories[CONFIG_SYNC_DIRECTORY])) {
     throw new Exception(t('The directory %directory could not be created. To proceed with the installation, either create the directory or ensure that the installer has the permissions to create it automatically. For more information, see the <a href=":handbook_url">online handbook</a>.', [
       '%directory' => config_get_config_directory(CONFIG_SYNC_DIRECTORY),
@@ -538,12 +541,13 @@ function drupal_install_config_directories() {
  *   TRUE if the config directory exists and is writable.
  *
  * @deprecated in Drupal 8.1.x, will be removed before Drupal 9.0.x. Use
- *   config_get_config_directory() and file_prepare_directory() instead.
+ *   config_get_config_directory() and
+ *  \Drupal\Core\File\FileSystemInterface::prepareDirectory() instead.
  *
  * @see https://www.drupal.org/node/2501187
  */
 function install_ensure_config_directory($type) {
-  @trigger_error('install_ensure_config_directory() is deprecated in Drupal 8.1.0 and will be removed before Drupal 9.0.0. Use config_get_config_directory() and file_prepare_directory() instead. See https://www.drupal.org/node/2501187.', E_USER_DEPRECATED);
+  @trigger_error('install_ensure_config_directory() is deprecated in Drupal 8.1.0 and will be removed before Drupal 9.0.0. Use config_get_config_directory() and \Drupal\Core\File\FileSystemInterface::prepareDirectory() instead. See https://www.drupal.org/node/2501187.', E_USER_DEPRECATED);
   // The config directory must be defined in settings.php.
   global $config_directories;
   if (!isset($config_directories[$type])) {
@@ -553,7 +557,7 @@ function install_ensure_config_directory($type) {
   // directories that the installer creates.
   else {
     $config_directory = config_get_config_directory($type);
-    return file_prepare_directory($config_directory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+    return \Drupal::service('file_system')->prepareDirectory($config_directory, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
   }
 }
 
@@ -623,6 +627,7 @@ function drupal_install_system($install_state) {
   // Add the normal installer service provider.
   $GLOBALS['conf']['container_service_providers']['InstallerServiceProvider'] = 'Drupal\Core\Installer\NormalInstallerServiceProvider';
 
+  // Get the existing request.
   $request = \Drupal::request();
   // Reboot into a full production environment to continue the installation.
   /** @var \Drupal\Core\Installer\InstallerKernel $kernel */
@@ -630,7 +635,13 @@ function drupal_install_system($install_state) {
   $kernel->shutdown();
   // Have installer rebuild from the disk, rather then building from scratch.
   $kernel->rebuildContainer(FALSE);
-  $kernel->prepareLegacyRequest($request);
+  // Reboot the kernel with new container.
+  $kernel->boot();
+  $kernel->preHandle($request);
+  // Ensure our request includes the session if appropriate.
+  if (PHP_SAPI !== 'cli') {
+    $request->setSession($kernel->getContainer()->get('session'));
+  }
 
   // Before having installed the system module and being able to do a module
   // rebuild, prime the \Drupal\Core\Extension\ModuleExtensionList static cache
@@ -779,7 +790,7 @@ function drupal_install_mkdir($file, $mask, $message = TRUE) {
     }
   }
 
-  if (@drupal_mkdir($file, $mod)) {
+  if (@\Drupal::service('file_system')->mkdir($file, $mod)) {
     return TRUE;
   }
   else {
@@ -984,7 +995,7 @@ function drupal_check_profile($profile) {
         require_once $install_file;
       }
 
-      drupal_classloader_register($module, $module_path);
+      \Drupal::service('class_loader')->addPsr4('Drupal\\' . $module . '\\', \Drupal::root() . "/$module_path/src");
 
       if (function_exists($function)) {
         $requirements = array_merge($requirements, $function('install'));
@@ -1103,7 +1114,7 @@ function drupal_check_module($module) {
  *   The info array.
  */
 function install_profile_info($profile, $langcode = 'en') {
-  $cache = &drupal_static(__FUNCTION__, []);
+  static $cache = [];
 
   if (!isset($cache[$profile][$langcode])) {
     // Set defaults for module info.

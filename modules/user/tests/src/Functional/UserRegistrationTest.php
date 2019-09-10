@@ -57,7 +57,7 @@ class UserRegistrationTest extends BrowserTestBase {
     $edit['name'] = $name = $this->randomMachineName();
     $edit['mail'] = $mail = $edit['name'] . '@example.com';
     $this->drupalPostForm('user/register', $edit, t('Create new account'));
-    $this->container->get('entity.manager')->getStorage('user')->resetCache();
+    $this->container->get('entity_type.manager')->getStorage('user')->resetCache();
     $accounts = $storage->loadByProperties(['name' => $name, 'mail' => $mail]);
     $new_user = reset($accounts);
     $this->assertFalse($new_user->isActive(), 'New account is blocked until approved by an administrator.');
@@ -86,7 +86,7 @@ class UserRegistrationTest extends BrowserTestBase {
     $edit['pass[pass1]'] = $new_pass = $this->randomMachineName();
     $edit['pass[pass2]'] = $new_pass;
     $this->drupalPostForm('user/register', $edit, t('Create new account'));
-    $this->container->get('entity.manager')->getStorage('user')->resetCache();
+    $this->container->get('entity_type.manager')->getStorage('user')->resetCache();
     $accounts = $this->container->get('entity_type.manager')->getStorage('user')
       ->loadByProperties(['name' => $name, 'mail' => $mail]);
     $new_user = reset($accounts);
@@ -208,7 +208,7 @@ class UserRegistrationTest extends BrowserTestBase {
     $this->drupalPostForm('user/register', $edit, t('Create new account'));
     $this->assertResponse(200);
 
-    $user_storage = \Drupal::entityManager()->getStorage('user');
+    $user_storage = \Drupal::entityTypeManager()->getStorage('user');
 
     $this->assertTrue($user_storage->loadByProperties(['name' => $edit['name']]));
     $this->drupalLogout();
@@ -300,10 +300,14 @@ class UserRegistrationTest extends BrowserTestBase {
       'required' => TRUE,
     ]);
     $field->save();
-    entity_get_form_display('user', 'user', 'default')
+
+    /** @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface $display_repository */
+    $display_repository = \Drupal::service('entity_display.repository');
+
+    $display_repository->getFormDisplay('user', 'user')
       ->setComponent('test_user_field', ['type' => 'test_field_widget'])
       ->save();
-    entity_get_form_display('user', 'user', 'register')
+    $display_repository->getFormDisplay('user', 'user', 'register')
       ->save();
 
     // Check that the field does not appear on the registration form.
@@ -313,7 +317,7 @@ class UserRegistrationTest extends BrowserTestBase {
     $this->assertCacheTag('config:user.settings');
 
     // Have the field appear on the registration form.
-    entity_get_form_display('user', 'user', 'register')
+    $display_repository->getFormDisplay('user', 'user', 'register')
       ->setComponent('test_user_field', ['type' => 'test_field_widget'])
       ->save();
 

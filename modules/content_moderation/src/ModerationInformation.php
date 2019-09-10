@@ -157,7 +157,7 @@ class ModerationInformation implements ModerationInformationInterface {
       $latest_revision_id = $storage->getLatestTranslationAffectedRevisionId($entity->id(), $entity->language()->getId());
       $default_revision_id = $entity->isDefaultRevision() && !$entity->isNewRevision() && ($revision_id = $entity->getRevisionId()) ?
         $revision_id : $this->getDefaultRevisionId($entity->getEntityTypeId(), $entity->id());
-      if ($latest_revision_id != $default_revision_id) {
+      if ($latest_revision_id !== NULL && $latest_revision_id != $default_revision_id) {
         /** @var \Drupal\Core\Entity\ContentEntityInterface $latest_revision */
         $latest_revision = $storage->loadRevision($latest_revision_id);
         $result = !$latest_revision->wasDefaultRevision();
@@ -182,7 +182,7 @@ class ModerationInformation implements ModerationInformationInterface {
    */
   public function isDefaultRevisionPublished(ContentEntityInterface $entity) {
     $workflow = $this->getWorkflowForEntity($entity);
-    $default_revision = \Drupal::entityTypeManager()->getStorage($entity->getEntityTypeId())->load($entity->id());
+    $default_revision = $this->entityTypeManager->getStorage($entity->getEntityTypeId())->load($entity->id());
     // If no default revision could be loaded, the entity has not yet been
     // saved. In this case the moderation_state of the unsaved entity can be
     // used, since once saved it will become the default.
@@ -238,6 +238,47 @@ class ModerationInformation implements ModerationInformationInterface {
       $features['publishing'] = $this->t("@entity_type_plural_label do not support publishing statuses. For example, even after transitioning from a published workflow state to an unpublished workflow state they will still be visible to site visitors.", ['@entity_type_plural_label' => $entity_type->getCollectionLabel()]);
     }
     return $features;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getOriginalState(ContentEntityInterface $entity) {
+    $state = NULL;
+    $workflow_type = $this->getWorkflowForEntity($entity)->getTypePlugin();
+    if (!$entity->isNew() && !$this->isFirstTimeModeration($entity)) {
+      /** @var \Drupal\Core\Entity\ContentEntityInterface $original_entity */
+      $original_entity = $this->entityTypeManager->getStorage($entity->getEntityTypeId())->loadRevision($entity->getLoadedRevisionId());
+      if (!$entity->isDefaultTranslation() && $original_entity->hasTranslation($entity->language()->getId())) {
+        $original_entity = $original_entity->getTranslation($entity->language()->getId());
+      }
+      if ($workflow_type->hasState($original_entity->moderation_state->value)) {
+        $state = $workflow_type->getState($original_entity->moderation_state->value);
+      }
+    }
+    return $state ?: $workflow_type->getInitialState($entity);
+  }
+
+  /**
+   * Determines if this entity is being moderated for the first time.
+   *
+   * If the previous version of the entity has no moderation state, we assume
+   * that means it predates the presence of moderation states.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   The entity being moderated.
+   *
+   * @return bool
+   *   TRUE if this is the entity's first time being moderated, FALSE otherwise.
+   */
+  protected function isFirstTimeModeration(ContentEntityInterface $entity) {
+    $original_entity = $this->getLatestRevision($entity->getEntityTypeId(), $entity->id());
+
+    if ($original_entity) {
+      $original_id = $original_entity->moderation_state;
+    }
+
+    return !($entity->moderation_state && $original_entity && $original_id);
   }
 
 }

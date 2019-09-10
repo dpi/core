@@ -37,7 +37,7 @@ class FilePrivateTest extends FileFieldTestBase {
    * Tests file access for file uploaded to a private node.
    */
   public function testPrivateFile() {
-    $node_storage = $this->container->get('entity.manager')->getStorage('node');
+    $node_storage = $this->container->get('entity_type.manager')->getStorage('node');
     /** @var \Drupal\Core\File\FileSystemInterface $file_system */
     $file_system = \Drupal::service('file_system');
     $type_name = 'article';
@@ -46,7 +46,7 @@ class FilePrivateTest extends FileFieldTestBase {
 
     $test_file = $this->getTestFile('text');
     $nid = $this->uploadNodeFile($test_file, $field_name, $type_name, TRUE, ['private' => TRUE]);
-    \Drupal::entityManager()->getStorage('node')->resetCache([$nid]);
+    \Drupal::entityTypeManager()->getStorage('node')->resetCache([$nid]);
     /* @var \Drupal\node\NodeInterface $node */
     $node = $node_storage->load($nid);
     $node_file = File::load($node->{$field_name}->target_id);
@@ -67,7 +67,7 @@ class FilePrivateTest extends FileFieldTestBase {
     // Test with the field that should deny access through field access.
     $this->drupalLogin($this->adminUser);
     $nid = $this->uploadNodeFile($test_file, $no_access_field_name, $type_name, TRUE, ['private' => TRUE]);
-    \Drupal::entityManager()->getStorage('node')->resetCache([$nid]);
+    \Drupal::entityTypeManager()->getStorage('node')->resetCache([$nid]);
     $node = $node_storage->load($nid);
     $node_file = File::load($node->{$no_access_field_name}->target_id);
 
@@ -139,7 +139,7 @@ class FilePrivateTest extends FileFieldTestBase {
     $edit = ['files[' . $field_name . '_0]' => $file_system->realpath($test_file->getFileUri())];
     $this->drupalPostForm(NULL, $edit, t('Upload'));
     /** @var \Drupal\file\FileStorageInterface $file_storage */
-    $file_storage = $this->container->get('entity.manager')->getStorage('file');
+    $file_storage = $this->container->get('entity_type.manager')->getStorage('file');
     $files = $file_storage->loadByProperties(['uid' => 0]);
     $this->assertEqual(1, count($files), 'Loaded one anonymous file.');
     $file = end($files);

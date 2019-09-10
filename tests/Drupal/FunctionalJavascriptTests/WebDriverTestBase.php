@@ -4,6 +4,7 @@ namespace Drupal\FunctionalJavascriptTests;
 
 use Behat\Mink\Exception\DriverException;
 use Drupal\Tests\BrowserTestBase;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Zumba\GastonJS\Exception\DeadClient;
 use Zumba\Mink\Driver\PhantomJSDriver;
 
@@ -11,8 +12,20 @@ use Zumba\Mink\Driver\PhantomJSDriver;
  * Runs a browser test using a driver that supports Javascript.
  *
  * Base class for testing browser interaction implemented in JavaScript.
+ *
+ * @ingroup testing
  */
 abstract class WebDriverTestBase extends BrowserTestBase {
+
+  /**
+   * Disables CSS animations in tests for more reliable testing.
+   *
+   * CSS animations are disabled by installing the css_disable_transitions_test
+   * module. Set to FALSE to test CSS animations.
+   *
+   * @var bool
+   */
+  protected $disableCssAnimations = TRUE;
 
   /**
    * {@inheritdoc}
@@ -57,6 +70,26 @@ abstract class WebDriverTestBase extends BrowserTestBase {
     catch (\Exception $e) {
       $this->markTestSkipped('An unexpected error occurred while starting Mink: ' . $e->getMessage());
     }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function installModulesFromClassProperty(ContainerInterface $container) {
+    if ($this->disableCssAnimations) {
+      self::$modules = ['css_disable_transitions_test'];
+    }
+    parent::installModulesFromClassProperty($container);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function initFrontPage() {
+    parent::initFrontPage();
+    // Set a standard window size so that all javascript tests start with the
+    // same viewport.
+    $this->getSession()->resizeWindow(1024, 768);
   }
 
   /**
@@ -135,7 +168,7 @@ abstract class WebDriverTestBase extends BrowserTestBase {
    *   (optional) A message to display with the assertion. If left blank, a
    *   default message will be displayed.
    *
-   * @throws \PHPUnit_Framework_AssertionFailedError
+   * @throws \PHPUnit\Framework\AssertionFailedError
    *
    * @see \Behat\Mink\Driver\DriverInterface::evaluateScript()
    */

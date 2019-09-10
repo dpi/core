@@ -74,7 +74,7 @@ class ContainerTest extends TestCase {
       $this->expectException(InvalidArgumentException::class);
     }
     else {
-      $this->setExpectedException(InvalidArgumentException::class);
+      $this->expectException(InvalidArgumentException::class);
     }
     $container = new $this->containerClass($container_definition);
   }
@@ -102,7 +102,7 @@ class ContainerTest extends TestCase {
       $this->expectException(ParameterNotFoundException::class);
     }
     else {
-      $this->setExpectedException(ParameterNotFoundException::class);
+      $this->expectException(ParameterNotFoundException::class);
     }
     $this->container->getParameter('parameter_that_does_not_exist');
   }
@@ -117,7 +117,7 @@ class ContainerTest extends TestCase {
       $this->expectException(ParameterNotFoundException::class);
     }
     else {
-      $this->setExpectedException(ParameterNotFoundException::class);
+      $this->expectException(ParameterNotFoundException::class);
     }
     $this->container->getParameter(NULL);
   }
@@ -156,7 +156,7 @@ class ContainerTest extends TestCase {
       $this->expectException(LogicException::class);
     }
     else {
-      $this->setExpectedException(LogicException::class);
+      $this->expectException(LogicException::class);
     }
     $this->container->setParameter('some_config', 'new_value');
   }
@@ -266,7 +266,7 @@ class ContainerTest extends TestCase {
       $this->expectException(ServiceCircularReferenceException::class);
     }
     else {
-      $this->setExpectedException(ServiceCircularReferenceException::class);
+      $this->expectException(ServiceCircularReferenceException::class);
     }
     $this->container->get('circular_dependency');
   }
@@ -284,7 +284,7 @@ class ContainerTest extends TestCase {
       $this->expectException(ServiceNotFoundException::class);
     }
     else {
-      $this->setExpectedException(ServiceNotFoundException::class);
+      $this->expectException(ServiceNotFoundException::class);
     }
     $this->container->get('service_not_exists');
   }
@@ -338,7 +338,7 @@ class ContainerTest extends TestCase {
       $this->expectException(InvalidArgumentException::class);
     }
     else {
-      $this->setExpectedException(InvalidArgumentException::class);
+      $this->expectException(InvalidArgumentException::class);
     }
     $this->container->get('service_parameter_not_exists');
   }
@@ -355,7 +355,7 @@ class ContainerTest extends TestCase {
       $this->expectException(InvalidArgumentException::class);
     }
     else {
-      $this->setExpectedException(InvalidArgumentException::class);
+      $this->expectException(InvalidArgumentException::class);
     }
     $this->container->get('service_parameter_not_exists');
   }
@@ -385,7 +385,7 @@ class ContainerTest extends TestCase {
       $this->expectException(ServiceNotFoundException::class);
     }
     else {
-      $this->setExpectedException(ServiceNotFoundException::class);
+      $this->expectException(ServiceNotFoundException::class);
     }
     $this->container->get('service_dependency_not_exists');
   }
@@ -410,7 +410,7 @@ class ContainerTest extends TestCase {
       $this->expectException(ServiceNotFoundException::class);
     }
     else {
-      $this->setExpectedException(ServiceNotFoundException::class);
+      $this->expectException(ServiceNotFoundException::class);
     }
     $this->container->get(NULL);
   }
@@ -441,7 +441,7 @@ class ContainerTest extends TestCase {
       $this->expectException(ServiceNotFoundException::class);
     }
     else {
-      $this->setExpectedException(ServiceNotFoundException::class);
+      $this->expectException(ServiceNotFoundException::class);
     }
     $this->container->get('service_not_exists');
   }
@@ -482,7 +482,7 @@ class ContainerTest extends TestCase {
       $this->expectException(RuntimeException::class);
     }
     else {
-      $this->setExpectedException(RuntimeException::class);
+      $this->expectException(RuntimeException::class);
     }
     $this->container->get('synthetic');
   }
@@ -526,7 +526,7 @@ class ContainerTest extends TestCase {
       $this->expectException(RuntimeException::class);
     }
     else {
-      $this->setExpectedException(RuntimeException::class);
+      $this->expectException(RuntimeException::class);
     }
     $this->container->get('wrong_factory');
   }
@@ -569,7 +569,7 @@ class ContainerTest extends TestCase {
       $this->expectException(InvalidArgumentException::class);
     }
     else {
-      $this->setExpectedException(InvalidArgumentException::class);
+      $this->expectException(InvalidArgumentException::class);
     }
     $this->container->get('configurable_service_exception');
   }
@@ -672,7 +672,7 @@ class ContainerTest extends TestCase {
       $this->expectException(InvalidArgumentException::class);
     }
     else {
-      $this->setExpectedException(InvalidArgumentException::class);
+      $this->expectException(InvalidArgumentException::class);
     }
     $this->container->get('invalid_argument_service');
   }
@@ -691,7 +691,7 @@ class ContainerTest extends TestCase {
       $this->expectException(InvalidArgumentException::class);
     }
     else {
-      $this->setExpectedException(InvalidArgumentException::class);
+      $this->expectException(InvalidArgumentException::class);
     }
     if (!$this->machineFormat) {
       throw new InvalidArgumentException('Simulating the test failure.');
@@ -749,6 +749,17 @@ class ContainerTest extends TestCase {
     $service_definition_keys[] = 'bar';
 
     $this->assertEquals($service_definition_keys, $this->container->getServiceIds(), 'Retrieved service IDs match definition after setting new services.');
+  }
+
+  /**
+   * Tests that raw type services arguments are resolved correctly.
+   *
+   * @covers ::get
+   * @covers ::createService
+   * @covers ::resolveServicesAndParameters
+   */
+  public function testResolveServicesAndParametersForRawArgument() {
+    $this->assertEquals(['ccc'], $this->container->get('service_with_raw_argument')->getArguments());
   }
 
   /**
@@ -1002,6 +1013,12 @@ class ContainerTest extends TestCase {
       'configurator' => 'configurator_service_test_does_not_exist',
     ];
 
+    // Raw argument
+    $services['service_with_raw_argument'] = [
+      'class' => '\Drupal\Tests\Component\DependencyInjection\MockInstantiationService',
+      'arguments' => $this->getCollection([$this->getRaw('ccc')]),
+    ];
+
     $aliases = [];
     $aliases['service.provider_alias'] = 'service.provider';
     $aliases['late.service_alias'] = 'late.service';
@@ -1027,7 +1044,7 @@ class ContainerTest extends TestCase {
   }
 
   /**
-   * Helper function to return a service definition.
+   * Helper function to return a parameter definition.
    */
   protected function getParameterCall($name) {
     return (object) [
@@ -1060,6 +1077,16 @@ class ContainerTest extends TestCase {
       'type' => 'collection',
       'value' => $collection,
       'resolve' => $resolve,
+    ];
+  }
+
+  /**
+   * Helper function to return a raw value definition.
+   */
+  protected function getRaw($value) {
+    return (object) [
+      'type' => 'raw',
+      'value' => $value,
     ];
   }
 

@@ -11,6 +11,9 @@ use Drupal\Core\Site\Settings;
  *
  * @see \Drupal\Core\Entity\EntityTypeListenerInterface
  *
+ * @property \Drupal\Core\Entity\EntityTypeManagerInterface entityTypeManager
+ * @property \Drupal\Core\Database\Connection database
+ *
  * @internal
  */
 trait SqlFieldableEntityTypeListenerTrait {
@@ -20,7 +23,7 @@ trait SqlFieldableEntityTypeListenerTrait {
    */
   public function onFieldableEntityTypeUpdate(EntityTypeInterface $entity_type, EntityTypeInterface $original, array $field_storage_definitions, array $original_field_storage_definitions, array &$sandbox = NULL) {
     /** @var \Drupal\Core\Entity\EntityStorageInterface $original_storage */
-    $original_storage = $this->entityManager->createHandlerInstance($original->getStorageClass(), $original);
+    $original_storage = $this->entityTypeManager->createHandlerInstance($original->getStorageClass(), $original);
     $has_data = $original_storage->hasData();
 
     // If 'progress' is not set, then this will be the first run of the batch.
@@ -58,15 +61,12 @@ trait SqlFieldableEntityTypeListenerTrait {
         throw new EntityStorageException('Missing revision_translation_affected field.');
       }
 
-      $sandbox['original_storage'] = $original_storage;
-      $sandbox['temporary_storage'] = $this->entityManager->createHandlerInstance($entity_type->getStorageClass(), $entity_type);
-
       $this->preUpdateEntityTypeSchema($entity_type, $original, $field_storage_definitions, $original_field_storage_definitions, $sandbox);
     }
 
     // Copy data from the original storage to the temporary one.
     if ($has_data) {
-      $this->copyData($entity_type, $original, $sandbox);
+      $this->copyData($entity_type, $original, $field_storage_definitions, $original_field_storage_definitions, $sandbox);
     }
     else {
       // If there is no existing data, we still need to run the
@@ -127,10 +127,14 @@ trait SqlFieldableEntityTypeListenerTrait {
    *   The updated entity type definition.
    * @param \Drupal\Core\Entity\EntityTypeInterface $original
    *   The original entity type definition.
+   * @param \Drupal\Core\Field\FieldStorageDefinitionInterface[] $field_storage_definitions
+   *   The updated field storage definitions, including possibly new ones.
+   * @param \Drupal\Core\Field\FieldStorageDefinitionInterface[] $original_field_storage_definitions
+   *   The original field storage definitions.
    * @param array &$sandbox
    *   The sandbox array from a hook_update_N() implementation.
    */
-  protected function copyData(EntityTypeInterface $entity_type, EntityTypeInterface $original, array &$sandbox) {
+  protected function copyData(EntityTypeInterface $entity_type, EntityTypeInterface $original, array $field_storage_definitions, array $original_field_storage_definitions, array &$sandbox) {
     /** @var \Drupal\Core\Entity\ContentEntityTypeInterface $entity_type */
     $id_key = $entity_type->getKey('id');
     $revision_id_key = $entity_type->getKey('revision');
@@ -138,9 +142,6 @@ trait SqlFieldableEntityTypeListenerTrait {
     $langcode_key = $entity_type->getKey('langcode');
     $default_langcode_key = $entity_type->getKey('default_langcode');
     $revision_translation_affected_key = $entity_type->getKey('revision_translation_affected');
-
-    $temporary_storage = $sandbox['temporary_storage'];
-    $original_storage = $sandbox['original_storage'];
 
     // If 'progress' is not set, then this will be the first run of the batch.
     if (!isset($sandbox['progress'])) {
@@ -174,7 +175,14 @@ trait SqlFieldableEntityTypeListenerTrait {
       ->fetchCol();
 
     /** @var \Drupal\Core\Entity\ContentEntityInterface[] $entities */
-    $entities = $load_revisions ? $original_storage->loadMultipleRevisions($entity_identifiers) : $original_storage->loadMultiple($entity_identifiers);
+    $entities = $load_revisions ? $this->storage->loadMultipleRevisions($entity_identifiers) : $this->storage->loadMultiple($entity_identifiers);
+
+    /** @var \Drupal\Core\Entity\Sql\SqlContentEntityStorage $temporary_storage */
+    $temporary_storage = $this->entityTypeManager->createHandlerInstance($entity_type->getStorageClass(), $entity_type);
+    $temporary_storage->setEntityType($entity_type);
+    $temporary_storage->setFieldStorageDefinitions($field_storage_definitions);
+    $temporary_storage->setTableMapping($sandbox['temporary_table_mapping']);
+
     foreach ($entities as $identifier => $entity) {
       try {
         if (!$original->isRevisionable() && $entity_type->isRevisionable()) {

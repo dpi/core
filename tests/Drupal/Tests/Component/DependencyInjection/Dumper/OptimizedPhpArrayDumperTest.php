@@ -549,7 +549,7 @@ namespace Drupal\Tests\Component\DependencyInjection\Dumper {
         $this->expectException(InvalidArgumentException::class);
       }
       else {
-        $this->setExpectedException(InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
       }
       $this->dumper->getArray();
     }
@@ -571,7 +571,7 @@ namespace Drupal\Tests\Component\DependencyInjection\Dumper {
         $this->expectException(RuntimeException::class);
       }
       else {
-        $this->setExpectedException(RuntimeException::class);
+        $this->expectException(RuntimeException::class);
       }
       $this->dumper->getArray();
     }
@@ -593,7 +593,7 @@ namespace Drupal\Tests\Component\DependencyInjection\Dumper {
         $this->expectException(RuntimeException::class);
       }
       else {
-        $this->setExpectedException(RuntimeException::class);
+        $this->expectException(RuntimeException::class);
       }
       $this->dumper->getArray();
     }
@@ -615,9 +615,50 @@ namespace Drupal\Tests\Component\DependencyInjection\Dumper {
         $this->expectException(RuntimeException::class);
       }
       else {
-        $this->setExpectedException(RuntimeException::class);
+        $this->expectException(RuntimeException::class);
       }
       $this->dumper->getArray();
+    }
+
+    /**
+     * Tests that service arguments with escaped percents are correctly dumped.
+     *
+     * @dataProvider percentsEscapeProvider
+     */
+    public function testPercentsEscape($expected, $argument) {
+      $this->containerBuilder->getDefinitions()->willReturn([
+        'test' => new Definition('\stdClass', [$argument]),
+      ]);
+
+      $dump = $this->dumper->getArray();
+
+      $this->assertEquals($this->serializeDefinition([
+        'class' => '\stdClass',
+        'arguments' => $this->getCollection([
+          $this->getRaw($expected),
+        ]),
+        'arguments_count' => 1,
+      ]), $dump['services']['test']);
+    }
+
+    /**
+     * Data provider for testPercentsEscape().
+     *
+     * @return array[]
+     *   Returns data-set elements with:
+     *     - expected final value.
+     *     - escaped value in service definition.
+     */
+    public function percentsEscapeProvider() {
+      return [
+        ['%foo%', '%%foo%%'],
+        ['foo%bar%', 'foo%%bar%%'],
+        ['%foo%bar', '%%foo%%bar'],
+        ['%', '%'],
+        ['%', '%%'],
+        ['%%', '%%%'],
+        ['%%', '%%%%'],
+      ];
     }
 
     /**
@@ -654,6 +695,16 @@ namespace Drupal\Tests\Component\DependencyInjection\Dumper {
       return (object) [
         'type' => 'parameter',
         'name' => $name,
+      ];
+    }
+
+    /**
+     * Helper function to return a raw value definition.
+     */
+    protected function getRaw($value) {
+      return (object) [
+        'type' => 'raw',
+        'value' => $value,
       ];
     }
 

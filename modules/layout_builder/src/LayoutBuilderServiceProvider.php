@@ -17,6 +17,7 @@ use Symfony\Component\DependencyInjection\Reference;
  * dynamically.
  *
  * @internal
+ *   Service providers are internal.
  *
  * @see \Drupal\layout_builder\EventSubscriber\SetInlineBlockDependency
  */
@@ -33,6 +34,7 @@ class LayoutBuilderServiceProvider implements ServiceProviderInterface {
         new Reference('entity_type.manager'),
         new Reference('database'),
         new Reference('inline_block.usage'),
+        new Reference('plugin.manager.layout_builder.section_storage'),
       ]);
       $definition->addTag('event_subscriber');
       $container->setDefinition('layout_builder.get_block_dependency_subscriber', $definition);

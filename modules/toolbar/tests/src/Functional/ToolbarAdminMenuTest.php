@@ -304,7 +304,7 @@ class ToolbarAdminMenuTest extends BrowserTestBase {
     ];
     $this->drupalPostForm('admin/config/regional/translate', $edit, t('Save translations'));
     $this->assertText(t('The strings have been saved.'), 'The strings have been saved.');
-    $this->assertUrl(\Drupal::url('locale.translate_page', [], ['absolute' => TRUE]), [], 'Correct page redirection.');
+    $this->assertUrl(Url::fromRoute('locale.translate_page', [], ['absolute' => TRUE])->toString(), [], 'Correct page redirection.');
     $this->drupalLogout();
 
     // Log in the adminUser. Check the admin menu subtrees hash now that one
@@ -392,23 +392,6 @@ class ToolbarAdminMenuTest extends BrowserTestBase {
     $this->assertText('External URL');
     // Ensure the description is escaped as expected.
     $this->assertRaw('title="External URL &amp; escaped"');
-  }
-
-  /**
-   * Tests that there is no Manage tab in the Toolbar for authenticated users.
-   *
-   * The authorized user should not have a Manage tab simply with the 'access
-   * toolbar' permission. They need 'access administration pages' for that.
-   */
-  public function testEmptyMenuTray() {
-    // Log out the admin user because we're testing restricted access.
-    $this->drupalLogout();
-    $this->drupalLogin($this->drupalCreateUser(['access toolbar']));
-    $this->assertResponse(200);
-    // @todo The toolbar div itself still has the id "toolbar-administration".
-    // @see https://www.drupal.org/project/drupal/issues/1044090
-    $this->assertSession()->elementExists('css', 'div[id=toolbar-administration]');
-    $this->assertSession()->elementNotExists('css', 'a[id=toolbar-item-administration]');
   }
 
   /**

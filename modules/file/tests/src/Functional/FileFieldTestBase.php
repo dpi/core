@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\file\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\file\FileInterface;
@@ -20,11 +21,9 @@ abstract class FileFieldTestBase extends BrowserTestBase {
   }
 
   /**
-  * Modules to enable.
-  *
-  * @var array
-  */
-  public static $modules = ['node', 'file', 'file_module_test', 'field_ui'];
+   * {@inheritdoc}
+   */
+  protected static $modules = ['node', 'file', 'file_module_test', 'field_ui'];
 
   /**
    * An user with administration permissions.
@@ -33,6 +32,9 @@ abstract class FileFieldTestBase extends BrowserTestBase {
    */
   protected $adminUser;
 
+  /**
+   * {@inheritdoc}
+   */
   protected function setUp() {
     parent::setUp();
     $this->adminUser = $this->drupalCreateUser(['access content', 'access administration pages', 'administer site configuration', 'administer users', 'administer permissions', 'administer content types', 'administer node fields', 'administer node display', 'administer nodes', 'bypass node access']);
@@ -44,6 +46,7 @@ abstract class FileFieldTestBase extends BrowserTestBase {
    * Retrieves a sample file of the specified type.
    *
    * @return \Drupal\file\FileInterface
+   *   The new unsaved file entity.
    */
   public function getTestFile($type_name, $size = NULL) {
     // Get a file to upload.
@@ -71,7 +74,7 @@ abstract class FileFieldTestBase extends BrowserTestBase {
     $field->setSettings(array_merge($field->getSettings(), $field_settings));
     $field->save();
 
-    entity_get_form_display('node', $type_name, 'default')
+    \Drupal::service('entity_display.repository')->getFormDisplay('node', $type_name)
       ->setComponent($name, [
         'settings' => $widget_settings,
       ])
@@ -124,7 +127,7 @@ abstract class FileFieldTestBase extends BrowserTestBase {
       'revision' => (string) (int) $new_revision,
     ];
 
-    $node_storage = $this->container->get('entity.manager')->getStorage('node');
+    $node_storage = $this->container->get('entity_type.manager')->getStorage('node');
     if (is_numeric($nid_or_type)) {
       $nid = $nid_or_type;
       $node_storage->resetCache([$nid]);
@@ -142,25 +145,30 @@ abstract class FileFieldTestBase extends BrowserTestBase {
       $node = $node_storage->load($nid);
       $this->assertNotEqual($nid, $node->getRevisionId(), 'Node revision exists.');
     }
+    $this->drupalGet("node/$nid/edit");
+    $page = $this->getSession()->getPage();
 
     // Attach files to the node.
     $field_storage = FieldStorageConfig::loadByName('node', $field_name);
     // File input name depends on number of files already uploaded.
     $field_num = count($node->{$field_name});
-    $name = 'files[' . $field_name . "_$field_num]";
-    if ($field_storage->getCardinality() != 1) {
-      $name .= '[]';
-    }
-    foreach ($files as $file) {
+    foreach ($files as $i => $file) {
+      $delta = $field_num + $i;
       $file_path = $this->container->get('file_system')->realpath($file->getFileUri());
+      $name = 'files[' . $field_name . '_' . $delta . ']';
+      if ($field_storage->getCardinality() != 1) {
+        $name .= '[]';
+      }
       if (count($files) == 1) {
         $edit[$name] = $file_path;
       }
       else {
-        $edit[$name][] = $file_path;
+        $page->attachFileToField($name, $file_path);
+        $this->drupalPostForm(NULL, [], t('Upload'));
       }
     }
-    $this->drupalPostForm("node/$nid/edit", $edit, t('Save'));
+
+    $this->drupalPostForm(NULL, $edit, t('Save'));
 
     return $nid;
   }
@@ -202,46 +210,56 @@ abstract class FileFieldTestBase extends BrowserTestBase {
    *   Either the file entity or the file URI.
    * @param string $message
    *   (optional) A message to display with the assertion.
+   *
+   * @see https://www.drupal.org/node/3057326
    */
   public static function assertFileExists($file, $message = NULL) {
-    $message = isset($message) ? $message : format_string('File %file exists on the disk.', ['%file' => $file->getFileUri()]);
-    $filename = $file instanceof FileInterface ? $file->getFileUri() : $file;
-    parent::assertFileExists($filename, $message);
+    if ($file instanceof FileInterface) {
+      @trigger_error('Passing a File entity as $file argument to FileFieldTestBase::assertFileExists is deprecated in drupal:8.8.0. It will be removed from drupal:9.0.0. Instead, pass the File entity URI via File::getFileUri(). See https://www.drupal.org/node/3057326', E_USER_DEPRECATED);
+      $file = $file->getFileUri();
+    }
+    $message = isset($message) ? $message : new FormattableMarkup('File %file exists on the disk.', ['%file' => $file]);
+    parent::assertFileExists($file, $message);
   }
 
   /**
    * Asserts that a file exists in the database.
    */
   public function assertFileEntryExists($file, $message = NULL) {
-    $this->container->get('entity.manager')->getStorage('file')->resetCache();
+    $this->container->get('entity_type.manager')->getStorage('file')->resetCache();
     $db_file = File::load($file->id());
-    $message = isset($message) ? $message : format_string('File %file exists in database at the correct path.', ['%file' => $file->getFileUri()]);
+    $message = isset($message) ? $message : new FormattableMarkup('File %file exists in database at the correct path.', ['%file' => $file->getFileUri()]);
     $this->assertEqual($db_file->getFileUri(), $file->getFileUri(), $message);
   }
 
   /**
    * Asserts that a file does not exist on disk.
    *
-   * Overrides PHPUnit\Framework\Assert::assertFileExists() to also work with
-   * file entities.
+   * Overrides PHPUnit\Framework\Assert::assertFileNotExists() to also work
+   * with file entities.
    *
    * @param \Drupal\File\FileInterface|string $file
    *   Either the file entity or the file URI.
    * @param string $message
    *   (optional) A message to display with the assertion.
+   *
+   * @see https://www.drupal.org/node/3057326
    */
   public static function assertFileNotExists($file, $message = NULL) {
-    $message = isset($message) ? $message : format_string('File %file exists on the disk.', ['%file' => $file->getFileUri()]);
-    $filename = $file instanceof FileInterface ? $file->getFileUri() : $file;
-    parent::assertFileNotExists($filename, $message);
+    if ($file instanceof FileInterface) {
+      @trigger_error('Passing a File entity as $file argument to FileFieldTestBase::assertFileNotExists is deprecated in drupal:8.8.0. It will be removed from drupal:9.0.0. Instead, pass the File entity URI via File::getFileUri(). See https://www.drupal.org/node/3057326', E_USER_DEPRECATED);
+      $file = $file->getFileUri();
+    }
+    $message = isset($message) ? $message : new FormattableMarkup('File %file exists on the disk.', ['%file' => $file]);
+    parent::assertFileNotExists($file, $message);
   }
 
   /**
    * Asserts that a file does not exist in the database.
    */
   public function assertFileEntryNotExists($file, $message) {
-    $this->container->get('entity.manager')->getStorage('file')->resetCache();
-    $message = isset($message) ? $message : format_string('File %file exists in database at the correct path.', ['%file' => $file->getFileUri()]);
+    $this->container->get('entity_type.manager')->getStorage('file')->resetCache();
+    $message = isset($message) ? $message : new FormattableMarkup('File %file exists in database at the correct path.', ['%file' => $file->getFileUri()]);
     $this->assertFalse(File::load($file->id()), $message);
   }
 
@@ -249,7 +267,7 @@ abstract class FileFieldTestBase extends BrowserTestBase {
    * Asserts that a file's status is set to permanent in the database.
    */
   public function assertFileIsPermanent(FileInterface $file, $message = NULL) {
-    $message = isset($message) ? $message : format_string('File %file is permanent.', ['%file' => $file->getFileUri()]);
+    $message = isset($message) ? $message : new FormattableMarkup('File %file is permanent.', ['%file' => $file->getFileUri()]);
     $this->assertTrue($file->isPermanent(), $message);
   }
 

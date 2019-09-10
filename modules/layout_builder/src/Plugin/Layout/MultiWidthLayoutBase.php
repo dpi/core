@@ -10,9 +10,7 @@ use Drupal\Core\Plugin\PluginFormInterface;
  * Base class of layouts with configurable widths.
  *
  * @internal
- *   Layout Builder is currently experimental and should only be leveraged by
- *   experimental modules and development releases of contributed modules.
- *   See https://www.drupal.org/core/experimental for more information.
+ *   Plugin classes are internal.
  */
 abstract class MultiWidthLayoutBase extends LayoutDefault implements PluginFormInterface {
 
@@ -20,8 +18,9 @@ abstract class MultiWidthLayoutBase extends LayoutDefault implements PluginFormI
    * {@inheritdoc}
    */
   public function defaultConfiguration() {
+    $configuration = parent::defaultConfiguration();
     $width_classes = array_keys($this->getWidthOptions());
-    return [
+    return $configuration + [
       'column_widths' => array_shift($width_classes),
     ];
   }
@@ -37,19 +36,14 @@ abstract class MultiWidthLayoutBase extends LayoutDefault implements PluginFormI
       '#options' => $this->getWidthOptions(),
       '#description' => $this->t('Choose the column widths for this layout.'),
     ];
-    return $form;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
+    return parent::buildConfigurationForm($form, $form_state);
   }
 
   /**
    * {@inheritdoc}
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
+    parent::submitConfigurationForm($form, $form_state);
     $this->configuration['column_widths'] = $form_state->getValue('column_widths');
   }
 

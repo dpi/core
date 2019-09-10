@@ -2,6 +2,8 @@
 
 namespace Drupal\layout_builder\Plugin\SectionStorage;
 
+use Drupal\Core\Plugin\Context\Context;
+use Drupal\Core\Plugin\Context\ContextDefinition;
 use Drupal\Core\Plugin\ContextAwarePluginBase;
 use Drupal\layout_builder\Routing\LayoutBuilderRoutesTrait;
 use Drupal\layout_builder\Section;
@@ -11,11 +13,6 @@ use Drupal\layout_builder\TempStoreIdentifierInterface;
 
 /**
  * Provides a base class for Section Storage types.
- *
- * @internal
- *   Layout Builder is currently experimental and should only be leveraged by
- *   experimental modules and development releases of contributed modules.
- *   See https://www.drupal.org/core/experimental for more information.
  */
 abstract class SectionStorageBase extends ContextAwarePluginBase implements SectionStorageInterface, TempStoreIdentifierInterface {
 
@@ -105,8 +102,25 @@ abstract class SectionStorageBase extends ContextAwarePluginBase implements Sect
   /**
    * {@inheritdoc}
    */
+  public function removeAllSections($set_blank = FALSE) {
+    $this->getSectionList()->removeAllSections($set_blank);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getContextsDuringPreview() {
-    return $this->getContexts();
+    $contexts = $this->getContexts();
+
+    // view_mode is a required context, but SectionStorage plugins are not
+    // required to return it (for example, the layout_library plugin provided
+    // in the Layout Library module. In these instances, explicitly create a
+    // view_mode context with the value "default".
+    if (!isset($contexts['view_mode']) || $contexts['view_mode']->validate()->count() || !$contexts['view_mode']->getContextValue()) {
+      $contexts['view_mode'] = new Context(new ContextDefinition('string'), 'default');
+    }
+    return $contexts;
   }
 
   /**

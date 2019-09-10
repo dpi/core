@@ -5,6 +5,7 @@
  * Test module for the entity API providing several entity types for testing.
  */
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
@@ -100,6 +101,10 @@ function entity_test_entity_type_alter(array &$entity_types) {
   // Enable the entity_test_new only when needed.
   if (!$state->get('entity_test_new')) {
     unset($entity_types['entity_test_new']);
+  }
+  else {
+    // Allow tests to override the entity type definition.
+    $entity_types['entity_test_new'] = \Drupal::state()->get('entity_test_new.entity_type', $entity_types['entity_test_new']);
   }
 
   $entity_test_definition = $entity_types['entity_test'];
@@ -217,7 +222,7 @@ function entity_test_delete_bundle($bundle, $entity_type = 'entity_test') {
  */
 function entity_test_entity_bundle_info() {
   $bundles = [];
-  $entity_types = \Drupal::entityManager()->getDefinitions();
+  $entity_types = \Drupal::entityTypeManager()->getDefinitions();
   foreach ($entity_types as $entity_type_id => $entity_type) {
     if ($entity_type->getProvider() == 'entity_test' && $entity_type_id != 'entity_test_with_bundle') {
       $bundles[$entity_type_id] = \Drupal::state()->get($entity_type_id . '.bundles') ?: [$entity_type_id => ['label' => 'Entity Test Bundle']];
@@ -234,7 +239,7 @@ function entity_test_entity_bundle_info_alter(&$bundles) {
   $state = \Drupal::state();
   foreach ($bundles as $entity_type_id => &$all_bundle_info) {
     if ($entity_info[$entity_type_id]->getProvider() == 'entity_test') {
-      if ($state->get('entity_test.translation')) {
+      if ($state->get('entity_test.translation') && $entity_info[$entity_type_id]->isTranslatable()) {
         foreach ($all_bundle_info as $bundle_name => &$bundle_info) {
           $bundle_info['translatable'] = TRUE;
           if ($state->get('entity_test.untranslatable_fields.default_translation_affected')) {
@@ -250,7 +255,7 @@ function entity_test_entity_bundle_info_alter(&$bundles) {
  * Implements hook_entity_view_mode_info_alter().
  */
 function entity_test_entity_view_mode_info_alter(&$view_modes) {
-  $entity_info = \Drupal::entityManager()->getDefinitions();
+  $entity_info = \Drupal::entityTypeManager()->getDefinitions();
   foreach ($entity_info as $entity_type => $info) {
     if ($entity_info[$entity_type]->getProvider() == 'entity_test' && !isset($view_modes[$entity_type])) {
       $view_modes[$entity_type] = [
@@ -273,7 +278,7 @@ function entity_test_entity_view_mode_info_alter(&$view_modes) {
  * Implements hook_entity_form_mode_info_alter().
  */
 function entity_test_entity_form_mode_info_alter(&$form_modes) {
-  $entity_info = \Drupal::entityManager()->getDefinitions();
+  $entity_info = \Drupal::entityTypeManager()->getDefinitions();
   foreach ($entity_info as $entity_type => $info) {
     if ($entity_info[$entity_type]->getProvider() == 'entity_test') {
       $form_modes[$entity_type] = [
@@ -570,7 +575,7 @@ function entity_test_entity_operation_alter(array &$operations, EntityInterface 
   if (in_array($entity->getEntityTypeId(), $valid_entity_type_ids)) {
     if (\Drupal::service('router.route_provider')->getRouteByName("entity.{$entity->getEntityTypeId()}.test_operation")) {
       $operations['test_operation'] = [
-        'title' => format_string('Test Operation: @label', ['@label' => $entity->label()]),
+        'title' => new FormattableMarkup('Test Operation: @label', ['@label' => $entity->label()]),
         'url' => Url::fromRoute("entity.{$entity->getEntityTypeId()}.test_operation", [$entity->getEntityTypeId() => $entity->id()]),
         'weight' => 50,
       ];

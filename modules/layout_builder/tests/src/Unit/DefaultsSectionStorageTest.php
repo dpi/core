@@ -2,15 +2,19 @@
 
 namespace Drupal\Tests\layout_builder\Unit;
 
+use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityType;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
+use Drupal\Core\Plugin\Context\ContextDefinition;
 use Drupal\Core\Plugin\Context\ContextInterface;
-use Drupal\layout_builder\Entity\LayoutBuilderSampleEntityGenerator;
+use Drupal\Core\Plugin\Context\EntityContextDefinition;
+use Drupal\Core\TypedData\TypedDataManagerInterface;
 use Drupal\layout_builder\Entity\LayoutEntityDisplayInterface;
+use Drupal\layout_builder\Entity\SampleEntityGeneratorInterface;
 use Drupal\layout_builder\Plugin\SectionStorage\DefaultsSectionStorage;
 use Drupal\layout_builder\SectionStorage\SectionStorageDefinition;
 use Drupal\Tests\UnitTestCase;
@@ -32,16 +36,16 @@ class DefaultsSectionStorageTest extends UnitTestCase {
   protected $plugin;
 
   /**
-   * The entity manager.
+   * The entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
   protected $entityTypeManager;
 
   /**
    * The sample entity generator.
    *
-   * @var \Drupal\layout_builder\Entity\LayoutBuilderSampleEntityGenerator
+   * @var \Drupal\layout_builder\Entity\SampleEntityGeneratorInterface
    */
   protected $sampleEntityGenerator;
 
@@ -53,7 +57,7 @@ class DefaultsSectionStorageTest extends UnitTestCase {
 
     $this->entityTypeManager = $this->prophesize(EntityTypeManagerInterface::class);
     $entity_type_bundle_info = $this->prophesize(EntityTypeBundleInfoInterface::class);
-    $this->sampleEntityGenerator = $this->prophesize(LayoutBuilderSampleEntityGenerator::class);
+    $this->sampleEntityGenerator = $this->prophesize(SampleEntityGeneratorInterface::class);
 
     $definition = new SectionStorageDefinition([
       'id' => 'defaults',
@@ -67,6 +71,17 @@ class DefaultsSectionStorageTest extends UnitTestCase {
    * @covers ::setThirdPartySetting
    */
   public function testThirdPartySettings() {
+    $this->entityTypeManager->getDefinition('entity_view_display')->willReturn(new EntityType(['id' => 'entity_view_display']));
+
+    $container = new ContainerBuilder();
+    $container->set('typed_data_manager', $this->prophesize(TypedDataManagerInterface::class)->reveal());
+    $container->set('entity_type.manager', $this->entityTypeManager->reveal());
+    \Drupal::setContainer($container);
+
+    $this->plugin->getPluginDefinition()
+      ->addContextDefinition('display', EntityContextDefinition::fromEntityTypeId('entity_view_display'))
+      ->addContextDefinition('view_mode', new ContextDefinition('string'));
+
     // Set an initial value on the section list.
     $section_list = $this->prophesize(LayoutEntityDisplayInterface::class);
 
@@ -164,7 +179,7 @@ class DefaultsSectionStorageTest extends UnitTestCase {
     }
 
     if (!$success) {
-      $this->setExpectedException(\InvalidArgumentException::class);
+      $this->expectException(\InvalidArgumentException::class);
     }
 
     $result = $this->plugin->getSectionListFromId($value);
@@ -397,7 +412,6 @@ class DefaultsSectionStorageTest extends UnitTestCase {
         ],
         [
           '_field_ui_view_mode_access' => 'administer with_bundle_key display',
-          '_has_layout_section' => 'true',
           '_layout_builder_access' => 'view',
         ],
         [
@@ -420,7 +434,6 @@ class DefaultsSectionStorageTest extends UnitTestCase {
         ],
         [
           '_field_ui_view_mode_access' => 'administer with_bundle_key display',
-          '_has_layout_section' => 'true',
           '_layout_builder_access' => 'view',
         ],
         [
@@ -442,7 +455,6 @@ class DefaultsSectionStorageTest extends UnitTestCase {
         ],
         [
           '_field_ui_view_mode_access' => 'administer with_bundle_key display',
-          '_has_layout_section' => 'true',
           '_layout_builder_access' => 'view',
         ],
         [
@@ -462,7 +474,6 @@ class DefaultsSectionStorageTest extends UnitTestCase {
         ],
         [
           '_field_ui_view_mode_access' => 'administer with_bundle_parameter display',
-          '_has_layout_section' => 'true',
           '_layout_builder_access' => 'view',
         ],
         [
@@ -483,7 +494,6 @@ class DefaultsSectionStorageTest extends UnitTestCase {
         ],
         [
           '_field_ui_view_mode_access' => 'administer with_bundle_parameter display',
-          '_has_layout_section' => 'true',
           '_layout_builder_access' => 'view',
         ],
         [
@@ -504,7 +514,6 @@ class DefaultsSectionStorageTest extends UnitTestCase {
         ],
         [
           '_field_ui_view_mode_access' => 'administer with_bundle_parameter display',
-          '_has_layout_section' => 'true',
           '_layout_builder_access' => 'view',
         ],
         [

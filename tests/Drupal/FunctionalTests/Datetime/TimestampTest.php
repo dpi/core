@@ -18,7 +18,7 @@ use Drupal\Tests\BrowserTestBase;
 class TimestampTest extends BrowserTestBase {
 
   /**
-   * An array of display options to pass to entity_get_display().
+   * An array of display options to pass to EntityDisplayRepositoryInterface::getViewDisplay().
    *
    * @var array
    */
@@ -104,7 +104,7 @@ class TimestampTest extends BrowserTestBase {
     $date = new DrupalDateTime($value, 'UTC');
 
     // Update the timezone to the system default.
-    $date->setTimezone(timezone_open(drupal_get_user_timezone()));
+    $date->setTimezone(timezone_open(date_default_timezone_get()));
 
     // Display creation form.
     $this->drupalGet('entity_test/add');

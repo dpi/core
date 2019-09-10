@@ -47,10 +47,6 @@ abstract class LayoutRestTestBase extends ResourceTestBase {
     parent::setUp();
     $assert_session = $this->assertSession();
 
-    // @todo The Layout Builder UI relies on local tasks; fix in
-    //   https://www.drupal.org/project/drupal/issues/2917777.
-    $this->drupalPlaceBlock('local_tasks_block');
-
     $this->createContentType(['type' => 'bundle_with_section_field']);
 
     $this->drupalLogin($this->drupalCreateUser([
@@ -78,12 +74,11 @@ abstract class LayoutRestTestBase extends ResourceTestBase {
     ]);
 
     $this->drupalGet('node/' . $this->node->id() . '/layout');
-    $page->clickLink('Layout');
-    $page->clickLink('Add Block');
+    $page->clickLink('Add block');
     $page->clickLink('Powered by Drupal');
     $page->fillField('settings[label]', 'This is an override');
     $page->checkField('settings[label_display]');
-    $page->pressButton('Add Block');
+    $page->pressButton('Add block');
     $page->pressButton('Save layout');
     $assert_session->pageTextContains('This is an override');
 

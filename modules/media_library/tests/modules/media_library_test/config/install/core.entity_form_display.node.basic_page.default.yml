@@ -23,7 +23,12 @@ content:
   field_twin_media:
     type: media_library_widget
     weight: 122
-    settings: {  }
+    settings:
+      media_types:
+        - type_three
+        - type_one
+        - type_two
+        - type_four
     third_party_settings: {  }
     region: content
   field_single_media_type:
@@ -41,6 +46,18 @@ content:
   field_noadd_media:
     type: media_library_widget
     weight: 123
+    settings: {  }
+    third_party_settings: {  }
+    region: content
+  field_null_types_media:
+    type: media_library_widget
+    weight: 125
+    settings: {  }
+    third_party_settings: {  }
+    region: content
+  field_empty_types_media:
+    type: media_library_widget
+    weight: 126
     settings: {  }
     third_party_settings: {  }
     region: content

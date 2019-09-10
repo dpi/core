@@ -23,28 +23,28 @@ class AliasManagerTest extends UnitTestCase {
   /**
    * Alias storage.
    *
-   * @var \Drupal\Core\Path\AliasStorageInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Path\AliasStorageInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $aliasStorage;
 
   /**
    * Alias whitelist.
    *
-   * @var \Drupal\Core\Path\AliasWhitelistInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Path\AliasWhitelistInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $aliasWhitelist;
 
   /**
    * Language manager.
    *
-   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $languageManager;
 
   /**
    * Cache backend.
    *
-   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $cache;
 
@@ -68,10 +68,10 @@ class AliasManagerTest extends UnitTestCase {
   protected function setUp() {
     parent::setUp();
 
-    $this->aliasStorage = $this->getMock('Drupal\Core\Path\AliasStorageInterface');
-    $this->aliasWhitelist = $this->getMock('Drupal\Core\Path\AliasWhitelistInterface');
-    $this->languageManager = $this->getMock('Drupal\Core\Language\LanguageManagerInterface');
-    $this->cache = $this->getMock('Drupal\Core\Cache\CacheBackendInterface');
+    $this->aliasStorage = $this->createMock('Drupal\Core\Path\AliasStorageInterface');
+    $this->aliasWhitelist = $this->createMock('Drupal\Core\Path\AliasWhitelistInterface');
+    $this->languageManager = $this->createMock('Drupal\Core\Language\LanguageManagerInterface');
+    $this->cache = $this->createMock('Drupal\Core\Cache\CacheBackendInterface');
 
     $this->aliasManager = new AliasManager($this->aliasStorage, $this->aliasWhitelist, $this->languageManager, $this->cache);
 

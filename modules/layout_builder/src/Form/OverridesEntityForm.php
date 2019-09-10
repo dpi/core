@@ -5,10 +5,12 @@ namespace Drupal\layout_builder\Form;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\ContentEntityForm;
 use Drupal\Core\Entity\Entity\EntityFormDisplay;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\layout_builder\LayoutTempstoreRepositoryInterface;
+use Drupal\layout_builder\OverridesSectionStorageInterface;
 use Drupal\layout_builder\Plugin\SectionStorage\OverridesSectionStorage;
 use Drupal\layout_builder\SectionStorageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -17,8 +19,11 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * Provides a form containing the Layout Builder UI for overrides.
  *
  * @internal
+ *   Form classes are internal.
  */
 class OverridesEntityForm extends ContentEntityForm {
+
+  use PreviewToggleTrait;
 
   /**
    * Layout tempstore repository.
@@ -76,24 +81,14 @@ class OverridesEntityForm extends ContentEntityForm {
   protected function init(FormStateInterface $form_state) {
     parent::init($form_state);
 
-    // Create a transient display that is not persisted, but used only for
-    // building the components required for the layout form.
-    $display = EntityFormDisplay::create([
-      'targetEntityType' => $this->getEntity()->getEntityTypeId(),
-      'bundle' => $this->getEntity()->bundle(),
-    ]);
-
-    // Allow modules to choose if they are relevant to the layout form.
-    $this->moduleHandler->alter('layout_builder_overrides_entity_form_display', $display);
-
-    // Add the widget for Layout Builder after the alter.
-    $display->setComponent(OverridesSectionStorage::FIELD_NAME, [
+    $form_display = EntityFormDisplay::collectRenderDisplay($this->entity, $this->getOperation(), FALSE);
+    $form_display->setComponent(OverridesSectionStorage::FIELD_NAME, [
       'type' => 'layout_builder_widget',
       'weight' => -10,
       'settings' => [],
     ]);
 
-    $this->setFormDisplay($display, $form_state);
+    $this->setFormDisplay($form_display, $form_state);
   }
 
   /**
@@ -102,43 +97,77 @@ class OverridesEntityForm extends ContentEntityForm {
   public function buildForm(array $form, FormStateInterface $form_state, SectionStorageInterface $section_storage = NULL) {
     $this->sectionStorage = $section_storage;
     $form = parent::buildForm($form, $form_state);
+    $form['#attributes']['class'][] = 'layout-builder-form';
 
     // @todo \Drupal\layout_builder\Field\LayoutSectionItemList::defaultAccess()
     //   restricts all access to the field, explicitly allow access here until
     //   https://www.drupal.org/node/2942975 is resolved.
     $form[OverridesSectionStorage::FIELD_NAME]['#access'] = TRUE;
+
+    $form['layout_builder_message'] = $this->buildMessage($section_storage->getContextValue('entity'), $section_storage);
     return $form;
   }
 
   /**
-   * {@inheritdoc}
+   * Renders a message to display at the top of the layout builder.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity whose layout is being edited.
+   * @param \Drupal\layout_builder\OverridesSectionStorageInterface $section_storage
+   *   The current section storage.
+   *
+   * @return array
+   *   A renderable array containing the message.
    */
-  public function buildEntity(array $form, FormStateInterface $form_state) {
-    /** @var \Drupal\Core\Entity\FieldableEntityInterface $section_storage_entity */
-    $section_storage_entity = $this->sectionStorage->getContextValue('entity');
+  protected function buildMessage(EntityInterface $entity, OverridesSectionStorageInterface $section_storage) {
+    $entity_type = $entity->getEntityType();
+    $bundle_info = $this->entityTypeBundleInfo->getBundleInfo($entity->getEntityTypeId());
 
-    // @todo Replace with new API in
-    //   https://www.drupal.org/project/drupal/issues/2942907.
-    /** @var \Drupal\Core\Entity\FieldableEntityInterface $active_entity */
-    $active_entity = $this->entityTypeManager->getStorage($section_storage_entity->getEntityTypeId())->load($section_storage_entity->id());
+    $variables = [
+      '@bundle' => $bundle_info[$entity->bundle()]['label'],
+      '@singular_label' => $entity_type->getSingularLabel(),
+      '@plural_label' => $entity_type->getPluralLabel(),
+    ];
 
-    // Any fields that are not editable on this form should be updated with the
-    // value from the active entity for editing. This avoids overwriting fields
-    // that have been updated since the entity was stored in the section
-    // storage.
-    $edited_field_names = $this->getEditedFieldNames($form_state);
-    foreach ($section_storage_entity->getFieldDefinitions() as $field_name => $field_definition) {
-      if (!in_array($field_name, $edited_field_names) && !$field_definition->isReadOnly() && !$field_definition->isComputed()) {
-        $section_storage_entity->{$field_name} = $active_entity->{$field_name};
+    $defaults_link = $section_storage
+      ->getDefaultSectionStorage()
+      ->getLayoutBuilderUrl();
+
+    if ($defaults_link->access($this->currentUser())) {
+      $variables[':link'] = $defaults_link->toString();
+      if ($entity_type->hasKey('bundle')) {
+        $message = $this->t('You are editing the layout for this @bundle @singular_label. <a href=":link">Edit the template for all @bundle @plural_label instead.</a>', $variables);
+      }
+      else {
+        $message = $this->t('You are editing the layout for this @singular_label. <a href=":link">Edit the template for all @plural_label instead.</a>', $variables);
+      }
+    }
+    else {
+      if ($entity_type->hasKey('bundle')) {
+        $message = $this->t('You are editing the layout for this @bundle @singular_label.', $variables);
+      }
+      else {
+        $message = $this->t('You are editing the layout for this @singular_label.', $variables);
       }
     }
 
-    // \Drupal\Core\Entity\EntityForm::buildEntity() clones the entity object.
-    // Keep it in sync with the one used by the section storage.
-    $this->setEntity($section_storage_entity);
-    $entity = parent::buildEntity($form, $form_state);
-    $this->sectionStorage->setContextValue('entity', $entity);
-    return $entity;
+    return [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => [
+          'layout-builder__message',
+          'layout-builder__message--overrides',
+        ],
+      ],
+      'message' => [
+        '#theme' => 'status_messages',
+        '#message_list' => ['status' => [$message]],
+        '#status_headings' => [
+          'status' => $this->t('Status message'),
+        ],
+      ],
+      '#weight' => -900,
+    ];
   }
 
   /**
@@ -158,25 +187,35 @@ class OverridesEntityForm extends ContentEntityForm {
    */
   protected function actions(array $form, FormStateInterface $form_state) {
     $actions = parent::actions($form, $form_state);
+    $actions['#attributes']['role'] = 'region';
+    $actions['#attributes']['aria-label'] = $this->t('Layout Builder tools');
     $actions['submit']['#value'] = $this->t('Save layout');
     $actions['delete']['#access'] = FALSE;
     $actions['#weight'] = -1000;
 
     $actions['discard_changes'] = [
-      '#type' => 'link',
-      '#title' => $this->t('Discard changes'),
-      '#attributes' => ['class' => ['button']],
-      '#url' => $this->sectionStorage->getLayoutBuilderUrl('discard_changes'),
+      '#type' => 'submit',
+      '#value' => $this->t('Discard changes'),
+      '#submit' => ['::redirectOnSubmit'],
+      '#redirect' => 'discard_changes',
     ];
-    // @todo This link should be conditionally displayed, see
+    // @todo This button should be conditionally displayed, see
     //   https://www.drupal.org/node/2917777.
     $actions['revert'] = [
-      '#type' => 'link',
-      '#title' => $this->t('Revert to defaults'),
-      '#attributes' => ['class' => ['button']],
-      '#url' => $this->sectionStorage->getLayoutBuilderUrl('revert'),
+      '#type' => 'submit',
+      '#value' => $this->t('Revert to defaults'),
+      '#submit' => ['::redirectOnSubmit'],
+      '#redirect' => 'revert',
     ];
+    $actions['preview_toggle'] = $this->buildContentPreviewToggle();
     return $actions;
+  }
+
+  /**
+   * Form submission handler.
+   */
+  public function redirectOnSubmit(array $form, FormStateInterface $form_state) {
+    $form_state->setRedirectUrl($this->sectionStorage->getLayoutBuilderUrl($form_state->getTriggeringElement()['#redirect']));
   }
 
   /**

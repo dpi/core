@@ -30,10 +30,6 @@ class TestMultiWidthLayoutsTest extends WebDriverTestBase {
   protected function setUp() {
     parent::setUp();
 
-    // @todo The Layout Builder UI relies on local tasks; fix in
-    //   https://www.drupal.org/project/drupal/issues/2917777.
-    $this->drupalPlaceBlock('local_tasks_block');
-
     $this->createContentType(['type' => 'bundle_with_section_field']);
 
     $this->drupalLogin($this->drupalCreateUser([
@@ -85,8 +81,8 @@ class TestMultiWidthLayoutsTest extends WebDriverTestBase {
     ];
     foreach ($width_options as $width_option) {
       $width = array_shift($width_option['widths']);
-      $assert_session->linkExists('Add Section');
-      $page->clickLink('Add Section');
+      $assert_session->linkExists('Add section');
+      $page->clickLink('Add section');
       $this->assertNotEmpty($assert_session->waitForElementVisible('css', "#drupal-off-canvas a:contains(\"{$width_option['label']}\")"));
       $page->clickLink($width_option['label']);
       $this->assertNotEmpty($assert_session->waitForElementVisible('css', '#drupal-off-canvas input[type="submit"][value="Add section"]'));
@@ -94,34 +90,19 @@ class TestMultiWidthLayoutsTest extends WebDriverTestBase {
       $this->assertWidthClassApplied($width_option['class'] . $width);
       foreach ($width_option['widths'] as $width) {
         $width_class = $width_option['class'] . $width;
-        $assert_session->linkExists('Configure section');
-        $page->clickLink('Configure section');
+        $assert_session->linkExists('Configure Section 1');
+        $page->clickLink('Configure Section 1');
         $this->assertNotEmpty($assert_session->waitForElementVisible('css', '#drupal-off-canvas input[type="submit"][value="Update"]'));
         $page->findField('layout_settings[column_widths]')->setValue($width);
         $page->pressButton("Update");
         $this->assertWidthClassApplied($width_class);
       }
-      $assert_session->linkExists('Remove section');
-      $this->clickLink('Remove section');
+      $assert_session->linkExists('Remove Section 1');
+      $this->clickLink('Remove Section 1');
       $this->assertNotEmpty($assert_session->waitForElementVisible('css', '#drupal-off-canvas input[type="submit"][value="Remove"]'));
       $page->pressButton('Remove');
-      $this->waitForNoElement(".$width_class");
+      $assert_session->assertNoElementAfterWait('css', ".$width_class");
     }
-  }
-
-  /**
-   * Waits for an element to be removed from the page.
-   *
-   * @param string $selector
-   *   CSS selector.
-   * @param int $timeout
-   *   (optional) Timeout in milliseconds, defaults to 10000.
-   *
-   * @todo Remove in https://www.drupal.org/node/2892440.
-   */
-  protected function waitForNoElement($selector, $timeout = 10000) {
-    $condition = "(typeof jQuery !== 'undefined' && jQuery('$selector').length === 0)";
-    $this->assertJsCondition($condition, $timeout);
   }
 
   /**
