@@ -140,9 +140,6 @@ trait DeprecationListenerTrait {
       // This deprecation comes from behat/mink-browserkit-driver when updating
       // symfony/browser-kit to 4.3+.
       'The "Symfony\Component\BrowserKit\Response::getStatus()" method is deprecated since Symfony 4.3, use getStatusCode() instead.',
-      // Blocked by https://www.drupal.org/project/drupal/issues/2730631
-      'The "access_check.node.revision" service relies on the deprecated "Drupal\node\Access\NodeRevisionAccessCheck" class. It should either be deprecated or its implementation upgraded.',
-      'NodeRevisionAccessCheck is deprecated in Drupal 8.8.x and will be removed before Drupal 9.0.x. Use "_entity_access" requirement with relevant operation instead.',
     ];
   }
 
