@@ -23,17 +23,17 @@ class AccessAwareRouterTest extends UnitTestCase {
   protected $route;
 
   /**
-   * @var \Symfony\Cmf\Component\Routing\ChainRouter|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Symfony\Cmf\Component\Routing\ChainRouter|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $chainRouter;
 
   /**
-   * @var \Drupal\Core\Access\AccessManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Access\AccessManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $accessManager;
 
   /**
-   * @var \Drupal\Core\Session\AccountInterface||\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Session\AccountInterface||\PHPUnit\Framework\MockObject\MockObject
    */
   protected $currentUser;
 
@@ -96,7 +96,7 @@ class AccessAwareRouterTest extends UnitTestCase {
       ->method('checkRequest')
       ->with($request)
       ->willReturn($access_result);
-    $this->setExpectedException(AccessDeniedHttpException::class);
+    $this->expectException(AccessDeniedHttpException::class);
     $this->router->matchRequest($request);
   }
 
@@ -112,7 +112,8 @@ class AccessAwareRouterTest extends UnitTestCase {
       ->method('checkRequest')
       ->with($request)
       ->willReturn($access_result);
-    $this->setExpectedException(AccessDeniedHttpException::class, $reason);
+    $this->expectException(AccessDeniedHttpException::class);
+    $this->expectExceptionMessage($reason);
     $this->router->matchRequest($request);
   }
 

@@ -2,7 +2,9 @@
 
 namespace Drupal\KernelTests\Core\File;
 
-use Drupal\Component\PhpStorage\FileStorage;
+use Drupal\Component\FileSecurity\FileSecurity;
+use Drupal\Component\FileSystem\FileSystem;
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\File\Exception\FileException;
 use Drupal\Core\File\FileSystemInterface;
 
@@ -99,7 +101,7 @@ class DirectoryTest extends FileTestBase {
     $this->assertTrue(is_file($default_scheme . '://.htaccess'), 'Successfully re-created the .htaccess file in the files directory.', 'File');
     // Verify contents of .htaccess file.
     $file = file_get_contents($default_scheme . '://.htaccess');
-    $this->assertEqual($file, FileStorage::htaccessLines(FALSE), 'The .htaccess file contains the proper content.', 'File');
+    $this->assertEqual($file, FileSecurity::htaccessLines(FALSE), 'The .htaccess file contains the proper content.', 'File');
   }
 
   /**
@@ -115,14 +117,14 @@ class DirectoryTest extends FileTestBase {
     /** @var \Drupal\Core\File\FileSystemInterface $file_system */
     $file_system = \Drupal::service('file_system');
     $path = $file_system->createFilename($basename, $directory);
-    $this->assertEqual($path, $original, format_string('New filepath %new equals %original.', ['%new' => $path, '%original' => $original]), 'File');
+    $this->assertEqual($path, $original, new FormattableMarkup('New filepath %new equals %original.', ['%new' => $path, '%original' => $original]), 'File');
 
     // Then we test against a file that already exists within that directory.
     $basename = 'druplicon.png';
     $original = $directory . '/' . $basename;
     $expected = $directory . '/druplicon_0.png';
     $path = $file_system->createFilename($basename, $directory);
-    $this->assertEqual($path, $expected, format_string('Creating a new filepath from %original equals %new (expected %expected).', ['%new' => $path, '%original' => $original, '%expected' => $expected]), 'File');
+    $this->assertEqual($path, $expected, new FormattableMarkup('Creating a new filepath from %original equals %new (expected %expected).', ['%new' => $path, '%original' => $original, '%expected' => $expected]), 'File');
 
     // @TODO: Finally we copy a file into a directory several times, to ensure a properly iterating filename suffix.
   }
@@ -160,20 +162,18 @@ class DirectoryTest extends FileTestBase {
     $this->assertEqual($path, FALSE, 'An error is returned when filepath destination already exists with FileSystemInterface::EXISTS_ERROR.', 'File');
 
     // Invalid UTF-8 causes an exception.
-    $this->setExpectedException(FileException::class, "Invalid filename 'a\xFFtest\x80€.txt'");
+    $this->expectException(FileException::class);
+    $this->expectExceptionMessage("Invalid filename 'a\xFFtest\x80€.txt'");
     $file_system->getDestinationFilename("core/misc/a\xFFtest\x80€.txt", FileSystemInterface::EXISTS_REPLACE);
   }
 
   /**
-   * Ensure that the file_directory_temp() function always returns a value.
+   * Ensure that the getTempDirectory() method always returns a value.
    */
   public function testFileDirectoryTemp() {
-    // Start with an empty variable to ensure we have a clean slate.
-    $config = $this->config('system.file');
-    $config->set('path.temporary', '')->save();
-    $tmp_directory = file_directory_temp();
-    $this->assertEqual(empty($tmp_directory), FALSE, 'file_directory_temp() returned a non-empty value.');
-    $this->assertEqual($config->get('path.temporary'), $tmp_directory);
+    $tmp_directory = \Drupal::service('file_system')->getTempDirectory();
+    $this->assertNotEmpty($tmp_directory);
+    $this->assertEquals($tmp_directory, FileSystem::getOsTemporaryDirectory());
   }
 
   /**

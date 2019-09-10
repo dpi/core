@@ -19,7 +19,7 @@ class ModuleHandlerTest extends UnitTestCase {
   /**
    * The mocked cache backend.
    *
-   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $cacheBackend;
 
@@ -165,7 +165,7 @@ class ModuleHandlerTest extends UnitTestCase {
    * @covers ::getModule
    */
   public function testGetModuleWithNonExistingModule() {
-    $this->setExpectedException(UnknownExtensionException::class);
+    $this->expectException(UnknownExtensionException::class);
     $this->getModuleHandler()->getModule('claire_alice_watch_my_little_pony_module_that_does_not_exist');
   }
 

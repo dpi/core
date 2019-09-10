@@ -24,21 +24,21 @@ class FieldConfigEntityUnitTest extends UnitTestCase {
   /**
    * The entity type used for testing.
    *
-   * @var \Drupal\Core\Config\Entity\ConfigEntityTypeInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Config\Entity\ConfigEntityTypeInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityType;
 
   /**
    * The entity manager used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityTypeManager;
 
   /**
    * The entity field manager used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityFieldManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityFieldManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityFieldManager;
 
@@ -52,21 +52,21 @@ class FieldConfigEntityUnitTest extends UnitTestCase {
   /**
    * The UUID generator used for testing.
    *
-   * @var \Drupal\Component\Uuid\UuidInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Component\Uuid\UuidInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $uuid;
 
   /**
    * The mock field storage.
    *
-   * @var \Drupal\field\FieldStorageConfigInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\field\FieldStorageConfigInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $fieldStorage;
 
   /**
    * The mock field type plugin manager;
    *
-   * @var \Drupal\Core\Field\FieldTypePluginManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Field\FieldTypePluginManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $fieldTypePluginManager;
 
@@ -207,7 +207,8 @@ class FieldConfigEntityUnitTest extends UnitTestCase {
       'bundle' => 'test_bundle_not_exists',
       'field_type' => 'test_field',
     ], $this->entityTypeId);
-    $this->setExpectedException(\LogicException::class, 'Missing bundle entity, entity type bundle_entity_type, entity id test_bundle_not_exists.');
+    $this->expectException(\LogicException::class);
+    $this->expectExceptionMessage('Missing bundle entity, entity type bundle_entity_type, entity id test_bundle_not_exists.');
     $field->calculateDependencies();
   }
 

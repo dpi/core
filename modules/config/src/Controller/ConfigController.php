@@ -77,7 +77,7 @@ class ConfigController implements ContainerInjectionInterface {
       $container->get('config.storage'),
       $container->get('config.storage.sync'),
       $container->get('config.manager'),
-      new FileDownloadController(),
+      FileDownloadController::create($container),
       $container->get('diff.formatter'),
       $container->get('file_system'),
       $container->get('config.storage.export')
@@ -121,13 +121,13 @@ class ConfigController implements ContainerInjectionInterface {
    */
   public function downloadExport() {
     try {
-      $this->fileSystem->delete(file_directory_temp() . '/config.tar.gz');
+      $this->fileSystem->delete($this->fileSystem->getTempDirectory() . '/config.tar.gz');
     }
     catch (FileException $e) {
       // Ignore failed deletes.
     }
 
-    $archiver = new ArchiveTar(file_directory_temp() . '/config.tar.gz', 'gz');
+    $archiver = new ArchiveTar($this->fileSystem->getTempDirectory() . '/config.tar.gz', 'gz');
     // Add all contents of the export storage to the archive.
     foreach ($this->exportStorage->listAll() as $name) {
       $archiver->addString("$name.yml", Yaml::encode($this->exportStorage->read($name)));
@@ -156,7 +156,7 @@ class ConfigController implements ContainerInjectionInterface {
    *   (optional) The configuration collection name. Defaults to the default
    *   collection.
    *
-   * @return string
+   * @return array
    *   Table showing a two-way diff between the active and staged configuration.
    */
   public function diff($source_name, $target_name = NULL, $collection = NULL) {

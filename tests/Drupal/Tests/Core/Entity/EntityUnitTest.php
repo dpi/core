@@ -10,6 +10,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityTypeRepositoryInterface;
 use Drupal\Core\Language\Language;
 use Drupal\entity_test\Entity\EntityTestMul;
+use Drupal\Tests\Traits\ExpectDeprecationTrait;
 use Drupal\Tests\UnitTestCase;
 
 /**
@@ -19,24 +20,26 @@ use Drupal\Tests\UnitTestCase;
  */
 class EntityUnitTest extends UnitTestCase {
 
+  use ExpectDeprecationTrait;
+
   /**
    * The entity under test.
    *
-   * @var \Drupal\Core\Entity\Entity|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\Entity|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entity;
 
   /**
    * The entity type used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityTypeInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityType;
 
   /**
    * The entity type manager used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityTypeManager;
 
@@ -50,28 +53,28 @@ class EntityUnitTest extends UnitTestCase {
   /**
    * The route provider used for testing.
    *
-   * @var \Drupal\Core\Routing\RouteProvider|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Routing\RouteProvider|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $routeProvider;
 
   /**
    * The UUID generator used for testing.
    *
-   * @var \Drupal\Component\Uuid\UuidInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Component\Uuid\UuidInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $uuid;
 
   /**
    * The language manager.
    *
-   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $languageManager;
 
   /**
    * The mocked cache tags invalidator.
    *
-   * @var \Drupal\Core\Cache\CacheTagsInvalidatorInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Cache\CacheTagsInvalidatorInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $cacheTagsInvalidator;
 
@@ -171,6 +174,9 @@ class EntityUnitTest extends UnitTestCase {
    * @group legacy
    */
   public function testLabel() {
+
+    $this->expectDeprecation('Entity type ' . $this->entityTypeId . ' defines a label callback. Support for that is deprecated in drupal:8.0.0 and will be removed in drupal:9.0.0. Override the EntityInterface::label() method instead. See https://www.drupal.org/node/3050794');
+
     // Make a mock with one method that we use as the entity's uri_callback. We
     // check that it is called, and that the entity's label is the callback's
     // return value.
@@ -181,11 +187,9 @@ class EntityUnitTest extends UnitTestCase {
       ->method(__FUNCTION__)
       ->will($this->returnValue($callback_label));
     $this->entityType->expects($this->at(0))
-      ->method('getLabelCallback')
+      ->method('get')
+      ->with('label_callback')
       ->will($this->returnValue([$callback_container, __FUNCTION__]));
-    $this->entityType->expects($this->at(1))
-      ->method('getLabelCallback')
-      ->will($this->returnValue(NULL));
     $this->entityType->expects($this->at(2))
       ->method('getKey')
       ->with('label')

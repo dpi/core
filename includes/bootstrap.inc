@@ -13,6 +13,7 @@ use Drupal\Core\Config\BootstrapConfigStorageFactory;
 use Drupal\Core\Logger\RfcLogLevel;
 use Drupal\Core\Test\TestDatabase;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Site\Settings;
 use Drupal\Core\Utility\Error;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
@@ -158,7 +159,10 @@ const CONFIG_ACTIVE_DIRECTORY = 'active';
 /**
  * $config_directories key for sync directory.
  *
- * @see config_get_config_directory()
+ * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use
+ *   \Drupal\Core\Site\Settings::get('config_sync_directory') instead.
+ *
+ * @see https://www.drupal.org/node/3018145
  */
 const CONFIG_SYNC_DIRECTORY = 'sync';
 
@@ -196,10 +200,19 @@ define('DRUPAL_ROOT', dirname(dirname(__DIR__)));
  *   The configuration directory path.
  *
  * @throws \Exception
+ *
+ * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use
+ *   \Drupal\Core\Site\Settings::get('config_sync_directory') instead.
+ *
+ * @see https://www.drupal.org/node/3018145
  */
 function config_get_config_directory($type) {
   global $config_directories;
-
+  @trigger_error('config_get_config_directory() is deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use \Drupal\Core\Site\Settings::get(\'config_sync_directory\') instead. See https://www.drupal.org/node/3018145', E_USER_DEPRECATED);
+  $config_sync_directory = Settings::get('config_sync_directory', FALSE);
+  if ($config_sync_directory) {
+    $config_directories[CONFIG_SYNC_DIRECTORY] = $config_sync_directory;
+  }
   // @todo Remove fallback in Drupal 9. https://www.drupal.org/node/2574943
   if ($type == CONFIG_SYNC_DIRECTORY && !isset($config_directories[CONFIG_SYNC_DIRECTORY]) && isset($config_directories[CONFIG_STAGING_DIRECTORY])) {
     $type = CONFIG_STAGING_DIRECTORY;
@@ -341,17 +354,17 @@ function t($string, array $args = [], array $options = []) {
 /**
  * Formats a string for HTML display by replacing variable placeholders.
  *
+ * @deprecated in drupal:8.0.0 and is removed from drupal:9.0.0.
+ *   Use \Drupal\Component\Render\FormattableMarkup instead.
+ *
+ * @see https://www.drupal.org/node/2302363
  * @see \Drupal\Component\Render\FormattableMarkup::placeholderFormat()
  * @see \Drupal\Component\Render\FormattableMarkup
  * @see t()
  * @ingroup sanitization
- *
- * @deprecated in Drupal 8.0.0, will be removed before Drupal 9.0.0.
- *   Use \Drupal\Component\Render\FormattableMarkup.
- *
- * @see https://www.drupal.org/node/2302363
  */
 function format_string($string, array $args) {
+  @trigger_error("format_string() is deprecated in drupal:8.0.0 and is removed from drupal:9.0.0. Use \Drupal\Component\Render\FormattableMarkup instead. See https://www.drupal.org/node/2302363", E_USER_DEPRECATED);
   return new FormattableMarkup($string, $args);
 }
 
@@ -551,20 +564,15 @@ function drupal_get_messages($type = NULL, $clear_queue = TRUE) {
  *
  * @return string
  *   The name of the current user's timezone or the name of the default timezone.
+ *
+ * @deprecated in drupal:8.8.0 and will be removed from drupal:9.0.0. Use
+ *   date_default_timezone_get() instead.
+ *
+ * @see https://www.drupal.org/node/3009387
  */
 function drupal_get_user_timezone() {
-  $user = \Drupal::currentUser();
-  $config = \Drupal::config('system.date');
-
-  if ($user && $config->get('timezone.user.configurable') && $user->isAuthenticated() && $user->getTimezone()) {
-    return $user->getTimezone();
-  }
-  else {
-    // Ignore PHP strict notice if time zone has not yet been set in the php.ini
-    // configuration.
-    $config_data_default_timezone = $config->get('timezone.default');
-    return !empty($config_data_default_timezone) ? $config_data_default_timezone : @date_default_timezone_get();
-  }
+  @trigger_error('drupal_get_user_timezone() is deprecated in drupal:8.8.0. It will be removed from drupal:9.0.0. Use date_default_timezone_get() instead. See https://www.drupal.org/node/3009387', E_USER_DEPRECATED);
+  return date_default_timezone_get();
 }
 
 /**
@@ -679,7 +687,7 @@ function drupal_valid_test_ua($new_prefix = NULL) {
     $test_hmac = Crypt::hmacBase64($check_string, $key);
     // Since we are making a local request a 600 second time window is allowed,
     // and the HMAC must match.
-    if ($time_diff >= 0 && $time_diff <= 600 && $hmac === $test_hmac) {
+    if ($time_diff >= 0 && $time_diff <= 600 && hash_equals($test_hmac, $hmac)) {
       $test_prefix = $prefix;
     }
     else {
@@ -704,7 +712,7 @@ function drupal_generate_test_ua($prefix) {
     // request, then the outbound request has to use the same User-Agent header
     // as the inbound request. A newly generated private key for the same test
     // prefix would invalidate all subsequent inbound requests.
-    // @see \Drupal\Core\Http\Plugin\SimpletestHttpRequestSubscriber
+    // @see \Drupal\Core\Test\HttpClientMiddleware\TestHttpClientMiddleware
     if (DRUPAL_TEST_IN_CHILD_SITE && $parent_prefix = drupal_valid_test_ua()) {
       if ($parent_prefix != $prefix) {
         throw new \RuntimeException("Malformed User-Agent: Expected '$parent_prefix' but got '$prefix'.");
@@ -765,7 +773,7 @@ function drupal_installation_attempted() {
  *   currently active. This is the case for example during the first steps of
  *   the installer or during unit tests.
  *
- * @deprecated in Drupal 8.3.0, will be removed before Drupal 9.0.0.
+ * @deprecated in drupal:8.3.0 and is removed from drupal:9.0.0.
  *   Use the install_profile container parameter or \Drupal::installProfile()
  *   instead. If you are accessing the value before it is written to
  *   configuration during the installer use the $install_state global. If you
@@ -777,6 +785,8 @@ function drupal_installation_attempted() {
  */
 function drupal_get_profile() {
   global $install_state;
+
+  @trigger_error('drupal_get_profile() is deprecated in drupal:8.3.0 and is removed from drupal:9.0.0. Use the install_profile container parameter or \Drupal::installProfile() instead. If you are accessing the value before it is written to configuration during the installer use the $install_state global. If you need to access the value before container is available you can use BootstrapConfigStorageFactory to load the value directly from configuration. See https://www.drupal.org/node/2538996', E_USER_DEPRECATED);
 
   if (drupal_installation_attempted()) {
     // If the profile has been selected return it.

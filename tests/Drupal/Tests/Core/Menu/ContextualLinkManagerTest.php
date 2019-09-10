@@ -7,6 +7,7 @@ use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Language\Language;
 use Drupal\Core\Menu\ContextualLinkDefault;
 use Drupal\Tests\UnitTestCase;
+use PHPUnit\Framework\Constraint\Count;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
@@ -25,49 +26,49 @@ class ContextualLinkManagerTest extends UnitTestCase {
   /**
    * The mocked controller resolver.
    *
-   * @var \Symfony\Component\HttpKernel\Controller\ControllerResolverInterface|\Drupal\Core\\PHPUnit_Framework_MockObject_MockObject
+   * @var \Symfony\Component\HttpKernel\Controller\ControllerResolverInterface|\Drupal\Core\\PHPUnit\Framework\MockObject\MockObject
    */
   protected $controllerResolver;
 
   /**
    * The mocked plugin discovery.
    *
-   * @var \Drupal\Component\Plugin\Discovery\DiscoveryInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Component\Plugin\Discovery\DiscoveryInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $pluginDiscovery;
 
   /**
    * The plugin factory used in the test.
    *
-   * @var \Drupal\Component\Plugin\Factory\FactoryInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Component\Plugin\Factory\FactoryInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $factory;
 
   /**
    * The cache backend used in the test.
    *
-   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $cacheBackend;
 
   /**
    * The mocked module handler.
    *
-   * @var \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $moduleHandler;
 
   /**
    * The mocked access manager.
    *
-   * @var \Drupal\Core\Access\AccessManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Access\AccessManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $accessManager;
 
   /**
    * The mocked account.
    *
-   * @var \Drupal\Core\Session\AccountInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Session\AccountInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $account;
 
@@ -212,7 +213,7 @@ class ContextualLinkManagerTest extends UnitTestCase {
       'group' => 'example',
       'id' => 'test_plugin',
     ];
-    $this->setExpectedException(PluginException::class);
+    $this->expectException(PluginException::class);
     $this->contextualLinkManager->processDefinition($definition, 'test_plugin');
   }
 
@@ -227,7 +228,7 @@ class ContextualLinkManagerTest extends UnitTestCase {
       'route_name' => 'example',
       'id' => 'test_plugin',
     ];
-    $this->setExpectedException(PluginException::class);
+    $this->expectException(PluginException::class);
     $this->contextualLinkManager->processDefinition($definition, 'test_plugin');
   }
 
@@ -286,7 +287,7 @@ class ContextualLinkManagerTest extends UnitTestCase {
 
     $this->moduleHandler->expects($this->at(1))
       ->method('alter')
-      ->with($this->equalTo('contextual_links'), new \PHPUnit_Framework_Constraint_Count(2), $this->equalTo('group1'), $this->equalTo(['key' => 'value']));
+      ->with($this->equalTo('contextual_links'), new Count(2), $this->equalTo('group1'), $this->equalTo(['key' => 'value']));
 
     $result = $this->contextualLinkManager->getContextualLinksArrayByGroup('group1', ['key' => 'value']);
     $this->assertCount(2, $result);

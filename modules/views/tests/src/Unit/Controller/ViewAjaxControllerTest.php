@@ -24,14 +24,14 @@ class ViewAjaxControllerTest extends UnitTestCase {
   /**
    * The mocked view entity storage.
    *
-   * @var \Drupal\Core\Entity\EntityStorageInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityStorageInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $viewStorage;
 
   /**
    * The mocked executable factory.
    *
-   * @var \Drupal\views\ViewExecutableFactory|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\views\ViewExecutableFactory|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $executableFactory;
 
@@ -45,21 +45,21 @@ class ViewAjaxControllerTest extends UnitTestCase {
   /**
    * The mocked current path.
    *
-   * @var \Drupal\Core\Path\CurrentPathStack|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Path\CurrentPathStack|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $currentPath;
 
   /**
    * The redirect destination.
    *
-   * @var \Drupal\Core\Routing\RedirectDestinationInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Routing\RedirectDestinationInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $redirectDestination;
 
   /**
    * The renderer.
    *
-   * @var \Drupal\Core\Render\RendererInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Render\RendererInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $renderer;
 
@@ -121,7 +121,7 @@ class ViewAjaxControllerTest extends UnitTestCase {
    */
   public function testMissingViewName() {
     $request = new Request();
-    $this->setExpectedException(NotFoundHttpException::class);
+    $this->expectException(NotFoundHttpException::class);
     $this->viewAjaxController->ajaxView($request);
   }
 
@@ -138,7 +138,7 @@ class ViewAjaxControllerTest extends UnitTestCase {
       ->with('test_view')
       ->will($this->returnValue(FALSE));
 
-    $this->setExpectedException(NotFoundHttpException::class);
+    $this->expectException(NotFoundHttpException::class);
     $this->viewAjaxController->ajaxView($request);
   }
 
@@ -171,7 +171,7 @@ class ViewAjaxControllerTest extends UnitTestCase {
       ->with($view)
       ->will($this->returnValue($executable));
 
-    $this->setExpectedException(AccessDeniedHttpException::class);
+    $this->expectException(AccessDeniedHttpException::class);
     $this->viewAjaxController->ajaxView($request);
   }
 
@@ -215,7 +215,7 @@ class ViewAjaxControllerTest extends UnitTestCase {
 
     $this->setupValidMocks(static::USE_NO_AJAX);
 
-    $this->setExpectedException(AccessDeniedHttpException::class);
+    $this->expectException(AccessDeniedHttpException::class);
     $this->viewAjaxController->ajaxView($request);
   }
 

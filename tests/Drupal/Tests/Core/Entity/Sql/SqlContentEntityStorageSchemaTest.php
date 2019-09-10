@@ -20,28 +20,28 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
   /**
    * The mocked DB schema handler.
    *
-   * @var \Drupal\Core\Database\Schema|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Database\Schema|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $dbSchemaHandler;
 
   /**
    * The mocked entity type manager used in this test.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityTypeManager;
 
   /**
    * The mocked entity field manager used in this test.
    *
-   * @var \Drupal\Core\Entity\EntityFieldManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityFieldManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityFieldManager;
 
   /**
    * The mocked entity last installed schema repository used in this test.
    *
-   * @var \Drupal\Core\Entity\EntityLastInstalledSchemaRepositoryInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityLastInstalledSchemaRepositoryInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityLastInstalledSchemaRepository;
 
@@ -55,21 +55,21 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
   /**
    * The mocked SQL storage used in this test.
    *
-   * @var \Drupal\Core\Entity\Sql\SqlContentEntityStorage|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\Sql\SqlContentEntityStorage|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $storage;
 
   /**
    * The mocked field definitions used in this test.
    *
-   * @var \Drupal\Core\Field\FieldStorageDefinitionInterface[]|\PHPUnit_Framework_MockObject_MockObject[]
+   * @var \Drupal\Core\Field\FieldStorageDefinitionInterface[]|\PHPUnit\Framework\MockObject\MockObject[]
    */
   protected $storageDefinitions;
 
   /**
    * The storage schema handler used in this test.
    *
-   * @var \Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $storageSchema;
 
@@ -383,7 +383,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
 
     $this->setUpStorageSchema($expected);
 
-    $table_mapping = new DefaultTableMapping($this->entityType, $this->storageDefinitions);
+    $table_mapping = new TestSqlContentDefaultTableMapping($this->entityType, $this->storageDefinitions);
     $table_mapping->setFieldNames('entity_test', array_keys($this->storageDefinitions));
     $table_mapping->setExtraColumns('entity_test', ['default_langcode']);
 
@@ -491,7 +491,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
 
     $this->setUpStorageSchema($expected);
 
-    $table_mapping = new DefaultTableMapping($this->entityType, $this->storageDefinitions);
+    $table_mapping = new TestSqlContentDefaultTableMapping($this->entityType, $this->storageDefinitions);
     $table_mapping->setFieldNames('entity_test', array_keys($this->storageDefinitions));
     $table_mapping->setFieldNames('entity_test_revision', array_keys($this->storageDefinitions));
 
@@ -598,7 +598,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
 
     $this->setUpStorageSchema($expected);
 
-    $table_mapping = new DefaultTableMapping($this->entityType, $this->storageDefinitions);
+    $table_mapping = new TestSqlContentDefaultTableMapping($this->entityType, $this->storageDefinitions);
     $non_data_fields = array_keys($this->storageDefinitions);
     unset($non_data_fields[array_search('default_langcode', $non_data_fields)]);
     $table_mapping->setFieldNames('entity_test', $non_data_fields);
@@ -814,7 +814,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
 
     $this->setUpStorageSchema($expected);
 
-    $table_mapping = new DefaultTableMapping($this->entityType, $this->storageDefinitions);
+    $table_mapping = new TestSqlContentDefaultTableMapping($this->entityType, $this->storageDefinitions);
     $non_data_fields = array_keys($this->storageDefinitions);
     unset($non_data_fields[array_search('default_langcode', $non_data_fields)]);
     $table_mapping->setFieldNames('entity_test', $non_data_fields);
@@ -993,7 +993,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
 
     $this->setUpStorageSchema($expected);
 
-    $table_mapping = new DefaultTableMapping($this->entityType, $this->storageDefinitions);
+    $table_mapping = new TestSqlContentDefaultTableMapping($this->entityType, $this->storageDefinitions);
     $table_mapping->setFieldNames($entity_type_id, array_keys($this->storageDefinitions));
     $table_mapping->setExtraColumns($entity_type_id, ['default_langcode']);
 
@@ -1138,7 +1138,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
 
     $this->setUpStorageSchema($expected);
 
-    $table_mapping = new DefaultTableMapping($this->entityType, $this->storageDefinitions);
+    $table_mapping = new TestSqlContentDefaultTableMapping($this->entityType, $this->storageDefinitions);
     $table_mapping->setFieldNames($entity_type_id, array_keys($this->storageDefinitions));
     $table_mapping->setExtraColumns($entity_type_id, ['default_langcode']);
 
@@ -1313,7 +1313,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
     ]);
 
     $this->setUpStorageSchema();
-    $table_mapping = new DefaultTableMapping($this->entityType, $this->storageDefinitions);
+    $table_mapping = new TestSqlContentDefaultTableMapping($this->entityType, $this->storageDefinitions);
     $table_mapping->setFieldNames('entity_test', array_keys($this->storageDefinitions));
     $table_mapping->setExtraColumns('entity_test', ['default_langcode']);
     $this->storageSchema->expects($this->any())
@@ -1516,7 +1516,7 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
 
     $this->setUpStorageSchema($expected);
 
-    $table_mapping = new DefaultTableMapping($this->entityType, $this->storageDefinitions);
+    $table_mapping = new TestSqlContentDefaultTableMapping($this->entityType, $this->storageDefinitions);
     $table_mapping->setFieldNames('entity_test', array_keys($this->storageDefinitions));
     $table_mapping->setExtraColumns('entity_test', ['default_langcode']);
 
@@ -1678,6 +1678,27 @@ class SqlContentEntityStorageSchemaTest extends UnitTestCase {
       ],
     ];
     return $cases;
+  }
+
+}
+
+/**
+ * Extends DefaultTableMapping to allow calling its protected methods.
+ */
+class TestSqlContentDefaultTableMapping extends DefaultTableMapping {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setFieldNames($table_name, array $field_names) {
+    return parent::setFieldNames($table_name, $field_names);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setExtraColumns($table_name, array $column_names) {
+    return parent::setExtraColumns($table_name, $column_names);
   }
 
 }

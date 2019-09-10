@@ -11,6 +11,7 @@ use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Cache\Context\ContextCacheKeys;
 use Drupal\Core\Cache\MemoryBackend;
+use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Core\Render\PlaceholderGenerator;
 use Drupal\Core\Render\PlaceholderingRenderCache;
 use Drupal\Core\Render\Renderer;
@@ -51,33 +52,33 @@ abstract class RendererTestBase extends UnitTestCase {
   protected $requestStack;
 
   /**
-   * @var \Drupal\Core\Cache\CacheFactoryInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Cache\CacheFactoryInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $cacheFactory;
 
   /**
-   * @var \Drupal\Core\Cache\Context\CacheContextsManager|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Cache\Context\CacheContextsManager|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $cacheContexts;
 
   /**
    * The mocked controller resolver.
    *
-   * @var \Drupal\Core\Controller\ControllerResolverInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Controller\ControllerResolverInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $controllerResolver;
 
   /**
    * The mocked theme manager.
    *
-   * @var \Drupal\Core\Theme\ThemeManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Theme\ThemeManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $themeManager;
 
   /**
    * The mocked element info.
    *
-   * @var \Drupal\Core\Render\ElementInfoManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Render\ElementInfoManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $elementInfo;
 
@@ -252,7 +253,7 @@ abstract class RendererTestBase extends UnitTestCase {
 }
 
 
-class PlaceholdersTest {
+class PlaceholdersTest implements TrustedCallbackInterface {
 
   /**
    * #lazy_builder callback; attaches setting, generates markup.
@@ -306,6 +307,13 @@ class PlaceholdersTest {
     $build = static::callback($animal);
     $build['#cache']['tags'][] = 'current-temperature';
     return $build;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function trustedCallbacks() {
+    return ['callbackTagCurrentTemperature', 'callbackPerUser', 'callback'];
   }
 
 }

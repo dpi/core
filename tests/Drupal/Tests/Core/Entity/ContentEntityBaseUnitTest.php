@@ -12,6 +12,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\TypedData\TypedDataManagerInterface;
+use Drupal\Tests\Traits\ExpectDeprecationTrait;
 use Drupal\Tests\UnitTestCase;
 use Drupal\Core\Language\Language;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -23,6 +24,8 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 class ContentEntityBaseUnitTest extends UnitTestCase {
 
+  use ExpectDeprecationTrait;
+
   /**
    * The bundle of the entity under test.
    *
@@ -33,42 +36,42 @@ class ContentEntityBaseUnitTest extends UnitTestCase {
   /**
    * The entity under test.
    *
-   * @var \Drupal\Core\Entity\ContentEntityBase|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\ContentEntityBase|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entity;
 
   /**
    * An entity with no defined language to test.
    *
-   * @var \Drupal\Core\Entity\ContentEntityBase|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\ContentEntityBase|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityUnd;
 
   /**
    * The entity type used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityTypeInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityType;
 
   /**
    * The entity field manager used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityFieldManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityFieldManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityFieldManager;
 
   /**
    * The entity type bundle manager used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityTypeBundleInfoInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeBundleInfoInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityTypeBundleInfo;
 
   /**
    * The entity type manager used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityTypeManager;
 
@@ -82,28 +85,28 @@ class ContentEntityBaseUnitTest extends UnitTestCase {
   /**
    * The typed data manager used for testing.
    *
-   * @var \Drupal\Core\TypedData\TypedDataManager|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\TypedData\TypedDataManager|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $typedDataManager;
 
   /**
    * The field type manager used for testing.
    *
-   * @var \Drupal\Core\Field\FieldTypePluginManager|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Field\FieldTypePluginManager|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $fieldTypePluginManager;
 
   /**
    * The language manager.
    *
-   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $languageManager;
 
   /**
    * The UUID generator used for testing.
    *
-   * @var \Drupal\Component\Uuid\UuidInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Component\Uuid\UuidInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $uuid;
 
@@ -273,7 +276,8 @@ class ContentEntityBaseUnitTest extends UnitTestCase {
       ->method('hasKey')
       ->with('revision')
       ->will($this->returnValue(FALSE));
-    $this->setExpectedException('LogicException', 'Entity type ' . $this->entityTypeId . ' does not support revisions.');
+    $this->expectException('LogicException');
+    $this->expectExceptionMessage('Entity type ' . $this->entityTypeId . ' does not support revisions.');
     $this->entity->setNewRevision();
   }
 
@@ -353,7 +357,7 @@ class ContentEntityBaseUnitTest extends UnitTestCase {
    */
   public function testValidate() {
     $validator = $this->createMock(ValidatorInterface::class);
-    /** @var \Symfony\Component\Validator\ConstraintViolationList|\PHPUnit_Framework_MockObject_MockObject $empty_violation_list */
+    /** @var \Symfony\Component\Validator\ConstraintViolationList|\PHPUnit\Framework\MockObject\MockObject $empty_violation_list */
     $empty_violation_list = $this->getMockBuilder('\Symfony\Component\Validator\ConstraintViolationList')
       ->setMethods(NULL)
       ->getMock();
@@ -386,7 +390,7 @@ class ContentEntityBaseUnitTest extends UnitTestCase {
    */
   public function testRequiredValidation() {
     $validator = $this->createMock(ValidatorInterface::class);
-    /** @var \Symfony\Component\Validator\ConstraintViolationList|\PHPUnit_Framework_MockObject_MockObject $empty_violation_list */
+    /** @var \Symfony\Component\Validator\ConstraintViolationList|\PHPUnit\Framework\MockObject\MockObject $empty_violation_list */
     $empty_violation_list = $this->getMockBuilder('\Symfony\Component\Validator\ConstraintViolationList')
       ->setMethods(NULL)
       ->getMock();
@@ -398,7 +402,7 @@ class ContentEntityBaseUnitTest extends UnitTestCase {
       ->method('getValidator')
       ->will($this->returnValue($validator));
 
-    /** @var \Drupal\Core\Entity\EntityStorageInterface|\PHPUnit_Framework_MockObject_MockObject $storage */
+    /** @var \Drupal\Core\Entity\EntityStorageInterface|\PHPUnit\Framework\MockObject\MockObject $storage */
     $storage = $this->createMock('\Drupal\Core\Entity\EntityStorageInterface');
     $storage->expects($this->any())
       ->method('save')
@@ -427,7 +431,8 @@ class ContentEntityBaseUnitTest extends UnitTestCase {
     // that trying to save a non-validated entity when validation is required
     // results in an exception.
     $this->assertTrue($this->entity->isValidationRequired());
-    $this->setExpectedException(\LogicException::class, 'Entity validation was skipped.');
+    $this->expectException(\LogicException::class);
+    $this->expectExceptionMessage('Entity validation was skipped.');
     $this->entity->save();
   }
 
@@ -473,6 +478,9 @@ class ContentEntityBaseUnitTest extends UnitTestCase {
    * @group legacy
    */
   public function testLabel() {
+
+    $this->expectDeprecation('Entity type ' . $this->entityTypeId . ' defines a label callback. Support for that is deprecated in drupal:8.0.0 and will be removed in drupal:9.0.0. Override the EntityInterface::label() method instead. See https://www.drupal.org/node/3050794');
+
     // Make a mock with one method that we use as the entity's label callback.
     // We check that it is called, and that the entity's label is the callback's
     // return value.
@@ -482,7 +490,8 @@ class ContentEntityBaseUnitTest extends UnitTestCase {
       ->method(__FUNCTION__)
       ->will($this->returnValue($callback_label));
     $this->entityType->expects($this->once())
-      ->method('getLabelCallback')
+      ->method('get')
+      ->with('label_callback')
       ->will($this->returnValue([$callback_container, __FUNCTION__]));
 
     $this->assertSame($callback_label, $this->entity->label());

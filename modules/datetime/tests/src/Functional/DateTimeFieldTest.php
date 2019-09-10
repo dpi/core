@@ -253,7 +253,7 @@ class DateTimeFieldTest extends DateTestBase {
     $date = new DrupalDateTime($value, 'UTC');
 
     // Update the timezone to the system default.
-    $date->setTimezone(timezone_open(drupal_get_user_timezone()));
+    $date->setTimezone(timezone_open(date_default_timezone_get()));
 
     // Submit a valid date and ensure it is accepted.
     $date_format = DateFormat::load('html_date')->getPattern();
@@ -708,7 +708,7 @@ class DateTimeFieldTest extends DateTestBase {
 
       // Create a new node to check that datetime field default value is today.
       $new_node = Node::create(['type' => 'date_content']);
-      $expected_date = new DrupalDateTime('now', drupal_get_user_timezone());
+      $expected_date = new DrupalDateTime('now', date_default_timezone_get());
       $this->assertEqual($new_node->get($field_name)
         ->offsetGet(0)->value, $expected_date->format(DateTimeItemInterface::DATE_STORAGE_FORMAT));
 
@@ -747,7 +747,7 @@ class DateTimeFieldTest extends DateTestBase {
       // Create a new node to check that datetime field default value is +90
       // days.
       $new_node = Node::create(['type' => 'date_content']);
-      $expected_date = new DrupalDateTime('+90 days', drupal_get_user_timezone());
+      $expected_date = new DrupalDateTime('+90 days', date_default_timezone_get());
       $this->assertEqual($new_node->get($field_name)
         ->offsetGet(0)->value, $expected_date->format(DateTimeItemInterface::DATE_STORAGE_FORMAT));
 
@@ -806,7 +806,7 @@ class DateTimeFieldTest extends DateTestBase {
       "{$field_name}[0][value][time]" => '00:00:00',
     ];
     $this->drupalPostForm(NULL, $edit, t('Save'));
-    $this->assertText('date is invalid', format_string('Invalid year value %date has been caught.', ['%date' => $date_value]));
+    $this->assertText('date is invalid', new FormattableMarkup('Invalid year value %date has been caught.', ['%date' => $date_value]));
 
     $date_value = '2012-75-01';
     $edit = [
@@ -814,7 +814,7 @@ class DateTimeFieldTest extends DateTestBase {
       "{$field_name}[0][value][time]" => '00:00:00',
     ];
     $this->drupalPostForm(NULL, $edit, t('Save'));
-    $this->assertText('date is invalid', format_string('Invalid month value %date has been caught.', ['%date' => $date_value]));
+    $this->assertText('date is invalid', new FormattableMarkup('Invalid month value %date has been caught.', ['%date' => $date_value]));
 
     $date_value = '2012-12-99';
     $edit = [
@@ -822,7 +822,7 @@ class DateTimeFieldTest extends DateTestBase {
       "{$field_name}[0][value][time]" => '00:00:00',
     ];
     $this->drupalPostForm(NULL, $edit, t('Save'));
-    $this->assertText('date is invalid', format_string('Invalid day value %date has been caught.', ['%date' => $date_value]));
+    $this->assertText('date is invalid', new FormattableMarkup('Invalid day value %date has been caught.', ['%date' => $date_value]));
 
     $date_value = '2012-12-01';
     $time_value = '';
@@ -840,7 +840,7 @@ class DateTimeFieldTest extends DateTestBase {
       "{$field_name}[0][value][time]" => $time_value,
     ];
     $this->drupalPostForm(NULL, $edit, t('Save'));
-    $this->assertText('date is invalid', format_string('Invalid hour value %time has been caught.', ['%time' => $time_value]));
+    $this->assertText('date is invalid', new FormattableMarkup('Invalid hour value %time has been caught.', ['%time' => $time_value]));
 
     $date_value = '2012-12-01';
     $time_value = '12:99:00';
@@ -849,7 +849,7 @@ class DateTimeFieldTest extends DateTestBase {
       "{$field_name}[0][value][time]" => $time_value,
     ];
     $this->drupalPostForm(NULL, $edit, t('Save'));
-    $this->assertText('date is invalid', format_string('Invalid minute value %time has been caught.', ['%time' => $time_value]));
+    $this->assertText('date is invalid', new FormattableMarkup('Invalid minute value %time has been caught.', ['%time' => $time_value]));
 
     $date_value = '2012-12-01';
     $time_value = '12:15:99';
@@ -858,7 +858,7 @@ class DateTimeFieldTest extends DateTestBase {
       "{$field_name}[0][value][time]" => $time_value,
     ];
     $this->drupalPostForm(NULL, $edit, t('Save'));
-    $this->assertText('date is invalid', format_string('Invalid second value %time has been caught.', ['%time' => $time_value]));
+    $this->assertText('date is invalid', new FormattableMarkup('Invalid second value %time has been caught.', ['%time' => $time_value]));
   }
 
   /**

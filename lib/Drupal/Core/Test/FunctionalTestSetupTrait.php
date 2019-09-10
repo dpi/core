@@ -18,6 +18,8 @@ use Drupal\Tests\SessionTestTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Yaml\Yaml as SymfonyYaml;
+use Symfony\Cmf\Component\Routing\RouteObjectInterface;
+use Symfony\Component\Routing\Route;
 
 /**
  * Defines a trait for shared functional test setup functionality.
@@ -43,6 +45,11 @@ trait FunctionalTestSetupTrait {
 
   /**
    * The config directories used in this test.
+   *
+   * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use
+   *   \Drupal\Core\Site\Settings::get('config_sync_directory') instead.
+   *
+   * @see https://www.drupal.org/node/3018145
    */
   protected $configDirectories = [];
 
@@ -84,6 +91,10 @@ trait FunctionalTestSetupTrait {
     ];
     $settings['settings']['file_private_path'] = (object) [
       'value' => $this->privateFilesDirectory,
+      'required' => TRUE,
+    ];
+    $settings['settings']['file_temp_path'] = (object) [
+      'value' => $this->tempFilesDirectory,
       'required' => TRUE,
     ];
     // Save the original site directory path, so that extensions in the
@@ -293,9 +304,7 @@ trait FunctionalTestSetupTrait {
    */
   protected function initSettings() {
     Settings::initialize(DRUPAL_ROOT, $this->siteDirectory, $this->classLoader);
-    foreach ($GLOBALS['config_directories'] as $type => $path) {
-      $this->configDirectories[$type] = $path;
-    }
+    $this->configDirectories['sync'] = Settings::get('config_sync_directory');
 
     // After writing settings.php, the installer removes write permissions
     // from the site directory. To allow drupal_generate_test_ua() to write
@@ -383,13 +392,15 @@ trait FunctionalTestSetupTrait {
    */
   protected function initKernel(Request $request) {
     $this->kernel = DrupalKernel::createFromRequest($request, $this->classLoader, 'prod', TRUE);
-
     // Force the container to be built from scratch instead of loaded from the
     // disk. This forces us to not accidentally load the parent site.
     $this->kernel->invalidateContainer();
-
-    $this->kernel->prepareLegacyRequest($request);
-    return \Drupal::getContainer();
+    $this->kernel->boot();
+    // Add our request to the stack and route context.
+    $request->attributes->set(RouteObjectInterface::ROUTE_OBJECT, new Route('<none>'));
+    $request->attributes->set(RouteObjectInterface::ROUTE_NAME, '<none>');
+    $this->kernel->preHandle($request);
+    return $this->kernel->getContainer();
   }
 
   /**
@@ -439,7 +450,6 @@ trait FunctionalTestSetupTrait {
     // @todo Test-specific setUp() methods may set up further fixtures; find a
     //   way to execute this after setUp() is done, or to eliminate it entirely.
     $this->resetAll();
-    $this->kernel->prepareLegacyRequest(\Drupal::request());
 
     // Explicitly call register() again on the container registered in \Drupal.
     // @todo This should already be called through
@@ -573,7 +583,8 @@ trait FunctionalTestSetupTrait {
     $kernel = TestRunnerKernel::createFromRequest($request, $this->classLoader);
     // TestRunnerKernel expects the working directory to be DRUPAL_ROOT.
     chdir(DRUPAL_ROOT);
-    $kernel->prepareLegacyRequest($request);
+    $kernel->boot();
+    $kernel->preHandle($request);
     $this->prepareDatabasePrefix();
 
     $this->originalSite = $kernel->findSitePath($request);

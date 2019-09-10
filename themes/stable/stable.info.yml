@@ -144,6 +144,11 @@ libraries-override:
       component:
         css/locale.admin.css: css/locale/locale.admin.css
 
+  media/filter.caption:
+    css:
+      component:
+        css/filter.caption.css: css/media/filter.caption.css
+
   media/oembed.formatter:
     css:
       component:
@@ -152,6 +157,11 @@ libraries-override:
     css:
       component:
         css/oembed.frame.css: css/media/oembed.frame.css
+
+  media/media_embed:
+    css:
+      component:
+        css/filter.media_embed.css: css/media/filter.media_embed.css
 
   menu_ui/drupal.menu_ui.adminforms:
     css:
@@ -298,3 +308,7 @@ libraries-override:
       theme:
         css/views_ui.admin.theme.css: css/views_ui/views_ui.admin.theme.css
         css/views_ui.contextual.css: css/views_ui/views_ui.contextual.css
+
+libraries-extend:
+  user/drupal.user:
+    - stable/drupal.user

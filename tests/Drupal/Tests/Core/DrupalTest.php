@@ -23,7 +23,7 @@ class DrupalTest extends UnitTestCase {
   /**
    * The mock container.
    *
-   * @var \Symfony\Component\DependencyInjection\ContainerBuilder|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Symfony\Component\DependencyInjection\ContainerBuilder|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $container;
 
@@ -51,7 +51,8 @@ class DrupalTest extends UnitTestCase {
    * @covers ::getContainer
    */
   public function testGetContainerException() {
-    $this->setExpectedException(ContainerNotInitializedException::class, '\Drupal::$container is not initialized yet. \Drupal::setContainer() must be called with a real container.');
+    $this->expectException(ContainerNotInitializedException::class);
+    $this->expectExceptionMessage('\Drupal::$container is not initialized yet. \Drupal::setContainer() must be called with a real container.');
     \Drupal::getContainer();
   }
 
@@ -391,6 +392,11 @@ class DrupalTest extends UnitTestCase {
    * Tests the l() method.
    *
    * @covers ::l
+   *
+   * @group legacy
+   *
+   * @expectedDeprecation \Drupal::l() is deprecated in drupal:8.0.0 and is removed from drupal:9.0.0. Use \Drupal\Core\Link::fromTextAndUrl() instead. See https://www.drupal.org/node/2614344
+   *
    * @see \Drupal\Core\Utility\LinkGeneratorInterface::generate()
    */
   public function testL() {

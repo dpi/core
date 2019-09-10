@@ -53,33 +53,33 @@ class AccessManagerTest extends UnitTestCase {
   /**
    * The route provider.
    *
-   * @var \PHPUnit_Framework_MockObject_MockObject
+   * @var \PHPUnit\Framework\MockObject\MockObject
    */
   protected $routeProvider;
 
   /**
    * The parameter converter.
    *
-   * @var \Drupal\Core\ParamConverter\ParamConverterManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\ParamConverter\ParamConverterManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $paramConverter;
 
   /**
    * The mocked account.
    *
-   * @var \Drupal\Core\Session\AccountInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Session\AccountInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $account;
 
   /**
    * The access arguments resolver.
    *
-   * @var \Drupal\Core\Access\AccessArgumentsResolverFactoryInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Access\AccessArgumentsResolverFactoryInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $argumentsResolverFactory;
 
   /**
-   * @var \Drupal\Core\Session\AccountInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Session\AccountInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $currentUser;
 
@@ -303,8 +303,7 @@ class AccessManagerTest extends UnitTestCase {
    */
   public function testCheckConjunctions($name, $condition_one, $condition_two, $expected_access) {
     $this->setupAccessChecker();
-    $access_check = new DefinedTestAccessCheck();
-    $this->container->register('test_access_defined', $access_check);
+    $this->container->register('test_access_defined', DefinedTestAccessCheck::class);
     $this->checkProvider->addCheckService('test_access_defined', 'access', ['_test_access']);
 
     $route_collection = new RouteCollection();
@@ -514,7 +513,7 @@ class AccessManagerTest extends UnitTestCase {
     $this->checkProvider->setContainer($container);
     $this->checkProvider->addCheckService('test_incorrect_value', 'access');
 
-    $this->setExpectedException(AccessException::class);
+    $this->expectException(AccessException::class);
     $access_manager->checkNamedRoute('test_incorrect_value', [], $this->account);
   }
 
@@ -536,8 +535,7 @@ class AccessManagerTest extends UnitTestCase {
    * Adds a default access check service to the container and the access manager.
    */
   protected function setupAccessChecker() {
-    $access_check = new DefaultAccessCheck();
-    $this->container->register('test_access_default', $access_check);
+    $this->container->register('test_access_default', DefaultAccessCheck::class);
     $this->checkProvider->addCheckService('test_access_default', 'access', ['_access']);
   }
 

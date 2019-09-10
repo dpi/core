@@ -3,24 +3,23 @@
 namespace Drupal\Tests\jsonapi\Kernel\ResourceType;
 
 use Drupal\jsonapi\ResourceType\ResourceType;
-use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\Entity\NodeType;
+use Drupal\Tests\jsonapi\Kernel\JsonapiKernelTestBase;
 
 /**
  * @coversDefaultClass \Drupal\jsonapi\ResourceType\ResourceTypeRepository
  * @group jsonapi
- * @group legacy
  *
  * @internal
  */
-class ResourceTypeRepositoryTest extends KernelTestBase {
+class ResourceTypeRepositoryTest extends JsonapiKernelTestBase {
 
   /**
    * {@inheritdoc}
    */
   public static $modules = [
+    'field',
     'node',
-    'jsonapi',
     'serialization',
     'system',
     'user',
@@ -50,6 +49,9 @@ class ResourceTypeRepositoryTest extends KernelTestBase {
     ])->save();
     NodeType::create([
       'type' => 'page',
+    ])->save();
+    NodeType::create([
+      'type' => '42',
     ])->save();
 
     $this->resourceTypeRepository = $this->container->get('jsonapi.resource_type.repository');
@@ -92,9 +94,21 @@ class ResourceTypeRepositoryTest extends KernelTestBase {
   public function getProvider() {
     return [
       ['node', 'article', 'Drupal\node\Entity\Node'],
+      ['node', '42', 'Drupal\node\Entity\Node'],
       ['node_type', 'node_type', 'Drupal\node\Entity\NodeType'],
       ['menu', 'menu', 'Drupal\system\Entity\Menu'],
     ];
+  }
+
+  /**
+   * Ensures that the ResourceTypeRepository's cache does not become stale.
+   */
+  public function testCaching() {
+    $this->assertEmpty($this->resourceTypeRepository->get('node', 'article')->getRelatableResourceTypesByField('field_relationship'));
+    $this->createEntityReferenceField('node', 'article', 'field_relationship', 'Related entity', 'node');
+    $this->assertCount(3, $this->resourceTypeRepository->get('node', 'article')->getRelatableResourceTypesByField('field_relationship'));
+    NodeType::create(['type' => 'camelids'])->save();
+    $this->assertCount(4, $this->resourceTypeRepository->get('node', 'article')->getRelatableResourceTypesByField('field_relationship'));
   }
 
 }

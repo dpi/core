@@ -27,7 +27,6 @@ use Drupal\Core\Logger\LoggerChannelFactory;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\StringTranslation\Translator\FileTranslation;
 use Drupal\Core\StackMiddleware\ReverseProxyMiddleware;
-use Drupal\Core\StreamWrapper\PublicStream;
 use Drupal\Core\Extension\ExtensionDiscovery;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Url;
@@ -380,7 +379,7 @@ function install_begin_request($class_loader, &$install_state) {
 
   // Determine whether base system services are ready to operate.
   try {
-    $sync_directory = config_get_config_directory(CONFIG_SYNC_DIRECTORY);
+    $sync_directory = Settings::get('config_sync_directory', FALSE);
     $install_state['config_verified'] = file_exists($sync_directory);
   }
   catch (Exception $e) {
@@ -444,7 +443,9 @@ function install_begin_request($class_loader, &$install_state) {
   else {
     $directory = $site_path . '/files/translations';
   }
-  $container->set('string_translator.file_translation', new FileTranslation($directory));
+  /** @var \Drupal\Core\File\FileSystemInterface $file_system */
+  $file_system = $container->get('file_system');
+  $container->set('string_translator.file_translation', new FileTranslation($directory, $file_system));
   $container->get('string_translation')
     ->addTranslator($container->get('string_translator.file_translation'));
 
@@ -1098,21 +1099,6 @@ function install_base_system(&$install_state) {
   // Install system.module.
   drupal_install_system($install_state);
 
-  // Prevent the installer from using the system temporary directory after the
-  // system module has been installed.
-  if (drupal_valid_test_ua()) {
-    // While the temporary directory could be preset/enforced in settings.php
-    // like the public files directory, some tests expect it to be configurable
-    // in the UI. If declared in settings.php, they would no longer be
-    // configurable. The temporary directory needs to match what is set in each
-    // test types ::prepareEnvironment() step.
-    $temporary_directory = dirname(PublicStream::basePath()) . '/temp';
-    \Drupal::service('file_system')->prepareDirectory($temporary_directory, FileSystemInterface::MODIFY_PERMISSIONS | FileSystemInterface::CREATE_DIRECTORY);
-    \Drupal::configFactory()->getEditable('system.file')
-      ->set('path.temporary', $temporary_directory)
-      ->save();
-  }
-
   // Call file_ensure_htaccess() to ensure that all of Drupal's standard
   // directories (e.g., the public files directory and config directory) have
   // appropriate .htaccess files. These directories will have already been
@@ -1324,9 +1310,9 @@ function _install_select_profile(&$install_state) {
  *
  * @return
  *   An associative array of file URIs keyed by language code. URIs as
- *   returned by file_scan_directory().
+ *   returned by FileSystemInterface::scanDirectory().
  *
- * @see file_scan_directory()
+ * @see \Drupal\Core\File\FileSystemInterface::scanDirectory()
  */
 function install_find_translations() {
   $translations = [];
@@ -1532,13 +1518,13 @@ function _install_get_version_info($version) {
  *   profile information will be added here.
  */
 function install_load_profile(&$install_state) {
-  global $config_directories;
   $profile = $install_state['parameters']['profile'];
   $install_state['profiles'][$profile]->load();
   $install_state['profile_info'] = install_profile_info($profile, isset($install_state['parameters']['langcode']) ? $install_state['parameters']['langcode'] : 'en');
 
-  if (!empty($install_state['parameters']['existing_config']) && !empty($config_directories[CONFIG_SYNC_DIRECTORY])) {
-    $install_state['config_install_path'] = $config_directories[CONFIG_SYNC_DIRECTORY];
+  $sync_directory = Settings::get('config_sync_directory');
+  if (!empty($install_state['parameters']['existing_config']) && !empty($sync_directory)) {
+    $install_state['config_install_path'] = $sync_directory;
   }
   // If the profile has a config/sync directory copy the information to the
   // install_state global.
@@ -1578,7 +1564,7 @@ function install_profile_modules(&$install_state) {
   install_core_entity_type_definitions();
 
   $modules = \Drupal::state()->get('install_profile_modules') ?: [];
-  $files = system_rebuild_module_data();
+  $files = \Drupal::service('extension.list.module')->getList();
   \Drupal::state()->delete('install_profile_modules');
 
   // Always install required modules first. Respect the dependencies between
@@ -1641,7 +1627,7 @@ function install_core_entity_type_definitions() {
 function install_profile_themes(&$install_state) {
   // Install the themes specified by the installation profile.
   $themes = $install_state['profile_info']['themes'];
-  \Drupal::service('theme_handler')->install($themes);
+  \Drupal::service('theme_installer')->install($themes);
 
   // Ensure that the install profile's theme is used.
   // @see _drupal_maintenance_theme()
@@ -1655,7 +1641,7 @@ function install_profile_themes(&$install_state) {
  *   An array of information about the current installation state.
  */
 function install_install_profile(&$install_state) {
-  \Drupal::service('module_installer')->install([drupal_get_profile()], FALSE);
+  \Drupal::service('module_installer')->install([$install_state['parameters']['profile']], FALSE);
   // Install all available optional config. During installation the module order
   // is determined by dependencies. If there are no dependencies between modules
   // then the order in which they are installed is dependent on random factors
@@ -1853,7 +1839,7 @@ function install_finish_translations(&$install_state) {
  *   A message informing the user that the installation is complete.
  */
 function install_finished(&$install_state) {
-  $profile = drupal_get_profile();
+  $profile = $install_state['parameters']['profile'];
 
   // Installation profiles are always loaded last.
   module_set_weight($profile, 1000);
@@ -2350,7 +2336,8 @@ function install_config_import_batch() {
     \Drupal::service('module_handler'),
     \Drupal::service('module_installer'),
     \Drupal::service('theme_handler'),
-    \Drupal::service('string_translation')
+    \Drupal::service('string_translation'),
+    \Drupal::service('extension.list.module')
   );
 
   try {
@@ -2421,7 +2408,8 @@ function install_config_revert_install_changes() {
       \Drupal::service('module_handler'),
       \Drupal::service('module_installer'),
       \Drupal::service('theme_handler'),
-      \Drupal::service('string_translation')
+      \Drupal::service('string_translation'),
+      \Drupal::service('extension.list.module')
     );
     try {
       $config_importer->import();

@@ -29,7 +29,7 @@ class CssCollectionRendererUnitTest extends UnitTestCase {
   /**
    * The state mock class.
    *
-   * @var \Drupal\Core\State\StateInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\State\StateInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $state;
 
@@ -279,7 +279,8 @@ class CssCollectionRendererUnitTest extends UnitTestCase {
       ->method('get')
       ->with('system.css_js_query_string')
       ->will($this->returnValue(NULL));
-    $this->setExpectedException('Exception', 'Invalid CSS asset type.');
+    $this->expectException('Exception');
+    $this->expectExceptionMessage('Invalid CSS asset type.');
 
     $css_group = [
       'group' => 0,

@@ -2,6 +2,7 @@
 
 namespace Drupal\KernelTests\Core\Database;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Database\TransactionOutOfOrderException;
 use Drupal\Core\Database\TransactionNoActiveException;
 
@@ -293,9 +294,10 @@ class TransactionTest extends DatabaseTestBase {
       try {
         $transaction->rollBack();
         unset($transaction);
-        // @TODO: an exception should be triggered here, but is not, because
+        // @todo An exception should be triggered here, but is not because
         // "ROLLBACK" fails silently in MySQL if there is no transaction active.
-        // $this->fail(t('Rolling back a transaction containing DDL should fail.'));
+        // @see https://www.drupal.org/project/drupal/issues/2736777
+        // $this->fail('Rolling back a transaction containing DDL should fail.');
       }
       catch (TransactionNoActiveException $e) {
         $this->pass('Rolling back a transaction containing DDL should fail.');
@@ -351,7 +353,7 @@ class TransactionTest extends DatabaseTestBase {
    */
   public function assertRowPresent($name, $message = NULL) {
     if (!isset($message)) {
-      $message = format_string('Row %name is present.', ['%name' => $name]);
+      $message = new FormattableMarkup('Row %name is present.', ['%name' => $name]);
     }
     $present = (boolean) $this->connection->query('SELECT 1 FROM {test} WHERE name = :name', [':name' => $name])->fetchField();
     return $this->assertTrue($present, $message);
@@ -367,7 +369,7 @@ class TransactionTest extends DatabaseTestBase {
    */
   public function assertRowAbsent($name, $message = NULL) {
     if (!isset($message)) {
-      $message = format_string('Row %name is absent.', ['%name' => $name]);
+      $message = new FormattableMarkup('Row %name is absent.', ['%name' => $name]);
     }
     $present = (boolean) $this->connection->query('SELECT 1 FROM {test} WHERE name = :name', [':name' => $name])->fetchField();
     return $this->assertFalse($present, $message);

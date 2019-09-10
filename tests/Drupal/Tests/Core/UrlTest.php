@@ -35,21 +35,21 @@ class UrlTest extends UnitTestCase {
   /**
    * The URL generator
    *
-   * @var \Drupal\Core\Routing\UrlGeneratorInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Routing\UrlGeneratorInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $urlGenerator;
 
   /**
    * The path alias manager.
    *
-   * @var \Drupal\Core\Path\AliasManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Path\AliasManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $pathAliasManager;
 
   /**
    * The router.
    *
-   * @var \Drupal\Tests\Core\Routing\TestRouterInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Tests\Core\Routing\TestRouterInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $router;
 
@@ -63,7 +63,7 @@ class UrlTest extends UnitTestCase {
   /**
    * The mocked path validator.
    *
-   * @var \Drupal\Core\Path\PathValidatorInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Path\PathValidatorInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $pathValidator;
 
@@ -160,7 +160,7 @@ class UrlTest extends UnitTestCase {
    * @param string $path
    *   The path.
    *
-   * @return \PHPUnit_Framework_Constraint_Callback
+   * @return \PHPUnit\Framework\Constraint\Callback
    *   The constraint checks whether a Request object has the right path.
    */
   protected function getRequestConstraint($path) {
@@ -218,7 +218,7 @@ class UrlTest extends UnitTestCase {
    * @dataProvider providerFromInvalidInternalUri
    */
   public function testFromInvalidUserInput($path) {
-    $this->setExpectedException(\InvalidArgumentException::class);
+    $this->expectException(\InvalidArgumentException::class);
     $url = Url::fromUserInput($path);
   }
 
@@ -289,7 +289,7 @@ class UrlTest extends UnitTestCase {
       ->with($request)
       ->will($this->throwException(new ResourceNotFoundException()));
 
-    $this->setExpectedException(ResourceNotFoundException::class);
+    $this->expectException(ResourceNotFoundException::class);
     Url::createFromRequest($request);
   }
 
@@ -317,7 +317,7 @@ class UrlTest extends UnitTestCase {
    * @covers ::getUri
    */
   public function testGetUriForInternalUrl($urls) {
-    $this->setExpectedException(\UnexpectedValueException::class);
+    $this->expectException(\UnexpectedValueException::class);
     foreach ($urls as $url) {
       $url->getUri();
     }
@@ -419,7 +419,7 @@ class UrlTest extends UnitTestCase {
    */
   public function testGetRouteNameWithExternalUrl() {
     $url = Url::fromUri('http://example.com');
-    $this->setExpectedException(\UnexpectedValueException::class);
+    $this->expectException(\UnexpectedValueException::class);
     $url->getRouteName();
   }
 
@@ -446,7 +446,7 @@ class UrlTest extends UnitTestCase {
    */
   public function testGetRouteParametersWithExternalUrl() {
     $url = Url::fromUri('http://example.com');
-    $this->setExpectedException(\UnexpectedValueException::class);
+    $this->expectException(\UnexpectedValueException::class);
     $url->getRouteParameters();
   }
 
@@ -636,7 +636,7 @@ class UrlTest extends UnitTestCase {
       ->with('entity.test_entity.canonical', ['test_entity' => '1/blah'])
       ->willThrowException(new InvalidParameterException('Parameter "test_entity" for route "/test_entity/{test_entity}" must match "[^/]++" ("1/blah" given) to generate a corresponding URL..'));
 
-    $this->setExpectedException(InvalidParameterException::class);
+    $this->expectException(InvalidParameterException::class);
     Url::fromUri('entity:test_entity/1/blah')->toString();
   }
 
@@ -755,7 +755,7 @@ class UrlTest extends UnitTestCase {
    * @dataProvider providerFromInvalidInternalUri
    */
   public function testFromInvalidInternalUri($path) {
-    $this->setExpectedException(\InvalidArgumentException::class);
+    $this->expectException(\InvalidArgumentException::class);
     Url::fromUri('internal:' . $path);
   }
 
@@ -827,7 +827,8 @@ class UrlTest extends UnitTestCase {
    * @covers ::fromUri
    */
   public function testFromRouteUriWithMissingRouteName() {
-    $this->setExpectedException(\InvalidArgumentException::class, "The route URI 'route:' is invalid.");
+    $this->expectException(\InvalidArgumentException::class);
+    $this->expectExceptionMessage("The route URI 'route:' is invalid.");
     Url::fromUri('route:');
   }
 
@@ -837,7 +838,7 @@ class UrlTest extends UnitTestCase {
    * @param bool $access
    * @param \Drupal\Core\Session\AccountInterface|null $account
    *
-   * @return \Drupal\Core\Access\AccessManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @return \Drupal\Core\Access\AccessManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected function getMockAccessManager($access, $account = NULL) {
     $access_manager = $this->createMock('Drupal\Core\Access\AccessManagerInterface');

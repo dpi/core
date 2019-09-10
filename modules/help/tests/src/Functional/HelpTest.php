@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\help\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -76,7 +77,7 @@ class HelpTest extends BrowserTestBase {
 
     // Make sure links are properly added for modules implementing hook_help().
     foreach ($this->getModuleList() as $module => $name) {
-      $this->assertLink($name, 0, format_string('Link properly added to @name (admin/help/@module)', ['@module' => $module, '@name' => $name]));
+      $this->assertLink($name, 0, new FormattableMarkup('Link properly added to @name (admin/help/@module)', ['@module' => $module, '@name' => $name]));
     }
 
     // Ensure that module which does not provide an module overview page is
@@ -121,7 +122,7 @@ class HelpTest extends BrowserTestBase {
       $this->drupalGet('admin/help/' . $module);
       $this->assertResponse($response);
       if ($response == 200) {
-        $this->assertTitle($name . ' | Drupal', format_string('%module title was displayed', ['%module' => $module]));
+        $this->assertTitle($name . ' | Drupal', new FormattableMarkup('%module title was displayed', ['%module' => $module]));
         $this->assertEquals($name, $this->cssSelect('h1.page-title')[0]->getText(), "$module heading was displayed");
         $admin_tasks = system_get_module_admin_tasks($module, system_get_info('module', $module));
         if (!empty($admin_tasks)) {
@@ -152,7 +153,7 @@ class HelpTest extends BrowserTestBase {
    */
   protected function getModuleList() {
     $modules = [];
-    $module_data = system_rebuild_module_data();
+    $module_data = $this->container->get('extension.list.module')->getList();
     foreach (\Drupal::moduleHandler()->getImplementations('help') as $module) {
       $modules[$module] = $module_data[$module]->info['name'];
     }

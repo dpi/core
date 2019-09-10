@@ -18,14 +18,14 @@ class MigrateExecutableTest extends MigrateTestCase {
   /**
    * The mocked migration entity.
    *
-   * @var \Drupal\migrate\Plugin\MigrationInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\migrate\Plugin\MigrationInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $migration;
 
   /**
    * The mocked migrate message.
    *
-   * @var \Drupal\migrate\MigrateMessageInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\migrate\MigrateMessageInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $message;
 
@@ -435,7 +435,8 @@ class MigrateExecutableTest extends MigrateTestCase {
     $plugins['destination_id'] = [$plugin, $plugin];
     $this->migration->method('getProcessPlugins')->willReturn($plugins);
 
-    $this->setExpectedException(MigrateException::class, 'Pipeline failed at plugin_id plugin for destination destination_id: transform_return_string received instead of an array,');
+    $this->expectException(MigrateException::class);
+    $this->expectExceptionMessage('Pipeline failed at plugin_id plugin for destination destination_id: transform_return_string received instead of an array,');
     $this->executable->processRow($row);
   }
 
@@ -469,7 +470,7 @@ class MigrateExecutableTest extends MigrateTestCase {
   /**
    * Returns a mock migration source instance.
    *
-   * @return \Drupal\migrate\Plugin\MigrateSourceInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @return \Drupal\migrate\Plugin\MigrateSourceInterface|\PHPUnit\Framework\MockObject\MockObject
    *   The mocked migration source.
    */
   protected function getMockSource() {

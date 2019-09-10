@@ -30,7 +30,7 @@ class EntityAdapterUnitTest extends UnitTestCase {
   /**
    * The content entity used for testing.
    *
-   * @var \Drupal\Core\Entity\ContentEntityBase|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\ContentEntityBase|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entity;
 
@@ -44,20 +44,20 @@ class EntityAdapterUnitTest extends UnitTestCase {
   /**
    * The entity type used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityTypeInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityType;
 
   /**
    * The entity type manager used for testing.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityTypeManager;
 
   /**
    *
-   * @var \Drupal\Core\Entity\EntityFieldManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityFieldManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityFieldManager;
 
@@ -71,35 +71,35 @@ class EntityAdapterUnitTest extends UnitTestCase {
   /**
    * The typed data manager used for testing.
    *
-   * @var \Drupal\Core\TypedData\TypedDataManager|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\TypedData\TypedDataManager|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $typedDataManager;
 
   /**
    * The field item list returned by the typed data manager.
    *
-   * @var \Drupal\Core\Field\FieldItemListInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Field\FieldItemListInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $fieldItemList;
 
   /**
    * The field type manager used for testing.
    *
-   * @var \Drupal\Core\Field\FieldTypePluginManager|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Field\FieldTypePluginManager|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $fieldTypePluginManager;
 
   /**
    * The language manager.
    *
-   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $languageManager;
 
   /**
    * The UUID generator used for testing.
    *
-   * @var \Drupal\Component\Uuid\UuidInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Component\Uuid\UuidInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $uuid;
 
@@ -296,7 +296,7 @@ class EntityAdapterUnitTest extends UnitTestCase {
    * @covers ::get
    */
   public function testGetInvalidField() {
-    $this->setExpectedException(\InvalidArgumentException::class);
+    $this->expectException(\InvalidArgumentException::class);
     $this->entityAdapter->get('invalid');
   }
 
@@ -305,7 +305,7 @@ class EntityAdapterUnitTest extends UnitTestCase {
    */
   public function testGetWithoutData() {
     $this->entityAdapter->setValue(NULL);
-    $this->setExpectedException(MissingDataException::class);
+    $this->expectException(MissingDataException::class);
     $this->entityAdapter->get('id');
   }
 
@@ -328,7 +328,7 @@ class EntityAdapterUnitTest extends UnitTestCase {
   public function testSetWithoutData() {
     $this->entityAdapter->setValue(NULL);
     $id_items = [['value' => $this->id + 1]];
-    $this->setExpectedException(MissingDataException::class);
+    $this->expectException(MissingDataException::class);
     $this->entityAdapter->set('id', $id_items);
   }
 
@@ -357,7 +357,7 @@ class EntityAdapterUnitTest extends UnitTestCase {
    */
   public function testToArrayWithoutData() {
     $this->entityAdapter->setValue(NULL);
-    $this->setExpectedException(MissingDataException::class);
+    $this->expectException(MissingDataException::class);
     $this->entityAdapter->toArray();
   }
 

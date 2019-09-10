@@ -2,14 +2,18 @@
 
 namespace Drupal\Core\File;
 
+use Drupal\Component\FileSystem\FileSystem as FileSystemComponent;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Core\File\Exception\DirectoryNotReadyException;
 use Drupal\Core\File\Exception\FileException;
 use Drupal\Core\File\Exception\FileExistsException;
 use Drupal\Core\File\Exception\FileNotExistsException;
 use Drupal\Core\File\Exception\FileWriteException;
+use Drupal\Core\File\Exception\NotRegularDirectoryException;
 use Drupal\Core\File\Exception\NotRegularFileException;
 use Drupal\Core\Site\Settings;
+use Drupal\Core\StreamWrapper\PublicStream;
+use Drupal\Core\StreamWrapper\StreamWrapperManager;
 use Drupal\Core\StreamWrapper\StreamWrapperManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -110,8 +114,7 @@ class FileSystem implements FileSystemInterface {
    * {@inheritdoc}
    */
   public function unlink($uri, $context = NULL) {
-    $scheme = $this->uriScheme($uri);
-    if (!$this->validScheme($scheme) && (substr(PHP_OS, 0, 3) == 'WIN')) {
+    if (!$this->streamWrapperManager->isValidUri($uri) && (substr(PHP_OS, 0, 3) == 'WIN')) {
       chmod($uri, 0600);
     }
     if ($context) {
@@ -140,9 +143,9 @@ class FileSystem implements FileSystemInterface {
    * {@inheritdoc}
    */
   public function dirname($uri) {
-    $scheme = $this->uriScheme($uri);
+    $scheme = StreamWrapperManager::getScheme($uri);
 
-    if ($this->validScheme($scheme)) {
+    if ($this->streamWrapperManager->isValidScheme($scheme)) {
       return $this->streamWrapperManager->getViaScheme($scheme)->dirname($uri);
     }
     else {
@@ -181,7 +184,7 @@ class FileSystem implements FileSystemInterface {
 
     // If the URI has a scheme, don't override the umask - schemes can handle
     // this issue in their own implementation.
-    if ($this->uriScheme($uri)) {
+    if (StreamWrapperManager::getScheme($uri)) {
       return $this->mkdirCall($uri, $mode, $recursive, $context);
     }
 
@@ -252,8 +255,7 @@ class FileSystem implements FileSystemInterface {
    * {@inheritdoc}
    */
   public function rmdir($uri, $context = NULL) {
-    $scheme = $this->uriScheme($uri);
-    if (!$this->validScheme($scheme) && (substr(PHP_OS, 0, 3) == 'WIN')) {
+    if (!$this->streamWrapperManager->isValidUri($uri) && (substr(PHP_OS, 0, 3) == 'WIN')) {
       chmod($uri, 0700);
     }
     if ($context) {
@@ -268,9 +270,9 @@ class FileSystem implements FileSystemInterface {
    * {@inheritdoc}
    */
   public function tempnam($directory, $prefix) {
-    $scheme = $this->uriScheme($directory);
+    $scheme = StreamWrapperManager::getScheme($directory);
 
-    if ($this->validScheme($scheme)) {
+    if ($this->streamWrapperManager->isValidScheme($scheme)) {
       $wrapper = $this->streamWrapperManager->getViaScheme($scheme);
 
       if ($filename = tempnam($wrapper->getDirectoryPath(), $prefix)) {
@@ -290,22 +292,16 @@ class FileSystem implements FileSystemInterface {
    * {@inheritdoc}
    */
   public function uriScheme($uri) {
-    if (preg_match('/^([\w\-]+):\/\/|^(data):/', $uri, $matches)) {
-      // The scheme will always be the last element in the matches array.
-      return array_pop($matches);
-    }
-
-    return FALSE;
+    @trigger_error('FileSystem::uriScheme() is deprecated in drupal:8.8.0. It will be removed from drupal:9.0.0. Use \Drupal\Core\StreamWrapper\StreamWrapperManagerInterface::getScheme() instead. See https://www.drupal.org/node/3035273', E_USER_DEPRECATED);
+    return StreamWrapperManager::getScheme($uri);
   }
 
   /**
    * {@inheritdoc}
    */
   public function validScheme($scheme) {
-    if (!$scheme) {
-      return FALSE;
-    }
-    return class_exists($this->streamWrapperManager->getClass($scheme));
+    @trigger_error('FileSystem::validScheme() is deprecated in drupal:8.8.0 and will be removed before drupal:9.0.0. Use \Drupal\Core\StreamWrapper\StreamWrapperManagerInterface::isValidScheme() instead. See https://www.drupal.org/node/3035273', E_USER_DEPRECATED);
+    return $this->streamWrapperManager->isValidScheme($scheme);
   }
 
   /**
@@ -397,8 +393,7 @@ class FileSystem implements FileSystemInterface {
 
     // Ensure compatibility with Windows.
     // @see \Drupal\Core\File\FileSystemInterface::unlink().
-    $scheme = $this->uriScheme($source);
-    if (!$this->validScheme($scheme) && (substr(PHP_OS, 0, 3) == 'WIN')) {
+    if (!$this->streamWrapperManager->isValidUri($source) && (substr(PHP_OS, 0, 3) == 'WIN')) {
       chmod($source, 0600);
     }
     // Attempt to resolve the URIs. This is necessary in certain
@@ -481,7 +476,7 @@ class FileSystem implements FileSystemInterface {
     // Prepare the destination directory.
     if ($this->prepareDirectory($destination)) {
       // The destination is already a directory, so append the source basename.
-      $destination = file_stream_wrapper_uri_normalize($destination . '/' . $this->basename($source));
+      $destination = $this->streamWrapperManager->normalizeUri($destination . '/' . $this->basename($source));
     }
     else {
       // Perhaps $destination is a dir/file?
@@ -537,7 +532,7 @@ class FileSystem implements FileSystemInterface {
    * {@inheritdoc}
    */
   public function prepareDirectory(&$directory, $options = self::MODIFY_PERMISSIONS) {
-    if (!$this->validScheme($this->uriScheme($directory))) {
+    if (!$this->streamWrapperManager->isValidUri($directory)) {
       // Only trim if we're not dealing with a stream.
       $directory = rtrim($directory, '/\\');
     }
@@ -631,6 +626,137 @@ class FileSystem implements FileSystemInterface {
     }
 
     return $destination;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getTempDirectory() {
+    // Use settings.
+    $temporary_directory = $this->settings->get('file_temp_path');
+    if (!empty($temporary_directory)) {
+      return $temporary_directory;
+    }
+
+    // Fallback to config for Backwards compatibility.
+    // This service is lazy-loaded and not injected, as the file_system service
+    // is used in the install phase before config_factory service exists. It
+    // will be removed before Drupal 9.0.0.
+    if (\Drupal::hasContainer()) {
+      $temporary_directory = \Drupal::config('system.file')->get('path.temporary');
+      if (!empty($temporary_directory)) {
+        @trigger_error("The 'system.file' config 'path.temporary' is deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Set 'file_temp_path' in settings.php instead. See https://www.drupal.org/node/3039255", E_USER_DEPRECATED);
+        return $temporary_directory;
+      }
+    }
+
+    // Fallback to OS default.
+    $temporary_directory = FileSystemComponent::getOsTemporaryDirectory();
+
+    if (empty($temporary_directory)) {
+      // If no directory has been found default to 'files/tmp'.
+      $temporary_directory = PublicStream::basePath() . '/tmp';
+
+      // Windows accepts paths with either slash (/) or backslash (\), but
+      // will not accept a path which contains both a slash and a backslash.
+      // Since the 'file_public_path' variable may have either format, we
+      // sanitize everything to use slash which is supported on all platforms.
+      $temporary_directory = str_replace('\\', '/', $temporary_directory);
+    }
+    return $temporary_directory;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function scanDirectory($dir, $mask, array $options = []) {
+    // Merge in defaults.
+    $options += [
+      'callback' => 0,
+      'recurse' => TRUE,
+      'key' => 'uri',
+      'min_depth' => 0,
+    ];
+    $dir = $this->streamWrapperManager->normalizeUri($dir);
+    if (!is_dir($dir)) {
+      throw new NotRegularDirectoryException("$dir is not a directory.");
+    }
+    // Allow directories specified in settings.php to be ignored. You can use
+    // this to not check for files in common special-purpose directories. For
+    // example, node_modules and bower_components. Ignoring irrelevant
+    // directories is a performance boost.
+    if (!isset($options['nomask'])) {
+      $ignore_directories = $this->settings->get('file_scan_ignore_directories', []);
+      array_walk($ignore_directories, function (&$value) {
+        $value = preg_quote($value, '/');
+      });
+      $options['nomask'] = '/^' . implode('|', $ignore_directories) . '$/';
+    }
+    $options['key'] = in_array($options['key'], ['uri', 'filename', 'name']) ? $options['key'] : 'uri';
+    return $this->doScanDirectory($dir, $mask, $options);
+  }
+
+  /**
+   * Internal function to handle directory scanning with recursion.
+   *
+   * @param string $dir
+   *   The base directory or URI to scan, without trailing slash.
+   * @param string $mask
+   *   The preg_match() regular expression for files to be included.
+   * @param array $options
+   *   The options as per ::scanDirectory().
+   * @param int $depth
+   *   The current depth of recursion.
+   *
+   * @return array
+   *   An associative array as per ::scanDirectory().
+   *
+   * @throws \Drupal\Core\File\Exception\NotRegularDirectoryException
+   *   If the directory does not exist.
+   *
+   * @see \Drupal\Core\File\FileSystemInterface::scanDirectory()
+   */
+  protected function doScanDirectory($dir, $mask, array $options = [], $depth = 0) {
+    $files = [];
+    // Avoid warnings when opendir does not have the permissions to open a
+    // directory.
+    if ($handle = @opendir($dir)) {
+      while (FALSE !== ($filename = readdir($handle))) {
+        // Skip this file if it matches the nomask or starts with a dot.
+        if ($filename[0] != '.' && !(preg_match($options['nomask'], $filename))) {
+          if (substr($dir, -1) == '/') {
+            $uri = "$dir$filename";
+          }
+          else {
+            $uri = "$dir/$filename";
+          }
+          if ($options['recurse'] && is_dir($uri)) {
+            // Give priority to files in this folder by merging them in after
+            // any subdirectory files.
+            $files = array_merge($this->doScanDirectory($uri, $mask, $options, $depth + 1), $files);
+          }
+          elseif ($depth >= $options['min_depth'] && preg_match($mask, $filename)) {
+            // Always use this match over anything already set in $files with
+            // the same $options['key'].
+            $file = new \stdClass();
+            $file->uri = $uri;
+            $file->filename = $filename;
+            $file->name = pathinfo($filename, PATHINFO_FILENAME);
+            $key = $options['key'];
+            $files[$file->$key] = $file;
+            if ($options['callback']) {
+              $options['callback']($uri);
+            }
+          }
+        }
+      }
+      closedir($handle);
+    }
+    else {
+      $this->logger->error('@dir can not be opened', ['@dir' => $dir]);
+    }
+
+    return $files;
   }
 
 }

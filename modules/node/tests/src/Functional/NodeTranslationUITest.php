@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\node\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Tests\content_translation\Functional\ContentTranslationUITestBase;
@@ -232,7 +233,7 @@ class NodeTranslationUITest extends ContentTranslationUITestBase {
     $article = $this->drupalCreateNode(['type' => 'article', 'langcode' => $this->langcodes[0]]);
 
     // Set up Seven as the admin theme and use it for node editing.
-    $this->container->get('theme_handler')->install(['seven']);
+    $this->container->get('theme_installer')->install(['seven']);
     $edit = [];
     $edit['admin_theme'] = 'seven';
     $edit['use_admin_theme'] = TRUE;
@@ -372,7 +373,7 @@ class NodeTranslationUITest extends ContentTranslationUITestBase {
     $languages = $this->container->get('language_manager')->getLanguages();
     foreach ($this->langcodes as $langcode) {
       $this->drupalGet($path, ['language' => $languages[$langcode]]);
-      $this->assertText($values[$langcode]['title'][0]['value'], format_string('The %langcode node translation is correctly displayed.', ['%langcode' => $langcode]));
+      $this->assertText($values[$langcode]['title'][0]['value'], new FormattableMarkup('The %langcode node translation is correctly displayed.', ['%langcode' => $langcode]));
     }
   }
 
@@ -396,7 +397,7 @@ class NodeTranslationUITest extends ContentTranslationUITestBase {
         // Retrieve desired link elements from the HTML head.
         $links = $this->xpath('head/link[@rel = "alternate" and @href = :href and @hreflang = :hreflang]',
           [':href' => $language_url->toString(), ':hreflang' => $alternate_langcode]);
-        $this->assert(isset($links[0]), format_string('The %langcode node translation has the correct alternate hreflang link for %alternate_langcode: %link.', ['%langcode' => $langcode, '%alternate_langcode' => $alternate_langcode, '%link' => $url->toString()]));
+        $this->assert(isset($links[0]), new FormattableMarkup('The %langcode node translation has the correct alternate hreflang link for %alternate_langcode: %link.', ['%langcode' => $langcode, '%alternate_langcode' => $alternate_langcode, '%link' => $url->toString()]));
       }
     }
   }

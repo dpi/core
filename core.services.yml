@@ -536,7 +536,7 @@ services:
     class: Drupal\Core\Extension\RequiredModuleUninstallValidator
     tags:
       - { name: module_install.uninstall_validator }
-    arguments: ['@string_translation']
+    arguments: ['@string_translation', '@extension.list.module']
     lazy: true
   theme_handler:
     class: Drupal\Core\Extension\ThemeHandler
@@ -1093,13 +1093,13 @@ services:
       - { name: render.main_content_renderer, format: html }
   main_content_renderer.ajax:
     class: Drupal\Core\Render\MainContent\AjaxRenderer
-    arguments: ['@element_info']
+    arguments: ['@element_info', '@renderer']
     tags:
       - { name: render.main_content_renderer, format: drupal_ajax }
       - { name: render.main_content_renderer, format: iframeupload }
   main_content_renderer.dialog:
     class: Drupal\Core\Render\MainContent\DialogRenderer
-    arguments: ['@title_resolver']
+    arguments: ['@title_resolver', '@renderer']
     tags:
       - { name: render.main_content_renderer, format: drupal_dialog }
   main_content_renderer.off_canvas:
@@ -1114,7 +1114,7 @@ services:
       - { name: render.main_content_renderer, format: drupal_dialog.off_canvas_top }
   main_content_renderer.modal:
     class: Drupal\Core\Render\MainContent\ModalRenderer
-    arguments: ['@title_resolver']
+    arguments: ['@title_resolver', '@renderer']
     tags:
       - { name: render.main_content_renderer, format: drupal_modal }
   controller.form:
@@ -1265,7 +1265,7 @@ services:
     class: Drupal\Core\EventSubscriber\ConfigImportSubscriber
     tags:
       - { name: event_subscriber }
-    arguments: ['@theme_handler']
+    arguments: ['@theme_handler', '@extension.list.module']
   config_snapshot_subscriber:
     class: Drupal\Core\EventSubscriber\ConfigSnapshotSubscriber
     tags:
@@ -1530,6 +1530,7 @@ services:
     arguments: ['@private_key', '@cache.bootstrap', '@cache.static']
   current_user:
     class: Drupal\Core\Session\AccountProxy
+    arguments: ['@event_dispatcher']
   session_configuration:
     class: Drupal\Core\Session\SessionConfiguration
     arguments: ['%session.storage.options%']
@@ -1599,7 +1600,7 @@ services:
       - { name: needs_destruction }
   library.discovery.parser:
     class: Drupal\Core\Asset\LibraryDiscoveryParser
-    arguments: ['@app.root', '@module_handler', '@theme.manager']
+    arguments: ['@app.root', '@module_handler', '@theme.manager', '@stream_wrapper_manager']
   library.dependency_resolver:
     class: Drupal\Core\Asset\LibraryDependencyResolver
     arguments: ['@library.discovery']

@@ -39,7 +39,7 @@ class BreadcrumbManagerTest extends UnitTestCase {
   /**
    * The mocked module handler.
    *
-   * @var \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $moduleHandler;
 
@@ -194,7 +194,7 @@ class BreadcrumbManagerTest extends UnitTestCase {
       ->will($this->returnValue('invalid_result'));
 
     $this->breadcrumbManager->addBuilder($builder, 0);
-    $this->setExpectedException(\UnexpectedValueException::class);
+    $this->expectException(\UnexpectedValueException::class);
     $this->breadcrumbManager->build($this->createMock('Drupal\Core\Routing\RouteMatchInterface'));
   }
 

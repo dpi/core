@@ -44,7 +44,7 @@ function system_requirements($phase) {
 
     // Display the currently active installation profile, if the site
     // is not running the default installation profile.
-    $profile = drupal_get_profile();
+    $profile = \Drupal::installProfile();
     if ($profile != 'standard') {
       $info = system_get_info('module', $profile);
       $requirements['install_profile'] = [
@@ -529,6 +529,38 @@ function system_requirements($phase) {
     }
   }
 
+  // Test that path.temporary config is not set.
+  if ($phase == 'runtime') {
+    if (!Settings::get('file_temp_path')) {
+      $filesystem_config = \Drupal::config('system.file');
+      if ($temp_path = $filesystem_config->get('path.temporary')) {
+        $requirements['temp_directory'] = [
+          'title' => t('Temporary Directory'),
+          'severity' => REQUIREMENT_WARNING,
+          'value' => 'Deprecated configuration',
+          'description' => [
+            [
+              '#markup' => t('You are using deprecated configuration for the temporary files path.'),
+              '#suffix' => ' ',
+            ],
+          ],
+        ];
+        if ($temp_path === FileSystem::getOsTemporaryDirectory()) {
+          $requirements['temp_directory']['description'][] = [
+            '#markup' => t('Your temporary directory configuration matches the OS default and can be safely removed.'),
+            '#suffix' => ' ',
+          ];
+        }
+        else {
+          $requirements['temp_directory']['description'][] = [
+            '#markup' => t('Remove the configuration and add the following to <code>settings.php</code>. <code>$settings["file_temp_path"] = "%temp_path"', ['%temp_path' => $temp_path]),
+            '#suffix' => ' ',
+          ];
+        }
+      }
+    }
+  }
+
   // Report cron status.
   if ($phase == 'runtime') {
     $cron_config = \Drupal::config('system.cron');
@@ -596,7 +628,7 @@ function system_requirements($phase) {
       // By default no private files directory is configured. For private files
       // to be secure the admin needs to provide a path outside the webroot.
       PrivateStream::basePath(),
-      file_directory_temp(),
+      \Drupal::service('file_system')->getTempDirectory(),
     ];
   }
 
@@ -617,8 +649,8 @@ function system_requirements($phase) {
     if ($file_private_path = Settings::get('file_private_path')) {
       $directories[] = $file_private_path;
     }
-    if (!empty($GLOBALS['config']['system.file']['path']['temporary'])) {
-      $directories[] = $GLOBALS['config']['system.file']['path']['temporary'];
+    if (Settings::get('file_temp_path')) {
+      $directories[] = Settings::get('file_temp_path');
     }
     else {
       // If the temporary directory is not overridden use an appropriate
@@ -630,35 +662,59 @@ function system_requirements($phase) {
   // Check the config directory if it is defined in settings.php. If it isn't
   // defined, the installer will create a valid config directory later, but
   // during runtime we must always display an error.
-  if (!empty($GLOBALS['config_directories'])) {
-    foreach (array_keys(array_filter($GLOBALS['config_directories'])) as $type) {
-      $directory = config_get_config_directory($type);
-      // If we're installing Drupal try and create the config sync directory.
-      if (!is_dir($directory) && $phase == 'install') {
-        \Drupal::service('file_system')->prepareDirectory($directory, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
+  $config_sync_directory = Settings::get('config_sync_directory');
+  if (!empty($config_sync_directory)) {
+    // If we're installing Drupal try and create the config sync directory.
+    if (!is_dir($config_sync_directory) && $phase == 'install') {
+      \Drupal::service('file_system')->prepareDirectory($config_sync_directory, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
+    }
+    if (!is_dir($config_sync_directory)) {
+      if ($phase == 'install') {
+        $description = t('An automated attempt to create the directory %directory failed, possibly due to a permissions problem. To proceed with the installation, either create the directory and modify its permissions manually or ensure that the installer has the permissions to create it automatically. For more information, see INSTALL.txt or the <a href=":handbook_url">online handbook</a>.', ['%directory' => $config_sync_directory, ':handbook_url' => 'https://www.drupal.org/server-permissions']);
       }
-      if (!is_dir($directory)) {
-        if ($phase == 'install') {
-          $description = t('An automated attempt to create the directory %directory failed, possibly due to a permissions problem. To proceed with the installation, either create the directory and modify its permissions manually or ensure that the installer has the permissions to create it automatically. For more information, see INSTALL.txt or the <a href=":handbook_url">online handbook</a>.', ['%directory' => $directory, ':handbook_url' => 'https://www.drupal.org/server-permissions']);
-        }
-        else {
-          $description = t('The directory %directory does not exist.', ['%directory' => $directory]);
-        }
-        $requirements['config directory ' . $type] = [
-          'title' => t('Configuration directory: %type', ['%type' => $type]),
-          'description' => $description,
-          'severity' => REQUIREMENT_ERROR,
-        ];
+      else {
+        $description = t('The directory %directory does not exist.', ['%directory' => $config_sync_directory]);
       }
+      $requirements['config sync directory'] = [
+        'title' => t('Configuration sync directory'),
+        'description' => $description,
+        'severity' => REQUIREMENT_ERROR,
+      ];
     }
   }
-  if ($phase != 'install' && (empty($GLOBALS['config_directories']) || empty($GLOBALS['config_directories'][CONFIG_SYNC_DIRECTORY]))) {
-    $requirements['config directories'] = [
-      'title' => t('Configuration directories'),
+  if ($phase != 'install' && empty($config_sync_directory)) {
+    $requirements['config sync directory'] = [
+      'title' => t('Configuration sync directory'),
       'value' => t('Not present'),
-      'description' => t('Your %file file must define the $config_directories variable as an array containing the names of directories in which configuration files can be found. It must contain a %sync_key key.', ['%file' => $site_path . '/settings.php', '%sync_key' => CONFIG_SYNC_DIRECTORY]),
+      'description' => t("Your %file file must define the %setting setting as a string containing the directory in which configuration files can be found.", ['%file' => $site_path . '/settings.php', '%setting' => "\$settings['config_sync_directory']"]),
       'severity' => REQUIREMENT_ERROR,
     ];
+  }
+
+  // Handle other configuration directories. This will be removed in Drupal 9.
+  // See https://www.drupal.org/node/3018145.
+  $bc_config_directories = isset($GLOBALS['config_directories']) ? $GLOBALS['config_directories'] : [];
+  unset($bc_config_directories['sync']);
+  foreach (array_keys(array_filter($bc_config_directories)) as $type) {
+    @trigger_error("Automatic creation of '$type' configuration directory will be removed from drupal:9.0.0. See https://www.drupal.org/node/3018145.", E_USER_DEPRECATED);
+    $directory = config_get_config_directory($type);
+    // If we're installing Drupal try and create the config sync directory.
+    if (!is_dir($directory) && $phase == 'install') {
+      \Drupal::service('file_system')->prepareDirectory($directory, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS);
+    }
+    if (!is_dir($directory)) {
+      if ($phase == 'install') {
+        $description = t('An automated attempt to create the directory %directory failed, possibly due to a permissions problem. To proceed with the installation, either create the directory and modify its permissions manually or ensure that the installer has the permissions to create it automatically. For more information, see INSTALL.txt or the <a href=":handbook_url">online handbook</a>.', ['%directory' => $directory, ':handbook_url' => 'https://www.drupal.org/server-permissions']);
+      }
+      else {
+        $description = t('The directory %directory does not exist.', ['%directory' => $directory]);
+      }
+      $requirements['config directory ' . $type] = [
+        'title' => t('Configuration directory: %type', ['%type' => $type]),
+        'description' => $description,
+        'severity' => REQUIREMENT_ERROR,
+      ];
+    }
   }
 
   $requirements['file system'] = [
@@ -796,8 +852,8 @@ function system_requirements($phase) {
 
   // Display an error if a newly introduced dependency in a module is not resolved.
   if ($phase == 'update') {
-    $profile = drupal_get_profile();
-    $files = system_rebuild_module_data();
+    $profile = \Drupal::installProfile();
+    $files = \Drupal::service('extension.list.module')->getList();
     foreach ($files as $module => $file) {
       // Ignore disabled modules and installation profiles.
       if (!$file->status || $module == $profile) {
@@ -1830,12 +1886,13 @@ function system_update_8014() {
     return;
   }
   $theme_handler->refreshInfo();
+  $theme_installer = \Drupal::service('theme_installer');
   foreach ($theme_handler->listInfo() as $theme) {
     // We first check that a base theme is set because if it's set to false then
     // it's unset in
     // \Drupal\Core\Extension\ThemeExtensionList::createExtensionInfo().
     if (isset($theme->info['base theme']) && $theme->info['base theme'] == 'stable') {
-      $theme_handler->install(['stable']);
+      $theme_installer->install(['stable']);
       return;
     }
   }
@@ -2286,4 +2343,17 @@ function system_update_8702() {
     }
   }
   \Drupal::entityTypeManager()->useCaches(TRUE);
+}
+
+/**
+ * Remove 'path.temporary' config if redundant.
+ */
+function system_update_8801() {
+  // If settings is already being used, or the config is set to the OS default,
+  // clear the config value.
+  $config = Drupal::configFactory()->getEditable('system.file');
+  if (Settings::get('file_temp_path') || $config->get('path.temporary') === FileSystem::getOsTemporaryDirectory()) {
+    $config->clear('path.temporary')
+      ->save(TRUE);
+  }
 }
