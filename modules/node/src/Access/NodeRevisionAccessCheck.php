@@ -80,6 +80,9 @@ class NodeRevisionAccessCheck implements AccessInterface {
    */
   public function checkAccess(NodeInterface $node, AccountInterface $account, $op = 'view') {
     @trigger_error('NodeRevisionAccessCheck is deprecated in Drupal 8.8.x and will be removed before Drupal 9.0.x. Use "_entity_access" requirement with relevant operation instead.', E_USER_DEPRECATED);
+    // Converts legacy operations for this access check to new revision
+    // operation found in access control handler.
+    // E.g route _access_node_revision: 'update' to $node->access('revert')
     $entityOperationMap = [
       'view' => 'view all revisions',
       'update' => 'revert',

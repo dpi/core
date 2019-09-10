@@ -39,14 +39,14 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
    * Map of revision operations.
    *
    * Keys contain revision operations, where values are an array containing the
-   * permission operation and supplemental entity operation.
+   * permission operation and entity operation.
    *
    * Permission operation is used to build the required permission, e.g.
    * 'permissionOperation all revisions', 'permissionOperation type revisions'.
    *
-   * Supplemental entity operation is used to determine access, for
-   * 'delete revision' operation, an account must also have access to 'delete'
-   * operation on an entity.
+   * Entity operation is used to determine access, e.g for 'delete revision'
+   * operation, an account must also have access to 'delete' operation on an
+   * entity.
    *
    * @internal Only to be used internally by this class. Consider as protected.
    */
@@ -142,7 +142,7 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
       return AccessResult::allowed()->cachePerPermissions()->cachePerUser()->addCacheableDependency($node);
     }
 
-    list($revisionPermissionOperation, $entityOperation) = isset(static::REVISION_OPERATION_MAP[$operation])
+    [$revisionPermissionOperation, $entityOperation] = isset(static::REVISION_OPERATION_MAP[$operation])
       ? static::REVISION_OPERATION_MAP[$operation]
       : [NULL, NULL];
 
