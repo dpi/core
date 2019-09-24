@@ -26,6 +26,7 @@ use Drupal\field\FieldConfigInterface;
 use Drupal\field\FieldStorageConfigInterface;
 use Drupal\node\NodeInterface;
 use Drupal\user\RoleInterface;
+use Drupal\user\UserCancellationInterface;
 use Drupal\user\UserInterface;
 
 /**
@@ -535,7 +536,7 @@ function comment_node_search_result(EntityInterface $node) {
  */
 function comment_user_cancel($edit, UserInterface $account, $method) {
   switch ($method) {
-    case 'user_cancel_block_unpublish':
+    case UserCancellationInterface::METHOD_BLOCK_AND_UNPUBLISH:
       $comments = \Drupal::entityTypeManager()->getStorage('comment')->loadByProperties(['uid' => $account->id()]);
       foreach ($comments as $comment) {
         $comment->setUnpublished();
@@ -543,7 +544,7 @@ function comment_user_cancel($edit, UserInterface $account, $method) {
       }
       break;
 
-    case 'user_cancel_reassign':
+    case UserCancellationInterface::METHOD_REASSIGN_ANONYMOUS:
       /** @var \Drupal\comment\CommentInterface[] $comments */
       $comments = \Drupal::entityTypeManager()->getStorage('comment')->loadByProperties(['uid' => $account->id()]);
       foreach ($comments as $comment) {

@@ -8,6 +8,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Url;
 use Drupal\user\Form\UserPasswordResetForm;
+use Drupal\user\UserCancellationInterface;
 use Drupal\user\UserDataInterface;
 use Drupal\user\UserInterface;
 use Drupal\user\UserStorageInterface;
@@ -50,6 +51,13 @@ class UserController extends ControllerBase {
   protected $logger;
 
   /**
+   * The user cancellation service.
+   *
+   * @var \Drupal\user\UserCancellationInterface
+   */
+  protected $userCancellation;
+
+  /**
    * Constructs a UserController object.
    *
    * @param \Drupal\Core\Datetime\DateFormatterInterface $date_formatter
@@ -60,12 +68,15 @@ class UserController extends ControllerBase {
    *   The user data service.
    * @param \Psr\Log\LoggerInterface $logger
    *   A logger instance.
+   * @param \Drupal\user\UserCancellationInterface|null $userCancellation
+   *   The user cancellation service.
    */
-  public function __construct(DateFormatterInterface $date_formatter, UserStorageInterface $user_storage, UserDataInterface $user_data, LoggerInterface $logger) {
+  public function __construct(DateFormatterInterface $date_formatter, UserStorageInterface $user_storage, UserDataInterface $user_data, LoggerInterface $logger, UserCancellationInterface $userCancellation = NULL) {
     $this->dateFormatter = $date_formatter;
     $this->userStorage = $user_storage;
     $this->userData = $user_data;
     $this->logger = $logger;
+    $this->userCancellation = $userCancellation ?: \Drupal::service('user.cancellation');
   }
 
   /**
@@ -76,7 +87,8 @@ class UserController extends ControllerBase {
       $container->get('date.formatter'),
       $container->get('entity_type.manager')->getStorage('user'),
       $container->get('user.data'),
-      $container->get('logger.factory')->get('user')
+      $container->get('logger.factory')->get('user'),
+      $container->get('user.cancellation')
     );
   }
 
@@ -329,8 +341,10 @@ class UserController extends ControllerBase {
         $edit = [
           'user_cancel_notify' => isset($account_data['cancel_notify']) ? $account_data['cancel_notify'] : $this->config('user.settings')->get('notify.status_canceled'),
         ];
-        user_cancel($edit, $user->id(), $account_data['cancel_method']);
-        // Since user_cancel() is not invoked via Form API, batch processing
+
+        $this->userCancellation->progressiveUserCancellation($user, $account_data['cancel_method'], $edit);
+
+        // Since cancellation is not invoked via Form API, batch processing
         // needs to be invoked manually and should redirect to the front page
         // after completion.
         return batch_process('<front>');

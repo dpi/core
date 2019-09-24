@@ -31,6 +31,7 @@ use Drupal\node\Entity\NodeType;
 use Drupal\node\NodeInterface;
 use Drupal\node\NodeTypeInterface;
 use Drupal\user\UserInterface;
+use Drupal\user\UserCancellationInterface;
 
 /**
  * Denotes that the node is not published.
@@ -761,7 +762,7 @@ function node_ranking() {
  */
 function node_user_cancel($edit, UserInterface $account, $method) {
   switch ($method) {
-    case 'user_cancel_block_unpublish':
+    case UserCancellationInterface::METHOD_BLOCK_AND_UNPUBLISH:
       // Unpublish nodes (current revisions).
       $nids = \Drupal::entityQuery('node')
         ->condition('uid', $account->id())
@@ -770,7 +771,7 @@ function node_user_cancel($edit, UserInterface $account, $method) {
       node_mass_update($nids, ['status' => 0], NULL, TRUE);
       break;
 
-    case 'user_cancel_reassign':
+    case UserCancellationInterface::METHOD_REASSIGN_ANONYMOUS:
       // Anonymize all of the nodes for this old account.
       module_load_include('inc', 'node', 'node.admin');
       $vids = \Drupal::entityTypeManager()->getStorage('node')->userRevisionIds($account);

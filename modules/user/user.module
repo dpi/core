@@ -22,6 +22,7 @@ use Drupal\system\Entity\Action;
 use Drupal\user\Entity\Role;
 use Drupal\user\Entity\User;
 use Drupal\user\RoleInterface;
+use Drupal\user\UserCancellationInterface;
 use Drupal\user\UserInterface;
 
 /**
@@ -689,52 +690,18 @@ function user_pass_rehash(UserInterface $account, $timestamp) {
  * @param string $method
  *   The account cancellation method to use.
  *
+ * @deprecated in drupal:8.8.x and is removed from drupal:9.0.0. Use
+ *   \Drupal\user\UserCancellation::cancelUser().
+ *
  * @see _user_cancel()
+ * @see https://www.drupal.org/project/drupal/issues/3079085
  */
 function user_cancel($edit, $uid, $method) {
-  $account = User::load($uid);
-
-  if (!$account) {
-    \Drupal::messenger()->addError(t('The user account %id does not exist.', ['%id' => $uid]));
-    \Drupal::logger('user')->error('Attempted to cancel non-existing user account: %id.', ['%id' => $uid]);
-    return;
-  }
-
-  // Initialize batch (to set title).
-  $batch = [
-    'title' => t('Cancelling account'),
-    'operations' => [],
-  ];
-  batch_set($batch);
-
-  // When the 'user_cancel_delete' method is used, user_delete() is called,
-  // which invokes hook_ENTITY_TYPE_predelete() and hook_ENTITY_TYPE_delete()
-  // for the user entity. Modules should use those hooks to respond to the
-  // account deletion.
-  if ($method != 'user_cancel_delete') {
-    // Allow modules to add further sets to this batch.
-    \Drupal::moduleHandler()->invokeAll('user_cancel', [$edit, $account, $method]);
-  }
-
-  // Finish the batch and actually cancel the account.
-  $batch = [
-    'title' => t('Cancelling user account'),
-    'operations' => [
-      ['_user_cancel', [$edit, $account, $method]],
-    ],
-  ];
-
-  // After cancelling account, ensure that user is logged out.
-  if ($account->id() == \Drupal::currentUser()->id()) {
-    // Batch API stores data in the session, so use the finished operation to
-    // manipulate the current user's session id.
-    $batch['finished'] = '_user_cancel_session_regenerate';
-  }
-
-  batch_set($batch);
-
-  // Batch processing is either handled via Form API or has to be invoked
-  // manually.
+  @trigger_error('user_cancel() is deprecated in drupal:8.8.x and is removed from drupal:9.0.0. Use \Drupal\user\UserCancellation::cancelUser(). See https://www.drupal.org/project/drupal/issues/3079085', E_USER_DEPRECATED);
+  $user = User::load($uid);
+  /** @var \Drupal\user\UserCancellationInterface $userCancellation */
+  $userCancellation = \Drupal::service('user.cancellation');
+  $userCancellation->progressiveUserCancellation($user, $method, $edit);
 }
 
 /**
@@ -751,44 +718,17 @@ function user_cancel($edit, $uid, $method) {
  * @param string $method
  *   The account cancellation method to use.
  *
+ * @deprecated in drupal:8.8.x and is removed from drupal:9.0.0. Use
+ *   \Drupal\user\UserCancellationInterface::callbackCancelUser().
+ *
  * @see user_cancel()
+ * @see https://www.drupal.org/project/drupal/issues/3079085
  */
 function _user_cancel($edit, $account, $method) {
-  $logger = \Drupal::logger('user');
-
-  switch ($method) {
-    case 'user_cancel_block':
-    case 'user_cancel_block_unpublish':
-    default:
-      // Send account blocked notification if option was checked.
-      if (!empty($edit['user_cancel_notify'])) {
-        _user_mail_notify('status_blocked', $account);
-      }
-      $account->block();
-      $account->save();
-      \Drupal::messenger()->addStatus(t('%name has been disabled.', ['%name' => $account->getDisplayName()]));
-      $logger->notice('Blocked user: %name %email.', ['%name' => $account->getAccountName(), '%email' => '<' . $account->getEmail() . '>']);
-      break;
-
-    case 'user_cancel_reassign':
-    case 'user_cancel_delete':
-      // Send account canceled notification if option was checked.
-      if (!empty($edit['user_cancel_notify'])) {
-        _user_mail_notify('status_canceled', $account);
-      }
-      $account->delete();
-      \Drupal::messenger()->addStatus(t('%name has been deleted.', ['%name' => $account->getDisplayName()]));
-      $logger->notice('Deleted user: %name %email.', ['%name' => $account->getAccountName(), '%email' => '<' . $account->getEmail() . '>']);
-      break;
-  }
-
-  // After cancelling account, ensure that user is logged out. We can't destroy
-  // their session though, as we might have information in it, and we can't
-  // regenerate it because batch API uses the session ID, we will regenerate it
-  // in _user_cancel_session_regenerate().
-  if ($account->id() == \Drupal::currentUser()->id()) {
-    \Drupal::currentUser()->setAccount(new AnonymousUserSession());
-  }
+  @trigger_error('_user_cancel() is deprecated in drupal:8.8.x and is removed from drupal:9.0.0. Use \Drupal\user\UserCancellationInterface::callbackCancelUser(). See https://www.drupal.org/project/drupal/issues/3079085', E_USER_DEPRECATED);
+  /** @var \Drupal\user\UserCancellation $userCancellation */
+  $userCancellation = \Drupal::service('user.cancellation');
+  $userCancellation::callbackCancelUser($account->id(), $method, FALSE, $edit);
 }
 
 /**
@@ -796,12 +736,17 @@ function _user_cancel($edit, $account, $method) {
  *
  * Finished batch processing callback for cancelling a user account.
  *
+ * @deprecated in drupal:8.8.x and is removed from drupal:9.0.0. Use
+ *   \Drupal\user\UserCancellation::callbackFinish().
+ *
  * @see user_cancel()
+ * @see https://www.drupal.org/project/drupal/issues/3079085
  */
 function _user_cancel_session_regenerate() {
-  // Regenerate the users session instead of calling session_destroy() as we
-  // want to preserve any messages that might have been set.
-  \Drupal::service('session')->migrate();
+  @trigger_error('_user_cancel_session_regenerate() is deprecated in drupal:8.8.x and is removed from drupal:9.0.0. Use \Drupal\user\UserCancellation::callbackFinish(). See https://www.drupal.org/project/drupal/issues/3079085', E_USER_DEPRECATED);
+  /** @var \Drupal\user\UserCancellation $userCancellation */
+  $userCancellation = \Drupal::service('user.cancellation');
+  $userCancellation::callbackFinish();
 }
 
 /**
@@ -819,19 +764,19 @@ function user_cancel_methods() {
   $user_settings = \Drupal::config('user.settings');
   $anonymous_name = $user_settings->get('anonymous');
   $methods = [
-    'user_cancel_block' => [
+    UserCancellationInterface::METHOD_BLOCK => [
       'title' => t('Disable the account and keep its content.'),
       'description' => t('Your account will be blocked and you will no longer be able to log in. All of your content will remain attributed to your username.'),
     ],
-    'user_cancel_block_unpublish' => [
+    UserCancellationInterface::METHOD_BLOCK_AND_UNPUBLISH => [
       'title' => t('Disable the account and unpublish its content.'),
       'description' => t('Your account will be blocked and you will no longer be able to log in. All of your content will be hidden from everyone but administrators.'),
     ],
-    'user_cancel_reassign' => [
+    UserCancellationInterface::METHOD_REASSIGN_ANONYMOUS => [
       'title' => t('Delete the account and make its content belong to the %anonymous-name user.', ['%anonymous-name' => $anonymous_name]),
       'description' => t('Your account will be removed and all account information deleted. All of your content will be assigned to the %anonymous-name user.', ['%anonymous-name' => $anonymous_name]),
     ],
-    'user_cancel_delete' => [
+    UserCancellationInterface::METHOD_DELETE => [
       'title' => t('Delete the account and its content.'),
       'description' => t('Your account will be removed and all account information deleted. All of your content will also be deleted.'),
       'access' => \Drupal::currentUser()->hasPermission('administer users'),
