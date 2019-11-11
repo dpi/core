@@ -3,6 +3,8 @@
 namespace Drupal\path\Plugin\Field\FieldType;
 
 use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityMalformedException;
+use Drupal\Core\Entity\Exception\UndefinedLinkTemplateException;
 use Drupal\Core\Field\FieldItemList;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\TypedData\ComputedItemListTrait;
