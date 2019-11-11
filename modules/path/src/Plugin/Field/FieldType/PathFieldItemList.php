@@ -26,15 +26,26 @@ class PathFieldItemList extends FieldItemList {
 
     $entity = $this->getEntity();
     if (!$entity->isNew()) {
-      /** @var \Drupal\Core\Path\AliasRepositoryInterface $path_alias_repository */
-      $path_alias_repository = \Drupal::service('path_alias.repository');
+      try {
+        $internalPath = $entity->toUrl()->getInternalPath();
+      }
+      catch (EntityMalformedException $exception) {
+      }
+      catch (UndefinedLinkTemplateException $exception) {
+      }
+      catch (\UnexpectedValueException $exception) {
+      }
+      if (isset($internalPath)) {
+        /** @var \Drupal\Core\Path\AliasRepositoryInterface $path_alias_repository */
+        $path_alias_repository = \Drupal::service('path_alias.repository');
 
-      if ($path_alias = $path_alias_repository->lookupBySystemPath('/' . $entity->toUrl()->getInternalPath(), $this->getLangcode())) {
-        $value = [
-          'alias' => $path_alias['alias'],
-          'pid' => $path_alias['id'],
-          'langcode' => $path_alias['langcode'],
-        ];
+        if ($path_alias = $path_alias_repository->lookupBySystemPath('/' . $internalPath, $this->getLangcode())) {
+          $value = [
+            'alias' => $path_alias['alias'],
+            'pid' => $path_alias['id'],
+            'langcode' => $path_alias['langcode'],
+          ];
+        }
       }
     }
 
