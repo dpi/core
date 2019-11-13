@@ -23,11 +23,6 @@ function path_entity_test_entity_base_field_info(EntityTypeInterface $entity_typ
     $fields['path'] = BaseFieldDefinition::create('path')
       ->setLabel(t('URL alias'))
       ->setTranslatable(TRUE)
-      ->setDisplayOptions('form', [
-        'type' => 'path',
-        'weight' => 30,
-      ])
-      ->setDisplayConfigurable('form', TRUE)
       ->setComputed(TRUE);
   }
 

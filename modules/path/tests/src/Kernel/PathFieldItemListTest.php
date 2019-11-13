@@ -35,8 +35,7 @@ class PathFieldItemListTest extends KernelTestBase {
     $this->installEntitySchema('entity_test');
 
     $entity = EntityTest::create();
-    // Unset ID to throw EntityMalformedException from $entity->toUrl().
-    $this->assertEquals('', $entity->path->value);
+    $this->assertNull($entity->path->value);
   }
 
   /**
@@ -67,7 +66,7 @@ class PathFieldItemListTest extends KernelTestBase {
     $entity = PathEntityTestExternalLink::create();
     // Need to save to avoid unsaved check.
     $entity->save();
-    // Entities with canonical URLS to external (aka unrouted) throw
+    // Entities with canonical URLs to external (aka unrouted) throw
     // UnexpectedValueException from $entity->toUrl().
     $this->assertNull($entity->path->value);
   }
