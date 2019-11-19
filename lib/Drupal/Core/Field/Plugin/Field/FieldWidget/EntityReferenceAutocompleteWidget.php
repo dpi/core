@@ -23,6 +23,13 @@ use Symfony\Component\Validator\ConstraintViolationInterface;
 class EntityReferenceAutocompleteWidget extends WidgetBase {
 
   /**
+   * Cache of referenced entities, keyed by delta.
+   *
+   * @var \Drupal\Core\Entity\EntityInterface[]
+   */
+  protected $referencedEntities;
+
+  /**
    * {@inheritdoc}
    */
   public static function defaultSettings() {
@@ -93,9 +100,17 @@ class EntityReferenceAutocompleteWidget extends WidgetBase {
   /**
    * {@inheritdoc}
    */
+  protected function formMultipleElements(FieldItemListInterface $items, array &$form, FormStateInterface $form_state) {
+    $this->referencedEntities = $items->referencedEntities();
+    $elements = parent::formMultipleElements($items, $form, $form_state);
+    return $elements;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
     $entity = $items->getEntity();
-    $referenced_entities = $items->referencedEntities();
 
     // Append the match operation to the selection settings.
     $selection_settings = $this->getFieldSetting('handler_settings') + [
@@ -112,7 +127,7 @@ class EntityReferenceAutocompleteWidget extends WidgetBase {
       // the 'ValidReference' constraint.
       '#validate_reference' => FALSE,
       '#maxlength' => 1024,
-      '#default_value' => isset($referenced_entities[$delta]) ? $referenced_entities[$delta] : NULL,
+      '#default_value' => $this->referencedEntities[$delta] ?? ($items->referencedEntities()[$delta] ?? NULL),
       '#size' => $this->getSetting('size'),
       '#placeholder' => $this->getSetting('placeholder'),
     ];
