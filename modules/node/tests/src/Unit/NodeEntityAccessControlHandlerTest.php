@@ -24,7 +24,7 @@ use Drupal\Tests\UnitTestCase;
 class NodeEntityAccessControlHandlerTest extends UnitTestCase {
 
   /**
-   * Tests the an operation not implemented by the access control handler.
+   * Test an operation not implemented by the access control handler.
    */
   public function testUnrecognisedOperation() {
     // Cache utility calls container directly.
@@ -46,8 +46,6 @@ class NodeEntityAccessControlHandlerTest extends UnitTestCase {
     $moduleHandler->expects($this->exactly(2))
       ->method('invokeAll')
       ->willReturn([]);
-    $accessControl = new NodeAccessControlHandler($entityType, $nodeGrants);
-    $accessControl->setModuleHandler($moduleHandler);
 
     $language = $this->createMock(LanguageInterface::class);
     $language->expects($this->any())
@@ -68,9 +66,11 @@ class NodeEntityAccessControlHandlerTest extends UnitTestCase {
     $account = $this->createMock(AccountInterface::class);
     $account->expects($this->any())
       ->method('hasPermission')
-      ->withConsecutive($this->any(), ['access content'])
+      ->withConsecutive([], ['access content'])
       ->willReturnOnConsecutiveCalls(FALSE, TRUE);
 
+    $accessControl = new NodeAccessControlHandler($entityType, $nodeGrants);
+    $accessControl->setModuleHandler($moduleHandler);
     $access = $accessControl->access($entity, $this->randomMachineName(), $account, TRUE);
     $this->assertInstanceOf(AccessResultInterface::class, $access);
   }

@@ -20,7 +20,7 @@ use Drupal\Tests\UnitTestCase;
 class ContactMessageEntityAccessControlHandlerTest extends UnitTestCase {
 
   /**
-   * Tests the an operation not implemented by the access control handler.
+   * Test an operation not implemented by the access control handler.
    */
   public function testUnrecognisedOperation() {
     $entityType = $this->createMock(EntityTypeInterface::class);
@@ -28,8 +28,6 @@ class ContactMessageEntityAccessControlHandlerTest extends UnitTestCase {
     $moduleHandler->expects($this->exactly(2))
       ->method('invokeAll')
       ->willReturn([]);
-    $accessControl = new ContactMessageAccessControlHandler($entityType);
-    $accessControl->setModuleHandler($moduleHandler);
 
     $language = $this->createMock(LanguageInterface::class);
     $language->expects($this->any())
@@ -41,6 +39,9 @@ class ContactMessageEntityAccessControlHandlerTest extends UnitTestCase {
       ->willReturn($language);
 
     $account = $this->createMock(AccountInterface::class);
+
+    $accessControl = new ContactMessageAccessControlHandler($entityType);
+    $accessControl->setModuleHandler($moduleHandler);
     $access = $accessControl->access($entity, $this->randomMachineName(), $account, TRUE);
     $this->assertInstanceOf(AccessResultInterface::class, $access);
   }

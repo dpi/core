@@ -421,14 +421,13 @@ class UserAccessControlHandlerTest extends UnitTestCase {
   }
 
   /**
-   * Tests the an operation not implemented by the access control handler.
+   * Test an operation not implemented by the access control handler.
    */
   public function testUnrecognisedOperation() {
     $moduleHandler = $this->createMock(ModuleHandlerInterface::class);
     $moduleHandler->expects($this->exactly(2))
       ->method('invokeAll')
       ->willReturn([]);
-    $this->accessControlHandler->setModuleHandler($moduleHandler);
 
     $language = $this->createMock(LanguageInterface::class);
     $language->expects($this->any())
@@ -439,6 +438,8 @@ class UserAccessControlHandlerTest extends UnitTestCase {
       ->method('language')
       ->willReturn($language);
     $account = $this->createMock(AccountInterface::class);
+
+    $this->accessControlHandler->setModuleHandler($moduleHandler);
     $access = $this->accessControlHandler->access($entity, $this->randomMachineName(), $account, TRUE);
     $this->assertInstanceOf(AccessResultInterface::class, $access);
   }

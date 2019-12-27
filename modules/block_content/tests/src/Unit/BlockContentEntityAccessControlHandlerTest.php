@@ -22,7 +22,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 class BlockContentEntityAccessControlHandlerTest extends UnitTestCase {
 
   /**
-   * Tests the an operation not implemented by the access control handler.
+   * Test an operation not implemented by the access control handler.
    */
   public function testUnrecognisedOperation() {
     $entityType = $this->createMock(EntityTypeInterface::class);
@@ -34,8 +34,6 @@ class BlockContentEntityAccessControlHandlerTest extends UnitTestCase {
     $moduleHandler->expects($this->exactly(2))
       ->method('invokeAll')
       ->willReturn([]);
-    $accessControl = new BlockContentAccessControlHandler($entityType, $eventDispatcher);
-    $accessControl->setModuleHandler($moduleHandler);
 
     $language = $this->createMock(LanguageInterface::class);
     $language->expects($this->any())
@@ -56,6 +54,9 @@ class BlockContentEntityAccessControlHandlerTest extends UnitTestCase {
       ->willReturn([]);
 
     $account = $this->createMock(AccountInterface::class);
+
+    $accessControl = new BlockContentAccessControlHandler($entityType, $eventDispatcher);
+    $accessControl->setModuleHandler($moduleHandler);
     $access = $accessControl->access($entity, $this->randomMachineName(), $account, TRUE);
     $this->assertInstanceOf(AccessResultInterface::class, $access);
   }

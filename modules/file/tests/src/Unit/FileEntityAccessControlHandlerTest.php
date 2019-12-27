@@ -22,7 +22,7 @@ use Drupal\Tests\UnitTestCase;
 class FileEntityAccessControlHandlerTest extends UnitTestCase {
 
   /**
-   * Tests the an operation not implemented by the access control handler.
+   * Test an operation not implemented by the access control handler.
    */
   public function testUnrecognisedOperation() {
     // Cache utility calls container directly.
@@ -39,8 +39,6 @@ class FileEntityAccessControlHandlerTest extends UnitTestCase {
     $moduleHandler->expects($this->exactly(2))
       ->method('invokeAll')
       ->willReturn([]);
-    $accessControl = new FileAccessControlHandler($entityType);
-    $accessControl->setModuleHandler($moduleHandler);
 
     $language = $this->createMock(LanguageInterface::class);
     $language->expects($this->any())
@@ -53,6 +51,9 @@ class FileEntityAccessControlHandlerTest extends UnitTestCase {
       ->willReturn($language);
 
     $account = $this->createMock(AccountInterface::class);
+
+    $accessControl = new FileAccessControlHandler($entityType);
+    $accessControl->setModuleHandler($moduleHandler);
     $access = $accessControl->access($entity, $this->randomMachineName(), $account, TRUE);
     $this->assertInstanceOf(AccessResultInterface::class, $access);
   }

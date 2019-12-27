@@ -22,7 +22,7 @@ use Drupal\Tests\UnitTestCase;
 class ShortcutEntityAccessControlHandlerTest extends UnitTestCase {
 
   /**
-   * Tests the an operation not implemented by the access control handler.
+   * Test an operation not implemented by the access control handler.
    */
   public function testUnrecognisedOperation() {
     $entityType = $this->createMock(EntityTypeInterface::class);
@@ -31,8 +31,6 @@ class ShortcutEntityAccessControlHandlerTest extends UnitTestCase {
       ->method('invokeAll')
       ->willReturn([]);
     $shortcutStorage = $this->createMock(ShortcutSetStorageInterface::class);
-    $accessControl = new ShortcutAccessControlHandler($entityType, $shortcutStorage);
-    $accessControl->setModuleHandler($moduleHandler);
 
     $language = $this->createMock(LanguageInterface::class);
     $language->expects($this->any())
@@ -54,6 +52,9 @@ class ShortcutEntityAccessControlHandlerTest extends UnitTestCase {
       ->willReturn([]);
 
     $account = $this->createMock(AccountInterface::class);
+
+    $accessControl = new ShortcutAccessControlHandler($entityType, $shortcutStorage);
+    $accessControl->setModuleHandler($moduleHandler);
     $access = $accessControl->access($entity, $this->randomMachineName(), $account, TRUE);
     $this->assertInstanceOf(AccessResultInterface::class, $access);
   }
