@@ -9,6 +9,7 @@ namespace Drupal\Tests\Core;
 
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Access\AccessManagerInterface;
+use Drupal\Core\Access\AccessResult;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\GeneratedUrl;
 use Drupal\Core\Routing\RouteMatch;
@@ -495,12 +496,15 @@ class UrlTest extends UnitTestCase {
    * Tests the access() method for routed URLs.
    *
    * @param bool $access
+   *   The expected access object.
+   * @param bool $return_as_object
+   *   Whether to request an access object.
    *
    * @covers ::access
    * @covers ::accessManager
    * @dataProvider accessProvider
    */
-  public function testAccessRouted($access) {
+  public function testAccessRouted($access, $return_as_object) {
     $account = $this->createMock('Drupal\Core\Session\AccountInterface');
     $url = new TestUrl('entity.node.canonical', ['node' => 3]);
     $url->setAccessManager($this->getMockAccessManager($access, $account));
@@ -854,8 +858,10 @@ class UrlTest extends UnitTestCase {
    */
   public function accessProvider() {
     return [
-      [TRUE],
-      [FALSE],
+      [TRUE, FALSE],
+      [FALSE, FALSE],
+      [AccessResult::allowed(), TRUE],
+      [AccessResult::neutral(), TRUE],
     ];
   }
 
