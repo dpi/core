@@ -2,7 +2,9 @@
 
 namespace Drupal\views\Plugin\views\filter;
 
+use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
 
 /**
  * Filter to handle dates stored as a timestamp.
@@ -18,6 +20,12 @@ class Date extends NumericFilter {
 
     // value is already set up properly, we're just adding our new field to it.
     $options['value']['contains']['type']['default'] = 'date';
+
+    // We have to remove all the placeholder-related options, since those are
+    // invalid for HTML5 date elements.
+    unset($options['expose']['contains']['placeholder']);
+    unset($options['expose']['contains']['min_placeholder']);
+    unset($options['expose']['contains']['max_placeholder']);
 
     return $options;
   }
@@ -190,6 +198,106 @@ class Date extends NumericFilter {
     // This is safe because we are manually scrubbing the value.
     // It is necessary to do it this way because $value is a formula when using an offset.
     $this->query->addWhereExpression($this->options['group'], "$field $this->operator $value");
+  }
+
+  /**
+   * Override parent method to remove the placeholder options.
+   */
+  public function buildExposeForm(&$form, FormStateInterface $form_state) {
+    parent::buildExposeForm($form, $form_state);
+    $form['expose']['placeholder']['#access'] = FALSE;
+    $form['expose']['min_placeholder']['#access'] = FALSE;
+    $form['expose']['max_placeholder']['#access'] = FALSE;
+  }
+
+  /**
+   * Override parent method to change input type.
+   */
+  public function buildExposedForm(&$form, FormStateInterface $form_state) {
+    parent::buildExposedForm($form, $form_state);
+
+    // Change the appropriate form elements to a 'datetime' if the exposed
+    // filter is configured for 'date' input.
+    if ($this->value['type'] === 'date') {
+      // What elements are visible and where they live in the form structure is
+      // really complicated. Cases to consider:
+      // - Operation is fixed and requires no elements (empty / not empty).
+      // - Operation is fixed and requires a single element (=, !=, >=, etc).
+      // - Operation is fixed and requires 2 elements (between / not between).
+      // - Operation is exposed but limited to one or more of the above.
+      // - Operation is exposed and unlimited (we have value, max and min).
+      // Instead of trying to code for all of this separately, we see what form
+      // elements we have and where they live, and set them to datetime.
+      // Recursively search through the form element and any children, looking
+      // for anything of type 'textfield', and convert it to 'datetime'.
+      // @see \Drupal\views\Plugin\views\filter\NumericFilter::valueForm()
+      $field_identifier = $this->options['expose']['identifier'];
+      if (isset($form[$field_identifier])) {
+        $this->convertTextElementToDatetime($form[$field_identifier]);
+      }
+
+      if (in_array($this->operator, ['between', 'not between'], TRUE)) {
+        // Check the element input matches the form structure.
+        $input = $form_state->getUserInput();
+        if (isset($input[$field_identifier], $input[$field_identifier]['min']) && !is_array($input[$field_identifier]['min']) && $value = $input[$field_identifier]['min']) {
+          $date = new DrupalDateTime($value);
+          $input[$field_identifier]['min'] = [
+            'date' => $date->format('Y-m-d'),
+            'time' => $date->format('H:i:s'),
+          ];
+        }
+        if (isset($input[$field_identifier], $input[$field_identifier]['max']) && !is_array($input[$field_identifier]['max']) && $value = $input[$field_identifier]['max']) {
+          $date = new DrupalDateTime($value);
+          $input[$field_identifier]['max'] = [
+            'date' => $date->format('Y-m-d'),
+            'time' => $date->format('H:i:s'),
+          ];
+        }
+        $form_state->setUserInput($input);
+      }
+      else {
+        // Check the element input matches the form structure.
+        $input = $form_state->getUserInput();
+        if (isset($input[$field_identifier]) && !is_array($input[$field_identifier]) && $value = $input[$field_identifier]) {
+          $date = new DrupalDateTime($value);
+          $input[$field_identifier] = [
+            'date' => $date->format('Y-m-d'),
+            'time' => $date->format('H:i:s'),
+          ];
+        }
+        $form_state->setUserInput($input);
+      }
+    }
+  }
+
+  /**
+   * Finds elements in the exposed form and converts from textfield to datetime.
+   *
+   * Recursively searches all children of the element to handle nested forms.
+   *
+   * @param array $element
+   *   The form element to convert (if appropriate).
+   */
+  protected function convertTextElementToDatetime(&$element) {
+    if (isset($element['#type']) && $element['#type'] === 'textfield') {
+      $element['#type'] = 'datetime';
+    }
+    foreach (Element::children($element) as $child) {
+      $this->convertTextElementToDatetime($element[$child]);
+    }
+  }
+
+  /**
+   * Override parent method to remove 'regular_expression' as an option.
+   *
+   * Since we're operating on date fields, and have a date (and maybe time)
+   * picker as the widget (not a text field), a 'Regular expression' operation
+   * makes no sense.
+   */
+  public function operators() {
+    $operators = parent::operators();
+    unset($operators['regular_expression']);
+    return $operators;
   }
 
 }

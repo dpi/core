@@ -4,7 +4,9 @@ namespace Drupal\datetime\Plugin\views\filter;
 
 use Drupal\Component\Datetime\DateTimePlus;
 use Drupal\Core\Datetime\DateFormatterInterface;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Render\Element;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItem;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Drupal\views\FieldAPIHandlerTrait;
@@ -177,6 +179,56 @@ class Date extends NumericDate implements ContainerFactoryPluginInterface {
     }
 
     return $origin_offset;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildExposedForm(&$form, FormStateInterface $form_state) {
+    parent::buildExposedForm($form, $form_state);
+
+    // Hide the date_time_element for date-only fields.
+    // What elements are visible and where they live in the form structure is
+    // really complicated. Cases to consider:
+    // - Operation is fixed and requires no elements (empty / not empty).
+    // - Operation is fixed and requires a single element (=, !=, >=, etc).
+    // - Operation is fixed and requires 2 elements (between / not between).
+    // - Operation is exposed but limited to one or more of the above.
+    // - Operation is exposed and unlimited (we have value, max and min).
+    // Instead of trying to code for all of this separately, we recursively
+    // search through the form element and any children, looking for anything
+    // of type 'datetime', and disable the time element.
+    // @see \Drupal\views\Plugin\views\filter\NumericFilter::valueForm()
+    if ($this->fieldStorageDefinition->getSetting('datetime_type') === DateTimeItem::DATETIME_TYPE_DATE) {
+      $field_identifier = $this->options['expose']['identifier'];
+      if (isset($form[$field_identifier])) {
+        $this->alterFormElementGranularity($form[$field_identifier], 'day');
+      }
+    }
+  }
+
+  /**
+   * Alters the granularity of any datetime elements in the given form element.
+   *
+   * Recursively searches all children of the element to handle nested forms.
+   *
+   * @param array $element
+   *   The form element to alter.
+   * @param string $granularity
+   *   The granularity to use for datetime form elements (e.g. 'day').
+   *
+   * @todo Expand this to handle other granularity values.
+   * @see https://www.drupal.org/project/drupal/issues/2868014
+   */
+  protected function alterFormElementGranularity(&$element, $granularity) {
+    if (isset($element['#type']) && $element['#type'] === 'datetime') {
+      if ($granularity === 'day') {
+        $element['#date_time_element'] = 'none';
+      }
+    }
+    foreach (Element::children($element) as $child) {
+      $this->alterFormElementGranularity($element[$child], $granularity);
+    }
   }
 
 }

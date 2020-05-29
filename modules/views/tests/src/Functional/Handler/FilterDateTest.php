@@ -22,7 +22,11 @@ class FilterDateTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $testViews = ['test_filter_date_between'];
+  public static $testViews = [
+    'test_filter_date_between',
+    'test_filter_date_between_exposed',
+    'test_filter_date_exposed_operators',
+  ];
 
   /**
    * Modules to enable.
@@ -90,6 +94,8 @@ class FilterDateTest extends ViewTestBase {
     $this->_testUiValidation();
     $this->_testFilterDateUI();
     $this->_testFilterDatetimeUI();
+    $this->_testExposedFilterTimestampUI();
+    $this->_testExposedFilterExposedOperator();
   }
 
   /**
@@ -274,7 +280,8 @@ class FilterDateTest extends ViewTestBase {
     $this->assertCount(1, $results);
     $this->assertEqual($results[0]->getText(), $this->nodes[3]->id());
     $this->drupalPostForm(NULL, [
-      'created' => $this->dateFormatter->format(250000, 'custom', 'Y-m-d H:i:s'),
+      'created[date]' => $this->dateFormatter->format(250000, 'custom', 'Y-m-d'),
+      'created[time]' => $this->dateFormatter->format(250000, 'custom', 'H:i:s'),
     ], 'Apply');
     $results = $this->cssSelect('.view-content .field-content');
     $this->assertCount(2, $results);
@@ -328,7 +335,172 @@ class FilterDateTest extends ViewTestBase {
     $this->drupalPostForm(NULL, [], t('Save'));
 
     $this->drupalGet('exposed-date-filter');
-    $this->assertField('created');
+    $this->assertField('created[date]');
+    $this->assertField('created[time]');
+  }
+
+  /**
+   * Make sure the exposed timestamp filters work.
+   */
+  protected function _testExposedFilterTimestampUI() {
+    $this->drupalLogin($this->drupalCreateUser(['access content']));
+
+    // Test the exposed "=" filter.
+    $this->drupalGet('test-filter-date-exposed');
+
+    // Verify that exposed input elements exists in the output with the proper
+    // types.
+    $this->assertFieldByXPath('//input[@id="edit-created-date" and @type="date"]', '', 'Found date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-time" and @type="time"]', '', 'Found time input element.');
+
+    // Verify the node list.
+    $this->assertText($this->nodes[0]->getTitle());
+    $this->assertText($this->nodes[1]->getTitle());
+    $this->assertText($this->nodes[2]->getTitle());
+    $this->assertText($this->nodes[3]->getTitle());
+
+    // Apply the filter.
+    $timezone = $this->config('system.date')->get('timezone.default');
+    $created = $this->nodes[1]->getCreatedTime();
+    $date = $this->dateFormatter->format($created, 'custom', 'Y-m-d', $timezone);
+    $time = $this->dateFormatter->format($created, 'custom', 'H:i:s', $timezone);
+
+    $edit = [
+      'created[date]' => $date,
+      'created[time]' => $time,
+    ];
+
+    $this->drupalGet('test-filter-date-exposed', ['query' => $edit]);
+
+    // Verify the exposed inputs have the values being filtered on.
+    $this->assertFieldByXPath('//input[@id="edit-created-date" and @type="date"]', $date, 'Found populated date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-time" and @type="time"]', $time, 'Found populated time input element.');
+
+    // Verify the node list.
+    $this->assertNoText($this->nodes[0]->getTitle());
+    $this->assertText($this->nodes[1]->getTitle());
+    $this->assertNoText($this->nodes[2]->getTitle());
+    $this->assertNoText($this->nodes[3]->getTitle());
+
+    // Test the exposed "between" filter.
+    $this->drupalGet('test-filter-date-between-exposed');
+
+    // Verify that exposed input elements exists in the output with the proper
+    // types.
+    $this->assertFieldByXPath('//input[@id="edit-created-min-date" and @type="date"]', '', 'Found min date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-min-time" and @type="time"]', '', 'Found min time input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-max-date" and @type="date"]', '', 'Found max date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-max-time" and @type="time"]', '', 'Found max time input element.');
+
+    // Verify the node list.
+    $this->assertText($this->nodes[0]->getTitle());
+    $this->assertText($this->nodes[1]->getTitle());
+    $this->assertText($this->nodes[2]->getTitle());
+    $this->assertText($this->nodes[3]->getTitle());
+
+    // Apply the filter.
+    $timezone = $this->config('system.date')->get('timezone.default');
+    $created = $this->nodes[1]->getCreatedTime();
+    $min_date = $this->dateFormatter->format($created - 3600, 'custom', 'Y-m-d', $timezone);
+    $min_time = $this->dateFormatter->format($created - 3600, 'custom', 'H:i:s', $timezone);
+    $max_date = $this->dateFormatter->format($created + 3600, 'custom', 'Y-m-d', $timezone);
+    $max_time = $this->dateFormatter->format($created + 3600, 'custom', 'H:i:s', $timezone);
+
+    $edit = [
+      'created[min][date]' => $min_date,
+      'created[min][time]' => $min_time,
+      'created[max][date]' => $max_date,
+      'created[max][time]' => $max_time,
+    ];
+
+    $this->drupalGet('test-filter-date-between-exposed', ['query' => $edit]);
+
+    // Verify the exposed inputs have the values being filtered on.
+    $this->assertFieldByXPath('//input[@id="edit-created-min-date" and @type="date"]', $min_date, 'Found populated min date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-min-time" and @type="time"]', $min_time, 'Found populated min time input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-max-date" and @type="date"]', $max_date, 'Found populated max date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-max-time" and @type="time"]', $max_time, 'Found populated max time input element.');
+
+    // Verify the node list.
+    $this->assertNoText($this->nodes[0]->getTitle());
+    $this->assertText($this->nodes[1]->getTitle());
+    $this->assertNoText($this->nodes[2]->getTitle());
+    $this->assertNoText($this->nodes[3]->getTitle());
+  }
+
+  /**
+   * Make sure the date time widgets work properly with exposed operator.
+   */
+  protected function _testExposedFilterExposedOperator() {
+    $this->drupalLogin($this->drupalCreateUser(['access content']));
+
+    // Test the exposed "=" filter.
+    $this->drupalGet('test-filter-date-exposed-operators');
+
+    // Verify that exposed input elements exists in the output with the proper
+    // types.
+    $this->assertFieldByXPath('//input[@id="edit-created-value-date" and @type="date"]', '', 'Found date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-value-time" and @type="time"]', '', 'Found time input element.');
+
+    // Verify the node list.
+    $this->assertText($this->nodes[0]->getTitle());
+    $this->assertText($this->nodes[1]->getTitle());
+    $this->assertText($this->nodes[2]->getTitle());
+    $this->assertText($this->nodes[3]->getTitle());
+
+    // Apply the filter.
+    $timezone = $this->config('system.date')->get('timezone.default');
+    $created = $this->nodes[1]->getCreatedTime();
+    $date = $this->dateFormatter->format($created, 'custom', 'Y-m-d', $timezone);
+    $time = $this->dateFormatter->format($created, 'custom', 'H:i:s', $timezone);
+
+    // When operator is exposed, when the operator is not 'between' or
+    // 'not-between', the date goes inside the value key in the array
+    // corresponding to the identifier.
+    $edit = [
+      'created[value][date]' => $date,
+      'created[value][time]' => $time,
+      'created_op' => '=',
+    ];
+
+    $this->drupalGet('test-filter-date-exposed-operators', ['query' => $edit]);
+
+    // Verify the exposed inputs have the values being filtered on.
+    $this->assertFieldByXPath('//input[@id="edit-created-value-date" and @type="date"]', $date, 'Found populated date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-value-time" and @type="time"]', $time, 'Found populated time input element.');
+
+    // Verify the node list.
+    $this->assertNoText($this->nodes[0]->getTitle());
+    $this->assertText($this->nodes[1]->getTitle());
+    $this->assertNoText($this->nodes[2]->getTitle());
+    $this->assertNoText($this->nodes[3]->getTitle());
+
+    $min_date = $this->dateFormatter->format($created - 3600, 'custom', 'Y-m-d', $timezone);
+    $min_time = $this->dateFormatter->format($created - 3600, 'custom', 'H:i:s', $timezone);
+    $max_date = $this->dateFormatter->format($created + 3600, 'custom', 'Y-m-d', $timezone);
+    $max_time = $this->dateFormatter->format($created + 3600, 'custom', 'H:i:s', $timezone);
+
+    $edit = [
+      'created_op' => 'between',
+      'created[min][date]' => $min_date,
+      'created[min][time]' => $min_time,
+      'created[max][date]' => $max_date,
+      'created[max][time]' => $max_time,
+    ];
+
+    $this->drupalGet('test-filter-date-exposed-operators', ['query' => $edit]);
+
+    // Verify the exposed inputs have the values being filtered on.
+    $this->assertFieldByXPath('//input[@id="edit-created-min-date" and @type="date"]', $min_date, 'Found populated min date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-min-time" and @type="time"]', $min_time, 'Found populated min time input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-max-date" and @type="date"]', $max_date, 'Found populated max date input element.');
+    $this->assertFieldByXPath('//input[@id="edit-created-max-time" and @type="time"]', $max_time, 'Found populated max time input element.');
+
+    // Verify the node list.
+    $this->assertNoText($this->nodes[0]->getTitle());
+    $this->assertText($this->nodes[1]->getTitle());
+    $this->assertNoText($this->nodes[2]->getTitle());
+    $this->assertNoText($this->nodes[3]->getTitle());
   }
 
 }

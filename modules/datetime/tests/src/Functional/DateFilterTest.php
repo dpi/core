@@ -87,14 +87,18 @@ class DateFilterTest extends ViewTestBase {
     $this->drupalGet('test_exposed_filter_datetime');
     $this->assertSession()->statusCodeEquals(200);
     $this->assertOption('edit-field-date-value-op', '=');
+    $this->assertOption('edit-field-date-value-op', '!=');
     $this->assertNoOption('edit-field-date-value-op', '>');
     $this->assertNoOption('edit-field-date-value-op', '>=');
 
     // Because there are not operators that use the min and max fields, those
     // fields should not be in the exposed form.
-    $this->assertFieldById('edit-field-date-value-value');
-    $this->assertNoFieldById('edit-field-date-value-min');
-    $this->assertNoFieldById('edit-field-date-value-max');
+    $this->assertFieldById('edit-field-date-value-value-date');
+    $this->assertFieldById('edit-field-date-value-value-time');
+    $this->assertNoFieldById('edit-field-date-value-min-date');
+    $this->assertNoFieldById('edit-field-date-value-min-time');
+    $this->assertNoFieldById('edit-field-date-value-max-date');
+    $this->assertNoFieldById('edit-field-date-value-max-time');
 
     $edit = [];
     $edit['options[operator]'] = '>';
@@ -110,9 +114,12 @@ class DateFilterTest extends ViewTestBase {
     $this->assertOption('edit-field-date-value-op', '>');
     $this->assertOption('edit-field-date-value-op', '>=');
 
-    $this->assertFieldById('edit-field-date-value-value');
-    $this->assertFieldById('edit-field-date-value-min');
-    $this->assertFieldById('edit-field-date-value-max');
+    $this->assertFieldById('edit-field-date-value-value-date');
+    $this->assertFieldById('edit-field-date-value-value-time');
+    $this->assertFieldById('edit-field-date-value-min-date');
+    $this->assertFieldById('edit-field-date-value-min-time');
+    $this->assertFieldById('edit-field-date-value-max-date');
+    $this->assertFieldById('edit-field-date-value-max-time');
 
     // Set the default to an excluded operator.
     $edit = [];
