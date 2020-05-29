@@ -6,6 +6,7 @@ use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Entity\EntityAccessControlHandler;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\Core\Entity\RevisionableInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Session\AccountInterface;
@@ -34,9 +35,25 @@ class FileAccessControlHandler extends EntityAccessControlHandler {
           foreach ($entity_map as $referencing_entity_type => $referencing_entities) {
             /** @var \Drupal\Core\Entity\EntityInterface $referencing_entity */
             foreach ($referencing_entities as $referencing_entity) {
-              $entity_and_field_access = $referencing_entity->access('view', $account, TRUE)->andIf($referencing_entity->$field_name->access('view', $account, TRUE));
-              if ($entity_and_field_access->isAllowed()) {
-                return $entity_and_field_access;
+              if ($referencing_entity instanceof RevisionableInterface && !$referencing_entity->isDefaultRevision()) {
+                // @todo The 'view all revisions' permission is provided only
+                //   by the node entity type. Use the generic permission name in
+                //   https://www.drupal.org/project/drupal/issues/2809177.
+                $entity_and_field_access = AccessResult::allowedIf($account->hasPermission('view all revisions'))
+                  ->andIf($referencing_entity->access('view', $account, TRUE))
+                  ->andIf($referencing_entity->$field_name->access('view', $account, TRUE));
+
+                if ($entity_and_field_access->isAllowed()) {
+                  return $entity_and_field_access;
+                }
+              }
+              else {
+                $entity_and_field_access = $referencing_entity->access('view', $account, TRUE)
+                  ->andIf($referencing_entity->$field_name->access('view', $account, TRUE));
+
+                if ($entity_and_field_access->isAllowed()) {
+                  return $entity_and_field_access;
+                }
               }
             }
           }
