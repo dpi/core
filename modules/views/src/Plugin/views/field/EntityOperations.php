@@ -2,6 +2,8 @@
 
 namespace Drupal\views\Plugin\views\field;
 
+use Drupal\Core\Cache\CacheableDependencyInterface;
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\DependencyInjection\DeprecatedServicePropertyTrait;
 use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -141,6 +143,15 @@ class EntityOperations extends FieldPluginBase {
   public function render(ResultRow $values) {
     $entity = $this->getEntityTranslation($this->getEntity($values), $values);
     $operations = $this->entityTypeManager->getListBuilder($entity->getEntityTypeId())->getOperations($entity);
+    $cacheability = new CacheableMetadata();
+    foreach ($operations as $operation) {
+      if (isset($operation['cache']) && $operation['cache'] instanceof CacheableDependencyInterface) {
+        $cacheability->addCacheableDependency($operation['cache']);
+      }
+    }
+    $operations = array_filter($operations, function ($operation) {
+      return !isset($operation['access']) || $operation['access'] === TRUE;
+    });
     if ($this->options['destination']) {
       foreach ($operations as &$operation) {
         if (!isset($operation['query'])) {
@@ -153,6 +164,7 @@ class EntityOperations extends FieldPluginBase {
       '#type' => 'operations',
       '#links' => $operations,
     ];
+    $cacheability->applyTo($build);
 
     return $build;
   }

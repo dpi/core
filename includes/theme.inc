@@ -8,6 +8,8 @@
  * customized by user themes.
  */
 
+use Drupal\Core\Access\AccessResultInterface;
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Url;
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\Crypt;
@@ -699,6 +701,12 @@ function template_preprocess_links(&$variables) {
         '#url' => $link['url'],
         '#ajax' => $link['ajax'],
       ];
+      if (isset($link['access'])) {
+        $link_element['#access'] = $link['access'] instanceof AccessResultInterface ? $link['access']->isAllowed() : $link['access'];
+      }
+      if (isset($link['cache'])) {
+        CacheableMetadata::createFromObject($link['cache'])->applyTo($link_element);
+      }
 
       // Handle links and ensure that the active class is added on the LIs, but
       // only if the 'set_active_class' option is not empty. Links templates
