@@ -596,6 +596,12 @@ function template_preprocess_datetime_form(&$variables) {
  */
 function template_preprocess_datetime_wrapper(&$variables) {
   $element = $variables['element'];
+  $element += [
+    '#title_display' => 'before',
+    '#wrapper_attributes' => [],
+    '#label_attributes' => [],
+  ];
+  $variables['attributes'] = $element['#wrapper_attributes'];
 
   if (!empty($element['#title'])) {
     $variables['title'] = $element['#title'];
@@ -604,6 +610,19 @@ function template_preprocess_datetime_wrapper(&$variables) {
     if (is_string($variables['title']) && $variables['title'] !== '') {
       $variables['title'] = ['#markup' => $variables['title']];
     }
+  }
+  // Add label_display and label variables to template.
+  $variables['label_display'] = $element['#title_display'];
+  $variables['label'] = ['#theme' => 'form_element_label'];
+  $variables['label'] += array_intersect_key($element, array_flip(['#id', '#required', '#title', '#title_display']));
+  $variables['label']['#attributes'] = $element['#label_attributes'];
+
+  // Pass elements #type and #name to template.
+  if (!empty($element['#type'])) {
+    $variables['type'] = $element['#type'];
+  }
+  if (!empty($element['#name'])) {
+    $variables['name'] = $element['#name'];
   }
 
   // Suppress error messages.
@@ -618,6 +637,13 @@ function template_preprocess_datetime_wrapper(&$variables) {
     $description_attributes['data-drupal-field-elements'] = 'description';
     $variables['description'] = $element['#description'];
     $variables['description_attributes'] = new Attribute($description_attributes);
+  }
+
+  // For disabled datetime fields, the 'disabled' attribute should not be
+  // applied to the wrapper, but the 'form-disabled' class should be.
+  $variables['disabled'] = !empty($element['#attributes']['disabled']) ? $element['#attributes']['disabled'] : NULL;
+  if (isset($variables['attributes']['disabled'])) {
+    unset($variables['attributes']['disabled']);
   }
 
   $variables['required'] = FALSE;
