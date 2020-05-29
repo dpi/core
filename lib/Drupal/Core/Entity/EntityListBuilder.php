@@ -2,6 +2,7 @@
 
 namespace Drupal\Core\Entity;
 
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\Routing\RedirectDestinationTrait;
 use Drupal\Core\Url;
@@ -128,18 +129,24 @@ class EntityListBuilder extends EntityHandlerBase implements EntityListBuilderIn
    */
   protected function getDefaultOperations(EntityInterface $entity) {
     $operations = [];
-    if ($entity->access('update') && $entity->hasLinkTemplate('edit-form')) {
+    if ($entity->hasLinkTemplate('edit-form')) {
+      $update_access = $entity->access('update', NULL, TRUE);
       $operations['edit'] = [
         'title' => $this->t('Edit'),
         'weight' => 10,
         'url' => $this->ensureDestination($entity->toUrl('edit-form')),
+        'access' => $update_access->isAllowed(),
+        'cache' => CacheableMetadata::createFromObject($update_access),
       ];
     }
-    if ($entity->access('delete') && $entity->hasLinkTemplate('delete-form')) {
+    if ($entity->hasLinkTemplate('delete-form')) {
+      $delete_access = $entity->access('delete', NULL, TRUE);
       $operations['delete'] = [
         'title' => $this->t('Delete'),
         'weight' => 100,
         'url' => $this->ensureDestination($entity->toUrl('delete-form')),
+        'access' => $delete_access->isAllowed(),
+        'cache' => CacheableMetadata::createFromObject($delete_access),
       ];
     }
 
