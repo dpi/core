@@ -22,6 +22,7 @@ use Drupal\file\FileInterface;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\Core\Entity\RevisionableStorageInterface;
 use Drupal\Core\Template\Attribute;
 
 /**
@@ -653,7 +654,7 @@ function file_file_download($uri) {
   }
 
   // Find out which (if any) fields of this type contain the file.
-  $references = file_get_file_references($file, NULL, EntityStorageInterface::FIELD_LOAD_CURRENT, NULL);
+  $references = file_get_file_references($file, NULL, EntityStorageInterface::FIELD_LOAD_REVISION, NULL);
 
   // Stop processing if there are no references in order to avoid returning
   // headers for files controlled by other modules. Make an exception for
@@ -1653,7 +1654,7 @@ function file_icon_map($mime_type) {
  * @param \Drupal\Core\Field\FieldDefinitionInterface|null $field
  *   (optional) A field definition to be used for this check. If given,
  *   limits the reference check to the given field. Defaults to NULL.
- * @param int $age
+ * @param string $age
  *   (optional) A constant that specifies which references to count. Use
  *   EntityStorageInterface::FIELD_LOAD_REVISION (the default) to retrieve all
  *   references within all revisions or
@@ -1669,11 +1670,17 @@ function file_icon_map($mime_type) {
  *   A multidimensional array. The keys are field_name, entity_type,
  *   entity_id and the value is an entity referencing this file.
  *
+ * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+ *   Thrown if the entity type doesn't exist.
+ * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+ *   Thrown if the storage handler couldn't be loaded.
+ *
  * @ingroup file
  */
 function file_get_file_references(FileInterface $file, FieldDefinitionInterface $field = NULL, $age = EntityStorageInterface::FIELD_LOAD_REVISION, $field_type = 'file') {
   $references = &drupal_static(__FUNCTION__, []);
   $field_columns = &drupal_static(__FUNCTION__ . ':field_columns', []);
+  $entity_type_manager = \Drupal::entityTypeManager();
 
   // Fill the static cache, disregard $field and $field_type for now.
   if (!isset($references[$file->id()][$age])) {
@@ -1681,8 +1688,21 @@ function file_get_file_references(FileInterface $file, FieldDefinitionInterface 
     $usage_list = \Drupal::service('file.usage')->listUsage($file);
     $file_usage_list = isset($usage_list['file']) ? $usage_list['file'] : [];
     foreach ($file_usage_list as $entity_type_id => $entity_ids) {
-      $entities = \Drupal::entityTypeManager()
-        ->getStorage($entity_type_id)->loadMultiple(array_keys($entity_ids));
+      $entity_type = $entity_type_manager->getDefinition($entity_type_id);
+      $storage = $entity_type_manager->getStorage($entity_type_id);
+      if ($entity_type->isRevisionable() && $age === EntityStorageInterface::FIELD_LOAD_REVISION && $storage instanceof RevisionableStorageInterface) {
+        $result = $storage->getQuery()
+          ->accessCheck(FALSE)
+          ->allRevisions()
+          ->condition($entity_type->getKey('id'), array_keys($entity_ids), 'IN')
+          ->execute();
+        $entities = $storage->loadMultipleRevisions(array_keys($result));
+      }
+      else {
+        $entities = $storage->loadMultiple(array_keys($entity_ids));
+      }
+
+      /** @var \Drupal\Core\Entity\FieldableEntityInterface[] $entities */
       foreach ($entities as $entity) {
         $bundle = $entity->bundle();
         // We need to find file fields for this entity type and bundle.
@@ -1703,11 +1723,8 @@ function file_get_file_references(FileInterface $file, FieldDefinitionInterface 
         }
         foreach ($file_fields[$entity_type_id][$bundle] as $field_name => $field_column) {
           // Iterate over the field items to find the referenced file and field
-          // name. This will fail if the usage checked is in a non-current
-          // revision because field items are from the current
-          // revision.
-          // We also iterate over all translations because a file can be linked
-          // to a language other than the default.
+          // name. We also iterate over all translations because a file can be
+          // linked to a language other than the default.
           foreach ($entity->getTranslationLanguages() as $langcode => $language) {
             foreach ($entity->getTranslation($langcode)->get($field_name) as $item) {
               if ($file->id() == $item->{$field_column}) {
@@ -1723,13 +1740,14 @@ function file_get_file_references(FileInterface $file, FieldDefinitionInterface 
   $return = $references[$file->id()][$age];
   // Filter the static cache down to the requested entries. The usual static
   // cache is very small so this will be very fast.
-  $entity_field_manager = \Drupal::service('entity_field.manager');
   if ($field || $field_type) {
+    /** @var \Drupal\Core\Entity\EntityFieldManagerInterface $entity_field_manager */
+    $entity_field_manager = \Drupal::service('entity_field.manager');
     foreach ($return as $field_name => $data) {
       foreach (array_keys($data) as $entity_type_id) {
         $field_storage_definitions = $entity_field_manager->getFieldStorageDefinitions($entity_type_id);
         $current_field = $field_storage_definitions[$field_name];
-        if (($field_type && $current_field->getType() != $field_type) || ($field && $field->uuid() != $current_field->uuid())) {
+        if (($field_type && $current_field->getType() != $field_type) || ($field && $field->getFieldStorageDefinition()->getUniqueStorageIdentifier() != $current_field->getUniqueIdentifier())) {
           unset($return[$field_name][$entity_type_id]);
         }
       }
