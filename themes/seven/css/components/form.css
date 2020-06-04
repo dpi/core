@@ -107,6 +107,8 @@ label[for] {
 .form-disabled input.form-number,
 .form-disabled input.form-color,
 .form-disabled input.form-file,
+.form-disabled input.form-date,
+.form-disabled input.form-time,
 .form-disabled textarea.form-textarea,
 .form-disabled select.form-select {
   border-color: #d4d4d4;

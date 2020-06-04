@@ -341,6 +341,8 @@
   $document.on('state:disabled', function (e) {
     if (e.trigger) {
       $(e.target).prop('disabled', e.value).closest('.js-form-item, .js-form-submit, .js-form-wrapper').toggleClass('form-disabled', e.value).find('select, input, textarea').prop('disabled', e.value);
+
+      $(e.target).closest('.js-complex-form-item').toggleClass('form-disabled', e.value);
     }
   });
   $document.on('state:required', function (e) {
@@ -352,17 +354,28 @@
           'aria-required': 'true'
         }).closest('.js-form-item, .js-form-wrapper').find(label);
 
+        var $complexLabel = $(e.target).closest('.js-complex-form-item').children('label');
+
         if (!$label.hasClass('js-form-required').length) {
           $label.addClass('js-form-required form-required');
         }
+        if (!$complexLabel.hasClass('js-form-required').length) {
+          $complexLabel.addClass('js-form-required form-required');
+        }
       } else {
         $(e.target).removeAttr('required aria-required').closest('.js-form-item, .js-form-wrapper').find('label.js-form-required').removeClass('js-form-required form-required');
+        $(e.target).closest('.js-complex-form-item').children('label').removeClass('js-form-required form-required');
       }
     }
   });
   $document.on('state:visible', function (e) {
     if (e.trigger) {
       $(e.target).closest('.js-form-item, .js-form-submit, .js-form-wrapper').toggle(e.value);
+
+      var $complexElement = $(e.target).closest('.js-complex-form-item');
+      if ($complexElement.length) {
+        $complexElement.toggle(e.value);
+      }
     }
   });
   $document.on('state:checked', function (e) {

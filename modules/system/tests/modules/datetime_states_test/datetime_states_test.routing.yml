@@ -1,0 +1,13 @@
+datetime_states_test.example:
+  path: '/datetime-states-test/example'
+  defaults:
+    _form: '\Drupal\datetime_states_test\Form\DatetimeStatesTestForm'
+  requirements:
+    _access: 'TRUE'
+
+datetime_states_test.admin.example:
+  path: '/admin/datetime-states-test/example'
+  defaults:
+    _form: '\Drupal\datetime_states_test\Form\DatetimeStatesTestForm'
+  requirements:
+    _access: 'TRUE'

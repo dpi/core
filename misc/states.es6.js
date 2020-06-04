@@ -684,7 +684,11 @@
         .toggleClass('form-disabled', e.value)
         .find('select, input, textarea')
         .prop('disabled', e.value);
-
+      // A complex form element, like 'datetime' (one made up of multiple
+      // sub-elements) may have a label for the element as a whole.
+      $(e.target)
+        .closest('.js-complex-form-item')
+        .toggleClass('form-disabled', e.value);
       // Note: WebKit nightlies don't reflect that change correctly.
       // See https://bugs.webkit.org/show_bug.cgi?id=23789
     }
@@ -698,15 +702,27 @@
           .attr({ required: 'required', 'aria-required': 'true' })
           .closest('.js-form-item, .js-form-wrapper')
           .find(label);
+        // A complex form element, like 'datetime' (one made up of multiple
+        // sub-elements) may have a label for the element as a whole.
+        const $complexLabel = $(e.target)
+          .closest('.js-complex-form-item')
+          .children('label');
         // Avoids duplicate required markers on initialization.
         if (!$label.hasClass('js-form-required').length) {
           $label.addClass('js-form-required form-required');
+        }
+        if (!$complexLabel.hasClass('js-form-required').length) {
+          $complexLabel.addClass('js-form-required form-required');
         }
       } else {
         $(e.target)
           .removeAttr('required aria-required')
           .closest('.js-form-item, .js-form-wrapper')
           .find('label.js-form-required')
+          .removeClass('js-form-required form-required');
+        $(e.target)
+          .closest('.js-complex-form-item')
+          .children('label')
           .removeClass('js-form-required form-required');
       }
     }
@@ -717,6 +733,14 @@
       $(e.target)
         .closest('.js-form-item, .js-form-submit, .js-form-wrapper')
         .toggle(e.value);
+      // For a complex form element like 'datetime' (one made up of multiple
+      // sub-elements) we want to toggle visiblity on the entire element
+      // (including sub-elements, label, description, etc.
+      const $complexElement = $(e.target)
+        .closest('.js-complex-form-item');
+      if ($complexElement.length) {
+        $complexElement.toggle(e.value);
+      }
     }
   });
 
