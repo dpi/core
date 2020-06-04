@@ -113,8 +113,11 @@ trait DeprecationListenerTrait {
     $dynamic_skipped_deprecations = [
       '%The "[^"]+" class extends "Symfony\\\\Component\\\\EventDispatcher\\\\Event" that is deprecated since Symfony 4\.3, use "Symfony\\\\Contracts\\\\EventDispatcher\\\\Event" instead\.$%',
       '%The "Symfony\\\\Component\\\\Validator\\\\Context\\\\ExecutionContextInterface::.*\(\)" method is considered internal Used by the validator engine. Should not be called by user\s\*\s*code\. It may change without further notice\. You should not extend it from "[^"]+".%',
-      '%The ".*" service relies on the deprecated "Symfony\\\\Component\\\\Debug\\\\BufferingLogger" class\. It should either be deprecated or its implementation upgraded\.%',
       '%The "PHPUnit\\\\Framework\\\\TestCase::addWarning\(\)" method is considered internal%',
+      // The following deprecations were not added as part of the original
+      // issues and thus were not addressed in time for the 9.0.0 release.
+      '%The entity link url update for the "\w+" view is deprecated in drupal:9.0.0 and is removed from drupal:10.0.0. Module-provided Views configuration should be updated to accommodate the changes described at https://www.drupal.org/node/2857891.%',
+      '%The operator defaults update for the "\w+" view is deprecated in drupal:9.0.0 and is removed from drupal:10.0.0. Module-provided Views configuration should be updated to accommodate the changes described at https://www.drupal.org/node/2869168.%',
     ];
     return (bool) preg_filter($dynamic_skipped_deprecations, '$0', $message);
   }
@@ -139,14 +142,6 @@ trait DeprecationListenerTrait {
     return [
       // The following deprecation message is skipped for testing purposes.
       '\Drupal\Tests\SkippedDeprecationTest deprecation',
-      // These deprecations are triggered by symfony/psr-http-message-factory
-      // 1.2, which can be installed if you update dependencies on php 7 or
-      // higher.
-      'The "Symfony\Bridge\PsrHttpMessage\Factory\DiactorosFactory" class is deprecated since symfony/psr-http-message-bridge 1.2, use PsrHttpFactory instead.',
-      'The "psr7.http_message_factory" service relies on the deprecated "Symfony\Bridge\PsrHttpMessage\Factory\DiactorosFactory" class. It should either be deprecated or its implementation upgraded.',
-      // This deprecation comes from behat/mink-browserkit-driver when updating
-      // symfony/browser-kit to 4.3+.
-      'The "Symfony\Component\BrowserKit\Response::getStatus()" method is deprecated since Symfony 4.3, use getStatusCode() instead.',
       // The following Symfony deprecations are introduced in the Symfony 4
       // development cycle. They will need to be resolved prior to Symfony 5
       // compatibility.
@@ -157,12 +152,9 @@ trait DeprecationListenerTrait {
       'The "Symfony\Component\HttpFoundation\File\MimeType\FileinfoMimeTypeGuesser" class is deprecated since Symfony 4.3, use "Symfony\Component\Mime\FileinfoMimeTypeGuesser" instead.',
       'The signature of the "Drupal\Component\EventDispatcher\ContainerAwareEventDispatcher::dispatch()" method should be updated to "dispatch($event, string $eventName = null)", not doing so is deprecated since Symfony 4.3.',
       'Calling the "Symfony\Component\EventDispatcher\EventDispatcherInterface::dispatch()" method with the event name as the first argument is deprecated since Symfony 4.3, pass it as the second argument and provide the event object as the first argument instead.',
+      'The "Drupal\Component\EventDispatcher\ContainerAwareEventDispatcher::dispatch()" method will require a new "string|null $eventName" argument in the next major version of its interface "Symfony\Contracts\EventDispatcher\EventDispatcherInterface", not defining it is deprecated.',
       'The "Drupal\Component\EventDispatcher\ContainerAwareEventDispatcher::dispatch()" method will require a new "string|null $eventName" argument in the next major version of its parent class "Symfony\Contracts\EventDispatcher\EventDispatcherInterface", not defining it is deprecated.',
       'Passing a command as string when creating a "Symfony\Component\Process\Process" instance is deprecated since Symfony 4.2, pass it as an array of its arguments instead, or use the "Process::fromShellCommandline()" constructor if you need features provided by the shell.',
-      'Passing arguments to "Symfony\Component\HttpFoundation\Request::isMethodSafe()" has been deprecated since Symfony 4.4; use "Symfony\Component\HttpFoundation\Request::isMethodCacheable()" to check if the method is cacheable instead.',
-      'The "Symfony\Component\Process\Process::inheritEnvironmentVariables()" method is deprecated since Symfony 4.4, env variables are always inherited.',
-      'The "Symfony\Component\Debug\BufferingLogger" class is deprecated since Symfony 4.4, use "Symfony\Component\ErrorHandler\BufferingLogger" instead.',
-      'Using the "Symfony\Component\Validator\Constraints\Length" constraint with the "min" option without setting the "allowEmptyString" one is deprecated and defaults to true. In 5.0, it will become optional and default to false.',
       // The following deprecation is listed for Twig 2 compatibility when unit
       // testing using \Symfony\Component\ErrorHandler\DebugClassLoader.
       'The "Twig\Environment::getTemplateClass()" method is considered internal. It may change without further notice. You should not extend it from "Drupal\Core\Template\TwigEnvironment".',
@@ -174,8 +166,6 @@ trait DeprecationListenerTrait {
       "The \"Drupal\Tests\Listeners\DrupalListener\" class implements \"PHPUnit\Framework\TestListener\" that is deprecated Use the `TestHook` interfaces instead.",
       "The \"Drupal\Tests\Listeners\DrupalListener\" class uses \"PHPUnit\Framework\TestListenerDefaultImplementation\" that is deprecated The `TestListener` interface is deprecated.",
       "The \"PHPUnit\Framework\TestSuite\" class is considered internal This class is not covered by the backward compatibility promise for PHPUnit. It may change without further notice. You should not use it from \"Drupal\Tests\TestSuites\TestSuiteBase\".",
-      "The \"PHPUnit\Framework\TestCase::__construct()\" method is considered internal This method is not covered by the backward compatibility promise for PHPUnit. It may change without further notice. You should not extend it from \"Drupal\Tests\BrowserTestBase\".",
-      "The \"PHPUnit\Framework\TestCase::__construct()\" method is considered internal This method is not covered by the backward compatibility promise for PHPUnit. It may change without further notice. You should not extend it from \"Drupal\FunctionalTests\Update\UpdatePathTestBase\".",
     ];
   }
 

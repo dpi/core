@@ -152,6 +152,19 @@ abstract class Tasks {
   }
 
   /**
+   * Checks engine version requirements for the status report.
+   *
+   * This method is called during runtime and update requirements checks.
+   *
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup[]
+   *   A list of error messages.
+   */
+  final public function engineVersionRequirementsCheck() {
+    $this->checkEngineVersion();
+    return $this->results['fail'];
+  }
+
+  /**
    * Check if we can connect to the database.
    */
   protected function connect() {
@@ -188,7 +201,22 @@ abstract class Tasks {
    */
   protected function checkEngineVersion() {
     // Ensure that the database server has the right version.
-    if ($this->minimumVersion() && version_compare(Database::getConnection()->version(), $this->minimumVersion(), '<')) {
+    // We append '-AnyName' to the minimum version for comparison purposes, so
+    // that engines that append a package name or other build information to
+    // their version strings still pass. For example, MariaDB might report its
+    // version as '10.2.7-MariaDB' or '10.2.7+maria' or similar.
+    // version_compare() treats '-' and '+' as equivalent, and non-numeric
+    // parts other than conventional stability specifiers (dev, alpha, beta,
+    // etc.) as equal to each other and less than numeric parts and stability
+    // specifiers. In other words, 10.2.7-MariaDB, 10.2.7+maria, and
+    // 10.2.7-AnyName are all equal to each other and less than 10.2.7-alpha.
+    // This means that by appending '-AnyName' for the comparison check, that
+    // alpha and other pre-release versions of the minimum will pass this
+    // check, which isn't ideal; however, people running pre-release versions
+    // of database servers should know what they're doing, whether Drupal warns
+    // them or not.
+    // @see https://www.php.net/manual/en/function.version-compare.php
+    if ($this->minimumVersion() && version_compare(Database::getConnection()->version(), $this->minimumVersion() . '-AnyName', '<')) {
       $this->fail(t("The database server version %version is less than the minimum required version %minimum_version.", ['%version' => Database::getConnection()->version(), '%minimum_version' => $this->minimumVersion()]));
     }
   }
@@ -203,6 +231,13 @@ abstract class Tasks {
    *   The options form array.
    */
   public function getFormOptions(array $database) {
+    // Use reflection to determine the driver name.
+    // @todo https:///www.drupal.org/node/3123240 Provide a better way to get
+    //   the driver name.
+    $reflection = new \ReflectionClass($this);
+    $dir_parts = explode(DIRECTORY_SEPARATOR, dirname($reflection->getFileName(), 2));
+    $driver = array_pop($dir_parts);
+
     $form['database'] = [
       '#type' => 'textfield',
       '#title' => t('Database name'),
@@ -211,7 +246,7 @@ abstract class Tasks {
       '#required' => TRUE,
       '#states' => [
         'required' => [
-          ':input[name=driver]' => ['value' => $this->pdoDriver],
+          ':input[name=driver]' => ['value' => $driver],
         ],
       ],
     ];
@@ -224,7 +259,7 @@ abstract class Tasks {
       '#required' => TRUE,
       '#states' => [
         'required' => [
-          ':input[name=driver]' => ['value' => $this->pdoDriver],
+          ':input[name=driver]' => ['value' => $driver],
         ],
       ],
     ];

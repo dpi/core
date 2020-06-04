@@ -38,14 +38,19 @@ final class ClassWriter {
     }
     // Inspired by Symfony's simple-phpunit remove typehints from TestCase.
     $reflector = new \ReflectionClass($autoloader);
-    $vendor_dir = dirname(dirname($reflector->getFileName()));
+    $vendor_dir = dirname($reflector->getFileName(), 2);
     // Mutate TestCase code to make it compatible with Drupal 8 and 9 tests.
     $alteredCode = file_get_contents($alteredFile = $vendor_dir . '/phpunit/phpunit/src/Framework/TestCase.php');
     $alteredCode = preg_replace('/^    ((?:protected|public)(?: static)? function \w+\(\)): void/m', '    $1', $alteredCode);
     $alteredCode = str_replace("__DIR__ . '/../Util/", "'$vendor_dir/phpunit/phpunit/src/Util/", $alteredCode);
-    $filename = __DIR__ . '/../../../../../../sites/simpletest/TestCase.php';
+    $simpletest_directory = __DIR__ . '/../../../../../../sites/simpletest';
     // Only write when necessary.
+    $filename = $simpletest_directory . '/TestCase.php';
     if (!file_exists($filename) || md5_file($filename) !== md5($alteredCode)) {
+      // Create directory when necessary.
+      if (!file_exists($simpletest_directory)) {
+        mkdir($simpletest_directory, 0777, TRUE);
+      }
       file_put_contents($filename, $alteredCode);
     }
     include $filename;

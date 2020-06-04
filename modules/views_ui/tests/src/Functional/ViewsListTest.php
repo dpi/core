@@ -17,7 +17,7 @@ class ViewsListTest extends UITestBase {
    *
    * @var array
    */
-  public static $modules = ['block', 'views_ui'];
+  protected static $modules = ['block', 'views_ui'];
 
   /**
    * {@inheritdoc}
@@ -34,7 +34,7 @@ class ViewsListTest extends UITestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->drupalPlaceBlock('local_tasks_block');
@@ -49,7 +49,7 @@ class ViewsListTest extends UITestBase {
   public function testViewsListLimit() {
     // Check if we can access the main views admin page.
     $this->drupalGet('admin/structure/views');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertLink(t('Add view'));
 
     // Check that there is a link to the content view without a destination

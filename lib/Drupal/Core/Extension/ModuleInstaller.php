@@ -372,12 +372,14 @@ class ModuleInstaller implements ModuleInstallerInterface {
     }
 
     if ($uninstall_dependents) {
+      $theme_list = \Drupal::service('extension.list.theme')->getList();
+
       // Add dependent modules to the list. The new modules will be processed as
       // the foreach loop continues.
       foreach ($module_list as $module => $value) {
         foreach (array_keys($module_data[$module]->required_by) as $dependent) {
-          if (!isset($module_data[$dependent])) {
-            // The dependent module does not exist.
+          if (!isset($module_data[$dependent]) && !isset($theme_list[$dependent])) {
+            // The dependent module or theme does not exist.
             return FALSE;
           }
 

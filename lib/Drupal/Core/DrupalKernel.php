@@ -306,7 +306,7 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
     // - Removing the namespace directories from the path.
     // - Getting the path to the directory two levels up from the path
     //   determined in the previous step.
-    return dirname(dirname(substr(__DIR__, 0, -strlen(__NAMESPACE__))));
+    return dirname(substr(__DIR__, 0, -strlen(__NAMESPACE__)), 2);
   }
 
   /**
@@ -618,6 +618,20 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
     // Retrieve enabled modules and register their namespaces.
     if (!isset($this->moduleList)) {
       $extensions = $this->getConfigStorage()->read('core.extension');
+      // If core.extension configuration does not exist and we're not in the
+      // installer itself, then we need to put the kernel into a pre-installer
+      // mode. The container should not be dumped because Drupal is yet to be
+      // installed. The installer service provider is registered to ensure that
+      // cache and other automatically created tables are not created if
+      // database settings are available. None of this is required when the
+      // installer is running because the installer has its own kernel and
+      // manages the addition of its own service providers.
+      // @see install_begin_request()
+      if ($extensions === FALSE && !InstallerKernel::installationAttempted()) {
+        $this->allowDumping = FALSE;
+        $this->containerNeedsDumping = FALSE;
+        $GLOBALS['conf']['container_service_providers']['InstallerServiceProvider'] = 'Drupal\Core\Installer\InstallerServiceProvider';
+      }
       $this->moduleList = isset($extensions['module']) ? $extensions['module'] : [];
     }
     $module_filenames = $this->getModuleFileNames();

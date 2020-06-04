@@ -6,7 +6,6 @@ use Drupal\KernelTests\KernelTestBase;
 
 /**
  * @group File
- * @group legacy
  */
 class FileSystemRequirementsTest extends KernelTestBase {
 
@@ -15,7 +14,7 @@ class FileSystemRequirementsTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['system'];
+  protected static $modules = ['system'];
 
   /**
    * {@inheritdoc}
@@ -25,7 +24,7 @@ class FileSystemRequirementsTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->setInstallProfile('standard');
   }

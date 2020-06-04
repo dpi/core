@@ -433,6 +433,7 @@ class NumericFilter extends FilterPluginBase {
               return FALSE;
             }
             break;
+
           case 2:
             if (!isset($value['min']) && !isset($value['max'])) {
               return FALSE;

@@ -548,12 +548,18 @@ services:
       - { name: module_install.uninstall_validator }
     arguments: ['@string_translation', '@extension.list.module']
     lazy: true
+  module_required_by_themes_uninstall_validator:
+    class: Drupal\Core\Extension\ModuleRequiredByThemesUninstallValidator
+    tags:
+      - { name: module_install.uninstall_validator }
+    arguments: ['@string_translation', '@extension.list.module', '@extension.list.theme']
+    lazy: true
   theme_handler:
     class: Drupal\Core\Extension\ThemeHandler
     arguments: ['%app.root%', '@config.factory', '@extension.list.theme']
   theme_installer:
     class: Drupal\Core\Extension\ThemeInstaller
-    arguments: ['@theme_handler', '@config.factory', '@config.installer', '@module_handler', '@config.manager', '@asset.css.collection_optimizer', '@router.builder', '@logger.channel.default', '@state']
+    arguments: ['@theme_handler', '@config.factory', '@config.installer', '@module_handler', '@config.manager', '@asset.css.collection_optimizer', '@router.builder', '@logger.channel.default', '@state', '@extension.list.module']
   entity.memory_cache:
     class: Drupal\Core\Cache\MemoryCache\MemoryCache
   entity_type.manager:
@@ -786,8 +792,21 @@ services:
        - { name: http_middleware, priority: 250 }
   psr7.http_foundation_factory:
     class: Symfony\Bridge\PsrHttpMessage\Factory\HttpFoundationFactory
+  psr17.server_request_factory:
+    class: Laminas\Diactoros\ServerRequestFactory
+    public: false
+  psr17.stream_factory:
+    class: Laminas\Diactoros\StreamFactory
+    public: false
+  psr17.uploaded_file_factory:
+    class: Laminas\Diactoros\UploadedFileFactory
+    public: false
+  psr17.response_factory:
+    class: Laminas\Diactoros\ResponseFactory
+    public: false
   psr7.http_message_factory:
-    class: Symfony\Bridge\PsrHttpMessage\Factory\DiactorosFactory
+    class: Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory
+    arguments: ['@psr17.server_request_factory', '@psr17.stream_factory', '@psr17.uploaded_file_factory', '@psr17.response_factory']
   language_manager:
     class: Drupal\Core\Language\LanguageManager
     arguments: ['@language.default']
