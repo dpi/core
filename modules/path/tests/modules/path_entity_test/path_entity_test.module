@@ -1,0 +1,30 @@
+<?php
+
+/**
+ * @file
+ * Modifies test entities with a path field.
+ */
+
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function path_entity_test_entity_base_field_info(EntityTypeInterface $entity_type) {
+  $fields = [];
+
+  $entityTypeIds = [
+    'entity_test',
+    'entity_test_no_canonical',
+    'path_entity_test_external',
+  ];
+  if (in_array($entity_type->id(), $entityTypeIds, TRUE)) {
+    $fields['path'] = BaseFieldDefinition::create('path')
+      ->setLabel(t('URL alias'))
+      ->setTranslatable(TRUE)
+      ->setComputed(TRUE);
+  }
+
+  return $fields;
+}

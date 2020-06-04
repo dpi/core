@@ -1,0 +1,8 @@
+name: 'Path Entity Test'
+type: module
+description: 'Overrides Test Entities with Path functions.'
+package: Testing
+version: VERSION
+core: 8.x
+dependencies:
+  - drupal:entity_test
