@@ -2,7 +2,9 @@
 
 namespace Drupal\Core\Entity\Controller;
 
-use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\Entity\RevisionableInterface;
+use Drupal\Core\Entity\RevisionableStorageInterface;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Entity\EntityInterface;
 
@@ -12,52 +14,32 @@ use Drupal\Core\Entity\EntityInterface;
 trait RevisionControllerTrait {
 
   /**
-   * Returns the entity type manager.
+   * Retrieves the entity type manager.
    *
    * @return \Drupal\Core\Entity\EntityTypeManagerInterface
+   *   The entity type manager.
    */
   abstract protected function entityTypeManager();
 
   /**
-   * Returns the langauge manager.
+   * Returns the language manager service.
    *
    * @return \Drupal\Core\Language\LanguageManagerInterface
+   *   The language manager.
    */
-  public abstract function languageManager();
-
-  /**
-   * Determines if the user has permission to revert revisions.
-   *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity to check revert access for.
-   *
-   * @return bool
-   *   TRUE if the user has revert access.
-   */
-  abstract protected function hasRevertRevisionAccess(EntityInterface $entity);
-
-  /**
-   * Determines if the user has permission to delete revisions.
-   *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity to check delete revision access for.
-   *
-   * @return bool
-   *   TRUE if the user has delete revision access.
-   */
-  abstract protected function hasDeleteRevisionAccess(EntityInterface $entity);
+  abstract public function languageManager();
 
   /**
    * Builds a link to revert an entity revision.
    *
-   * @param \Drupal\Core\Entity\EntityInterface $entity_revision
+   * @param \Drupal\Core\Entity\EntityInterface $revision
    *   The entity to build a revert revision link for.
    *
-   * @return array
-   *   A link render array.
-   *
+   * @return array|null
+   *   A link to revert an entity revision, or NULL if the entity type does not
+   *   have an a route to revert an entity revision.
    */
-  abstract protected function buildRevertRevisionLink(EntityInterface $entity_revision);
+  abstract protected function buildRevertRevisionLink(EntityInterface $revision): ?array;
 
   /**
    * Builds a link to delete an entity revision.
@@ -65,33 +47,32 @@ trait RevisionControllerTrait {
    * @param \Drupal\Core\Entity\EntityInterface $entity_revision
    *   The entity to build a delete revision link for.
    *
-   * @return array
+   * @return array|null
    *   A link render array.
    */
-  abstract protected function buildDeleteRevisionLink(EntityInterface $entity_revision);
+  abstract protected function buildDeleteRevisionLink(EntityInterface $entity_revision): ?array;
 
   /**
    * Get a description of the revision.
    *
-   * @param \Drupal\Core\Entity\ContentEntityInterface $revision
+   * @param \Drupal\Core\Entity\RevisionableInterface $revision
    *   The entity revision.
-   * @param bool $is_current
-   *   Whether the revision is the current revision.
    *
    * @return array
    *   A render array describing the revision.
    */
-  abstract protected function getRevisionDescription(ContentEntityInterface $revision, $is_current = FALSE);
+  abstract protected function getRevisionDescription(RevisionableInterface $revision): array;
 
   /**
    * Loads all revision IDs of an entity sorted by revision ID descending.
    *
-   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   * @param \Drupal\Core\Entity\RevisionableInterface $entity
    *   The entity.
    *
-   * @return mixed[]
+   * @return int|string[]
+   *   An array of revision IDs.
    */
-  protected function revisionIds(ContentEntityInterface $entity) {
+  protected function revisionIds(RevisionableInterface $entity): array {
     $entity_type = $entity->getEntityType();
     $result = $this->entityTypeManager()->getStorage($entity_type->id())->getQuery()
       ->allRevisions()
@@ -102,31 +83,30 @@ trait RevisionControllerTrait {
   }
 
   /**
-   * Generates an overview table of older revisions of an entity.
+   * Generates an overview table of revisions of an entity.
    *
-   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
-   *   An entity object.
+   * @param \Drupal\Core\Entity\RevisionableInterface $entity
+   *   A revisionable entity.
    *
    * @return array
    *   A render array.
    */
-  protected function revisionOverview(ContentEntityInterface $entity) {
-    $langcode = $this->languageManager()
+  protected function revisionOverview(RevisionableInterface $entity): array {
+    $currentLangcode = $this->languageManager()
       ->getCurrentLanguage(LanguageInterface::TYPE_CONTENT)
       ->getId();
-    $entity_storage = $this->entityTypeManager()
-      ->getStorage($entity->getEntityTypeId());
 
-    $header = [$this->t('Revision'), $this->t('Operations')];
+    $entityStorage = $this->entityTypeManager()->getStorage($entity->getEntityTypeId());
+    assert($entityStorage instanceof RevisionableStorageInterface);
+
     $rows = [];
-
-    $entity_revisions = $entity_storage->loadMultipleRevisions($this->revisionIds($entity));
-
-    foreach ($entity_revisions as $revision) {
+    foreach ($entityStorage->loadMultipleRevisions($this->revisionIds($entity)) as $revision) {
       $row = [];
-      /** @var \Drupal\Core\Entity\ContentEntityInterface $revision */
-      if ($revision->hasTranslation($langcode) && $revision->getTranslation($langcode)->isRevisionTranslationAffected()) {
-        $row[] = $this->getRevisionDescription($revision, $revision->isDefaultRevision());
+
+      // Only show revisions that are affected by the language that is being
+      // displayed.
+      if ($revision->hasTranslation($currentLangcode) && $revision->getTranslation($currentLangcode)->isRevisionTranslationAffected()) {
+        $row[] = $this->getRevisionDescription($revision);
 
         if ($revision->isDefaultRevision()) {
           $row[] = [
@@ -156,36 +136,37 @@ trait RevisionControllerTrait {
 
     $build['entity_revisions_table'] = [
       '#theme' => 'table',
+      '#header' => [
+        $this->t('Revision'),
+        $this->t('Operations'),
+      ],
       '#rows' => $rows,
-      '#header' => $header,
     ];
 
-    // We have no clue about caching yet.
-    $build['#cache']['max-age'] = 0;
+    (new CacheableMetadata())
+      // Only dealing with this entity and no external dependencies.
+      ->addCacheableDependency($entity)
+      ->addCacheContexts(['languages:language_content'])
+      ->applyTo($build);
 
     return $build;
   }
 
   /**
-   * Get the links of the operations for an entity revision.
+   * Get operations for an entity revision.
    *
-   * @param \Drupal\Core\Entity\EntityInterface $entity_revision
-   *   The entity to build the revision links for.
+   * @param \Drupal\Core\Entity\RevisionableInterface $revision
+   *   The entity to build revision links for.
    *
    * @return array
-   *   The operation links.
+   *   An array of operation links.
    */
-  protected function getOperationLinks(EntityInterface $entity_revision) {
-    $links = [];
-    if ($this->hasRevertRevisionAccess($entity_revision)) {
-      $links['revert'] = $this->buildRevertRevisionLink($entity_revision);
-    }
-
-    if ($this->hasDeleteRevisionAccess($entity_revision)) {
-      $links['delete'] = $this->buildDeleteRevisionLink($entity_revision);
-    }
-
-    return array_filter($links);
+  protected function getOperationLinks(RevisionableInterface $revision): array {
+    // Removes links which are inaccessible or not rendered.
+    return array_filter([
+      $this->buildRevertRevisionLink($revision),
+      $this->buildDeleteRevisionLink($revision),
+    ]);
   }
 
 }

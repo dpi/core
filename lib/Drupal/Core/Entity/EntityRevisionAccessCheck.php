@@ -3,9 +3,7 @@
 namespace Drupal\Core\Entity;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Entity\ContentEntityInterface;
-use Drupal\Core\Entity\EntityStorageInterface;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Routing\Access\AccessInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
@@ -13,6 +11,10 @@ use Symfony\Component\Routing\Route;
 
 /**
  * Checks access to a entity revision.
+ *
+ * @todo This will be replaced by the solution implemented in
+ *   https://www.drupal.org/project/drupal/issues/3043321 and is a temporary
+ *   measure until that issue is implemented.
  */
 class EntityRevisionAccessCheck implements AccessInterface {
 
@@ -26,40 +28,36 @@ class EntityRevisionAccessCheck implements AccessInterface {
   /**
    * Stores calculated access check results.
    *
-   * @var array
+   * @var bool[]
    */
-  protected $accessCache = array();
+  protected $accessCache = [];
 
   /**
-   * The currently active route match object.
-   *
-   * @var \Drupal\Core\Routing\RouteMatchInterface
-   */
-  protected $routeMatch;
-
-  /**
-   * Creates a new EntityRevisionRouteAccessChecker instance.
+   * Creates a new EntityRevisionAccessCheck instance.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   *   The entity manager.
-   * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
-   *   The currently active route match object.
+   *   The entity type manager.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, RouteMatchInterface $route_match) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
     $this->entityTypeManager = $entity_type_manager;
-    $this->routeMatch = $route_match;
   }
 
   /**
-   * {@inheritdoc}
+   * Checks routing access for an entity revision.
+   *
+   * @param \Symfony\Component\Routing\Route $route
+   *   The route to check against.
+   * @param \Drupal\Core\Session\AccountInterface $account
+   *   The currently logged in account.
+   * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
+   *   The current route match.
+   *
+   * @return \Drupal\Core\Access\AccessResultInterface
+   *   The access result.
    */
-  public function access(Route $route, AccountInterface $account, RouteMatchInterface $route_match = NULL) {
-    if (empty($route_match)) {
-      $route_match = $this->routeMatch;
-    }
-
+  public function access(Route $route, AccountInterface $account, RouteMatchInterface $route_match = NULL): AccessResultInterface {
     $operation = $route->getRequirement('_entity_access_revision');
-    list($entity_type_id, $operation) = explode('.', $operation, 2);
+    [$entity_type_id, $operation] = explode('.', $operation, 2);
 
     if ($operation === 'list') {
       $entity = $route_match->getParameter($entity_type_id);
@@ -71,13 +69,27 @@ class EntityRevisionAccessCheck implements AccessInterface {
     }
   }
 
-  protected function checkAccess(ContentEntityInterface $entity, AccountInterface $account, $operation = 'view') {
-    $entity_type = $entity->getEntityType();
-    $entity_type_id = $entity->getEntityTypeId();
+  /**
+   * Checks entity revision access.
+   *
+   * @param \Drupal\Core\Entity\RevisionableInterface $revision
+   *   An entity revision.
+   * @param \Drupal\Core\Session\AccountInterface $account
+   *   A user object representing the user for whom the operation is to be
+   *   performed.
+   * @param string $operation
+   *   The specific operation being checked. Defaults to 'view'.
+   *
+   * @return bool
+   *   Whether the operation may be performed.
+   */
+  protected function checkAccess(RevisionableInterface $revision, AccountInterface $account, $operation = 'view'): bool {
+    $entity_type = $revision->getEntityType();
+    $entity_type_id = $revision->getEntityTypeId();
     $entity_access = $this->entityTypeManager->getAccessControlHandler($entity_type_id);
 
-    /** @var \Drupal\Core\Entity\EntityStorageInterface $entity_storage */
     $entity_storage = $this->entityTypeManager->getStorage($entity_type_id);
+    assert($entity_storage instanceof RevisionableStorageInterface);
 
     $map = [
       'view' => "view all $entity_type_id revisions",
@@ -85,7 +97,7 @@ class EntityRevisionAccessCheck implements AccessInterface {
       'update' => "revert all $entity_type_id revisions",
       'delete' => "delete all $entity_type_id revisions",
     ];
-    $bundle = $entity->bundle();
+    $bundle = $revision->bundle();
     $type_map = [
       'view' => "view $entity_type_id $bundle revisions",
       'list' => "view $entity_type_id $bundle revisions",
@@ -93,7 +105,7 @@ class EntityRevisionAccessCheck implements AccessInterface {
       'delete' => "delete $entity_type_id $bundle revisions",
     ];
 
-    if (!$entity || !isset($map[$operation]) || !isset($type_map[$operation])) {
+    if (!$revision || !isset($map[$operation]) || !isset($type_map[$operation])) {
       // If there was no node to check against, or the $op was not one of the
       // supported ones, we return access denied.
       return FALSE;
@@ -101,8 +113,8 @@ class EntityRevisionAccessCheck implements AccessInterface {
 
     // Statically cache access by revision ID, language code, user account ID,
     // and operation.
-    $langcode = $entity->language()->getId();
-    $cid = $entity->getRevisionId() . ':' . $langcode . ':' . $account->id() . ':' . $operation;
+    $langcode = $revision->language()->getId();
+    $cid = $revision->getRevisionId() . ':' . $langcode . ':' . $account->id() . ':' . $operation;
 
     if (!isset($this->accessCache[$cid])) {
       $admin_permission = $entity_type->getAdminPermission();
@@ -117,48 +129,16 @@ class EntityRevisionAccessCheck implements AccessInterface {
         $this->accessCache[$cid] = TRUE;
       }
       else {
-        // Entity access handlers are generally not aware of the "list" operation.
+        // Entity access handlers are generally not aware of the "list"
+        // operation.
         $operation = $operation == 'list' ? 'view' : $operation;
         // First check the access to the default revision and finally, if the
         // node passed in is not the default revision then access to that, too.
-        $this->accessCache[$cid] = $entity_access->access($entity_storage->load($entity->id()), $operation, $account) && ($entity->isDefaultRevision() || $entity_access->access($entity, $operation, $account));
+        $this->accessCache[$cid] = $entity_access->access($entity_storage->load($revision->id()), $operation, $account) && ($revision->isDefaultRevision() || $entity_access->access($revision, $operation, $account));
       }
     }
 
     return $this->accessCache[$cid];
-  }
-
-
-  /**
-   * Counts the number of revisions in the default language.
-   *
-   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
-   *   The entity.
-   * @param \Drupal\Core\Entity\EntityStorageInterface $entity_storage
-   *   The entity storage.
-   *
-   * @return int
-   *   The number of revisions in the default language.
-   */
-  protected function countDefaultLanguageRevisions(ContentEntityInterface $entity, EntityStorageInterface $entity_storage) {
-    $entity_type = $entity->getEntityType();
-    $count = $entity_storage->getQuery()
-      ->allRevisions()
-      ->condition($entity_type->getKey('id'), $entity->id())
-      ->condition($entity_type->getKey('default_langcode'), 1)
-      ->count()
-      ->execute();
-    return $count;
-  }
-
-  /**
-   * Resets the access cache.
-   *
-   * @return $this
-   */
-  public function resetAccessCache() {
-    $this->accessCache = [];
-    return $this;
   }
 
 }
