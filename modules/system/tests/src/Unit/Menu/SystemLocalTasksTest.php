@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\system\Unit\Menu;
 
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Extension\Extension;
 use Drupal\Tests\Core\Menu\LocalTaskIntegrationTestBase;
 
@@ -15,7 +16,7 @@ class SystemLocalTasksTest extends LocalTaskIntegrationTestBase {
   /**
    * The mocked theme handler.
    *
-   * @var \Drupal\Core\Extension\ThemeHandlerInterface|\PHPUnit\Framework\MockObject\MockObject
+   * @var \Drupal\Core\Extension\ThemeHandlerInterface
    */
   protected $themeHandler;
 
@@ -45,7 +46,7 @@ class SystemLocalTasksTest extends LocalTaskIntegrationTestBase {
       ->willReturn(TRUE);
     $this->container->set('theme_handler', $this->themeHandler);
 
-    $entityTypeManager = $this->getMock('Drupal\Core\Entity\EntityTypeManagerInterface');
+    $entityTypeManager = $this->createMock(EntityTypeManagerInterface::class);
     $entityTypeManager->expects($this->any())
       ->method('getDefinitions')
       ->willReturn([]);
