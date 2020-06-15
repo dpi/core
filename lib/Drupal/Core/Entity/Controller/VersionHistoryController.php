@@ -137,7 +137,7 @@ class VersionHistoryController extends ControllerBase {
       $linkText = $revision->label();
     }
 
-    $context['date'] = $revision->toLink($linkText, 'revision');
+    $context['date'] = $revision->toLink($linkText, 'revision')->toString();
     $context['message'] = $revision instanceof RevisionLogInterface ? [
       '#markup' => $revision->getRevisionLogMessage(),
       '#allowed_tags' => Xss::getHtmlTagList(),
