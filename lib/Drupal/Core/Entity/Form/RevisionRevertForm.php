@@ -3,20 +3,24 @@
 namespace Drupal\Core\Entity\Form;
 
 use Drupal\Core\Datetime\DateFormatterInterface;
+use Drupal\Core\Entity\EntityConfirmFormBase;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\RevisionableInterface;
-use Drupal\Core\Form\ConfirmFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
+use Drupal\Core\Messenger\MessengerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\Request;
 
-class RevisionRevertForm extends ConfirmFormBase {
+/**
+ * Provides a form for reverting an entity revision.
+ */
+class RevisionRevertForm extends EntityConfirmFormBase {
 
   /**
    * The entity revision.
    *
-   * @var \Drupal\Core\Entity\EntityInterface|\Drupal\Core\Entity\RevisionableInterface|\Drupal\Core\Entity\RevisionLogInterface
+   * @var \Drupal\Core\Entity\RevisionableInterface|\Drupal\Core\Entity\RevisionLogInterface
    */
   protected $revision;
 
@@ -37,14 +41,17 @@ class RevisionRevertForm extends ConfirmFormBase {
   /**
    * Creates a new RevisionRevertForm instance.
    *
-   * @param \Drupal\Core\Datetime\DateFormatterInterface $date_formatter
+   * @param \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter
    *   The date formatter.
-   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $bundle_information
+   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $bundleInformation
    *   The bundle information.
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger
+   *   The messenger service.
    */
-  public function __construct(DateFormatterInterface $date_formatter, EntityTypeBundleInfoInterface $bundle_information) {
-    $this->dateFormatter = $date_formatter;
-    $this->bundleInformation = $bundle_information;
+  public function __construct(DateFormatterInterface $dateFormatter, EntityTypeBundleInfoInterface $bundleInformation, MessengerInterface $messenger) {
+    $this->dateFormatter = $dateFormatter;
+    $this->bundleInformation = $bundleInformation;
+    $this->messenger = $messenger;
   }
 
   /**
@@ -53,15 +60,9 @@ class RevisionRevertForm extends ConfirmFormBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('date.formatter'),
-      $container->get('entity_type.bundle.info')
+      $container->get('entity_type.bundle.info'),
+      $container->get('messenger')
     );
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getFormId() {
-    return 'entity_revision_revert_confirm';
   }
 
   /**
@@ -88,7 +89,7 @@ class RevisionRevertForm extends ConfirmFormBase {
    * {@inheritdoc}
    */
   public function getConfirmText() {
-    return t('Revert');
+    return $this->t('Revert');
   }
 
   /**
@@ -99,39 +100,63 @@ class RevisionRevertForm extends ConfirmFormBase {
   }
 
   /**
-   * {@inheritdoc}
+   * Form constructor.
+   *
+   * @param array $form
+   *   An associative array containing the structure of the form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   * @param \Drupal\Core\Entity\RevisionableInterface|null $_entity_revision
+   *   The entity revision as supplied by EntityRevisionRouteEnhancer, a default
+   *   value is set to maintain compatibility with interface, though it will
+   *   never be null.
+   *
+   * @return array
+   *   The form structure.
    */
-  public function buildForm(array $form, FormStateInterface $form_state, $_entity_revision = NULL, Request $request = NULL) {
+  public function buildForm(array $form, FormStateInterface $form_state, ?RevisionableInterface $_entity_revision = NULL) {
     $this->revision = $_entity_revision;
-    $form = parent::buildForm($form, $form_state);
-
-    return $form;
+    // Ensure revision is never null.
+    assert($this->revision instanceof RevisionableInterface);
+    return parent::buildForm($form, $form_state);
   }
 
   /**
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    // The revision timestamp will be updated when the revision is saved. Keep
-    // the original one for the confirmation message.
     $this->revision = $this->prepareRevision($this->revision);
+    $bundleLabel = $this->getBundleLabel($this->revision);
+    $revisionLabel = $this->revision->label();
     if ($this->revision instanceof RevisionLogInterface) {
-      $original_revision_timestamp = $this->revision->getRevisionCreationTime();
+      // The revision timestamp will be updated when the revision is saved. Keep
+      // the original one for the confirmation message.
+      $originalRevisionTimestamp = $this->revision->getRevisionCreationTime();
 
-      $this->revision->setRevisionLogMessage($this->t('Copy of the revision from %date.', ['%date' => $this->dateFormatter->format($original_revision_timestamp)]));
-      $this->messenger()->addMessage($this->t('@type %title has been reverted to the revision from %revision-date.', ['@type' => $this->getBundleLabel($this->revision), '%title' => $this->revision->label(), '%revision-date' => $this->dateFormatter->format($original_revision_timestamp)]));
+      $date = $this->dateFormatter->format($originalRevisionTimestamp);
+      $this->revision->setRevisionLogMessage($this->t('Copy of the revision from %date.', ['%date' => $date]));
+      $this->messenger->addMessage($this->t('@type %title has been reverted to the revision from %revision-date.', [
+        '@type' => $bundleLabel,
+        '%title' => $revisionLabel,
+        '%revision-date' => $date,
+      ]));
     }
     else {
-      $this->messenger()->addMessage($this->t('@type %title has been reverted', ['@type' => $this->getBundleLabel($this->revision), '%title' => $this->revision->label()]));
+      $this->messenger->addMessage($this->t('@type %title has been reverted', [
+        '@type' => $bundleLabel,
+        '%title' => $revisionLabel,
+      ]));
     }
 
     $this->revision->save();
 
-    $this->logger('content')->notice('@type: reverted %title revision %revision.', ['@type' => $this->revision->bundle(), '%title' => $this->revision->label(), '%revision' => $this->revision->getRevisionId()]);
-    $form_state->setRedirect(
-      "entity.{$this->revision->getEntityTypeId()}.version_history",
-      [$this->revision->getEntityTypeId() => $this->revision->id()]
-    );
+    $this->logger($this->revision->getEntityType()->getProvider())->notice('@type: reverted %title revision %revision.', [
+      '@type' => $this->revision->bundle(),
+      '%title' => $revisionLabel,
+      '%revision' => $this->revision->getRevisionId(),
+    ]);
+
+    $form_state->setRedirectUrl($this->revision->toUrl('version-history'));
   }
 
   /**
@@ -143,25 +168,24 @@ class RevisionRevertForm extends ConfirmFormBase {
    * @return \Drupal\Core\Entity\RevisionableInterface
    *   The prepared revision ready to be stored.
    */
-  protected function prepareRevision(RevisionableInterface $revision) {
+  protected function prepareRevision(RevisionableInterface $revision): RevisionableInterface {
     $revision->setNewRevision();
     $revision->isDefaultRevision(TRUE);
-
     return $revision;
   }
 
   /**
-   * Returns a bundle label.
+   * Returns the bundle label of an entity.
    *
-   * @param \Drupal\Core\Entity\RevisionableInterface $revision
-   *   The entity revision.
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity.
    *
    * @return string
+   *   The bundle label.
    */
-  protected function getBundleLabel(RevisionableInterface $revision) {
-    /** @var \Drupal\Core\Entity\EntityInterface|\Drupal\Core\Entity\RevisionableInterface $revision */
-    $bundle_info = $this->bundleInformation->getBundleInfo($revision->getEntityTypeId());
-    return $bundle_info[$revision->bundle()]['label'];
+  protected function getBundleLabel(EntityInterface $entity): string {
+    $bundle_info = $this->bundleInformation->getBundleInfo($entity->getEntityTypeId());
+    return $bundle_info[$entity->bundle()]['label'];
   }
 
 }

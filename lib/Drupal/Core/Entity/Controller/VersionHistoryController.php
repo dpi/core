@@ -3,29 +3,29 @@
 namespace Drupal\Core\Entity\Controller;
 
 use Drupal\Component\Utility\Xss;
-use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
-use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\RevisionableInterface;
+use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Provides a controller which shows the revision history.
+ * Provides a controller showing revision history for an entity.
  *
  * This controller leverages the revision controller trait, which is agnostic to
  * any entity type, by using \Drupal\Core\Entity\RevisionLogInterface.
  */
-class VersionHistoryController extends ControllerBase implements VersionHistoryControllerInterface {
+class VersionHistoryController extends ControllerBase {
 
   use RevisionControllerTrait;
 
   /**
-   * The date formatter.
+   * The date formatter service.
    *
    * @var \Drupal\Core\Datetime\DateFormatterInterface
    */
@@ -39,10 +39,21 @@ class VersionHistoryController extends ControllerBase implements VersionHistoryC
   protected $renderer;
 
   /**
-   * {@inheritdoc}
+   * Constructs a new VersionHistoryController.
+   *
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   The entity type manager.
+   * @param \Drupal\Core\Language\LanguageManagerInterface $languageManager
+   *   The language manager.
+   * @param \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter
+   *   The date formatter service.
+   * @param \Drupal\Core\Render\RendererInterface $renderer
+   *   The renderer.
    */
-  public function __construct(DateFormatterInterface $date_formatter, RendererInterface $renderer) {
-    $this->dateFormatter = $date_formatter;
+  public function __construct(EntityTypeManagerInterface $entityTypeManager, LanguageManagerInterface $languageManager, DateFormatterInterface $dateFormatter, RendererInterface $renderer) {
+    $this->entityTypeManager = $entityTypeManager;
+    $this->languageManager = $languageManager;
+    $this->dateFormatter = $dateFormatter;
     $this->renderer = $renderer;
   }
 
@@ -51,112 +62,96 @@ class VersionHistoryController extends ControllerBase implements VersionHistoryC
    */
   public static function create(ContainerInterface $container) {
     return new static(
+      $container->get('entity_type.manager'),
+      $container->get('language_manager'),
       $container->get('date.formatter'),
       $container->get('renderer')
     );
   }
 
   /**
-   * {@inheritdoc}
+   * Generates an overview table of older revisions of an entity.
+   *
+   * @param \Drupal\Core\Routing\RouteMatchInterface $routeMatch
+   *   The route match.
+   *
+   * @return array
+   *   A render array.
    */
-  protected function hasDeleteRevisionAccess(EntityInterface $entity) {
-    return $this->currentUser()->hasPermission("delete all {$entity->id()} revisions");
+  public function versionHistory(RouteMatchInterface $routeMatch): array {
+    $entityTypeId = $routeMatch->getRouteObject()->getOption('entity_type_id');
+    $entity = $routeMatch->getParameter($entityTypeId);
+    return $this->revisionOverview($entity);
   }
 
   /**
    * {@inheritdoc}
    */
-  protected function buildRevertRevisionLink(EntityInterface $entity_revision) {
-    if ($entity_revision->hasLinkTemplate('revision-revert-form')) {
-      return [
-        'title' => t('Revert'),
-        'url' => $entity_revision->toUrl('revision-revert-form'),
-      ];
+  protected function buildRevertRevisionLink(RevisionableInterface $revision): ?array {
+    if (!$revision->hasLinkTemplate('revision-revert-form')) {
+      return NULL;
     }
+
+    $url = $revision->toUrl('revision-revert-form');
+    return [
+      'title' => $this->t('Revert'),
+      'url' => $revision->toUrl('revision-revert-form'),
+      'access' => $url->access(),
+    ];
   }
 
   /**
    * {@inheritdoc}
    */
-  protected function buildDeleteRevisionLink(EntityInterface $entity_revision) {
-    if ($entity_revision->hasLinkTemplate('revision-delete-form')) {
-      return [
-        'title' => t('Delete'),
-        'url' => $entity_revision->toUrl('revision-delete-form'),
-      ];
+  protected function buildDeleteRevisionLink(EntityInterface $revision): ?array {
+    // @todo Delete form doesnt exist yet.
+    if (!$revision->hasLinkTemplate('revision-delete-form')) {
+      return NULL;
     }
+
+    $url = $revision->toUrl('revision-delete-form');
+    return [
+      'title' => $this->t('Delete'),
+      'url' => $revision->toUrl('revision-delete-form'),
+      'access' => $url->access(),
+    ];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function renderVersionHistory(RouteMatchInterface $route_match) {
-    return $this->revisionOverview($route_match->getParameter($route_match->getRouteObject()->getOption('entity_type_id')));
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function versionHistoryTitle(RouteMatchInterface $route_match) {
-    return new TranslatableMarkup('Revisions');
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function getRevisionDescription(ContentEntityInterface $revision, $is_default = FALSE) {
-    /** @var \Drupal\Core\Entity\ContentEntityInterface|\Drupal\user\EntityOwnerInterface|\Drupal\Core\Entity\RevisionLogInterface $revision */
+  protected function getRevisionDescription(RevisionableInterface $revision): array {
+    $context = [];
     if ($revision instanceof RevisionLogInterface) {
       // Use revision link to link to revisions that are not active.
-      $date = $this->dateFormatter->format($revision->getRevisionCreationTime(), 'short');
-      $link = $revision->toLink($date, 'revision');
+      $linkText = $this->dateFormatter->format($revision->getRevisionCreationTime(), 'short');
 
       // @todo: Simplify this when https://www.drupal.org/node/2334319 lands.
       $username = [
         '#theme' => 'username',
         '#account' => $revision->getRevisionUser(),
       ];
-      $username = $this->renderer->render($username);
+      $context['username'] = $this->renderer->render($username);
     }
     else {
-      $link = $revision->toLink($revision->label(), 'revision');
-      $username = '';
-
+      $linkText = $revision->label();
     }
 
-    $markup = '';
-    if ($revision instanceof RevisionLogInterface) {
-      $markup = $revision->getRevisionLogMessage();
-    }
+    $context['date'] = $revision->toLink($linkText, 'revision');
+    $context['message'] = $revision instanceof RevisionLogInterface ? [
+      '#markup' => $revision->getRevisionLogMessage(),
+      '#allowed_tags' => Xss::getHtmlTagList(),
+    ] : '';
 
-    if ($username) {
-      $template = '{% trans %}{{ date }} by {{ username }}{% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}';
-    }
-    else {
-      $template = '{% trans %} {{ date }} {% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}';
-    }
-
-    $column = [
+    return [
       'data' => [
         '#type' => 'inline_template',
-        '#template' => $template,
-        '#context' => [
-          'date' => $link->toString(),
-          'username' => $username,
-          'message' => ['#markup' => $markup, '#allowed_tags' => Xss::getHtmlTagList()],
-        ],
+        '#template' => isset($context['username'])
+        ? '{% trans %}{{ date }} by {{ username }}{% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}'
+        : '{% trans %} {{ date }} {% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}',
+        '#context' => $context,
       ],
     ];
-    return $column;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function hasRevertRevisionAccess(EntityInterface $entity) {
-    return AccessResult::allowedIfHasPermission($this->currentUser(), "revert all {$entity->getEntityTypeId()} revisions")->orIf(
-      AccessResult::allowedIfHasPermission($this->currentUser(), "revert {$entity->bundle()} {$entity->getEntityTypeId()} revisions")
-    );
   }
 
 }
