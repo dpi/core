@@ -3,24 +3,35 @@
 namespace Drupal\Core\Entity\Form;
 
 use Drupal\Core\Datetime\DateFormatterInterface;
-use Drupal\Core\Entity\EntityConfirmFormBase;
+use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\RevisionableInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\Form\ConfirmFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
 use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Provides a form for reverting an entity revision.
  */
-class RevisionRevertForm extends EntityConfirmFormBase {
+class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface {
+
+  /**
+   * The entity operation.
+   *
+   * @var string
+   */
+  protected $operation;
 
   /**
    * The entity revision.
    *
-   * @var \Drupal\Core\Entity\RevisionableInterface|\Drupal\Core\Entity\RevisionLogInterface
+   * @var \Drupal\Core\Entity\RevisionableInterface
    */
   protected $revision;
 
@@ -37,6 +48,20 @@ class RevisionRevertForm extends EntityConfirmFormBase {
    * @var \Drupal\Core\Entity\EntityTypeBundleInfoInterface
    */
   protected $bundleInformation;
+
+  /**
+   * The module handler.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
+
+  /**
+   * The entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
 
   /**
    * Creates a new RevisionRevertForm instance.
@@ -68,9 +93,23 @@ class RevisionRevertForm extends EntityConfirmFormBase {
   /**
    * {@inheritdoc}
    */
+  public function getBaseFormId() {
+    return $this->revision->getEntityTypeId() . '_revision_revert';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getFormId() {
+    return $this->revision->getEntityTypeId() . '_revision_revert';
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getQuestion() {
-    if ($this->revision instanceof RevisionLogInterface) {
-      return $this->t('Are you sure you want to revert to the revision from %revision-date?', ['%revision-date' => $this->dateFormatter->format($this->revision->getRevisionCreationTime())]);
+    if ($this->getEntity() instanceof RevisionLogInterface) {
+      return $this->t('Are you sure you want to revert to the revision from %revision-date?', ['%revision-date' => $this->dateFormatter->format($this->getEntity()->getRevisionCreationTime())]);
     }
     return $this->t('Are you sure you want to revert the revision?');
   }
@@ -79,10 +118,10 @@ class RevisionRevertForm extends EntityConfirmFormBase {
    * {@inheritdoc}
    */
   public function getCancelUrl() {
-    if ($this->revision->getEntityType()->hasLinkTemplate('version-history')) {
-      return $this->revision->toUrl('version-history');
+    if ($this->getEntity()->getEntityType()->hasLinkTemplate('version-history')) {
+      return $this->getEntity()->toUrl('version-history');
     }
-    return $this->revision->toUrl();
+    return $this->getEntity()->toUrl();
   }
 
   /**
@@ -100,25 +139,15 @@ class RevisionRevertForm extends EntityConfirmFormBase {
   }
 
   /**
-   * Form constructor.
-   *
-   * @param array $form
-   *   An associative array containing the structure of the form.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The current state of the form.
-   * @param \Drupal\Core\Entity\RevisionableInterface|null $_entity_revision
-   *   The entity revision as supplied by EntityRevisionRouteEnhancer, a default
-   *   value is set to maintain compatibility with interface, though it will
-   *   never be null.
-   *
-   * @return array
-   *   The form structure.
+   * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state, ?RevisionableInterface $_entity_revision = NULL) {
-    $this->revision = $_entity_revision;
-    // Ensure revision is never null.
-    assert($this->revision instanceof RevisionableInterface);
-    return parent::buildForm($form, $form_state);
+  public function buildForm(array $form, FormStateInterface $form_state) {
+    $form = parent::buildForm($form, $form_state);
+    $form['actions']['submit']['#submit'] = [
+      '::submitForm',
+      '::save',
+    ];
+    return $form;
   }
 
   /**
@@ -148,8 +177,6 @@ class RevisionRevertForm extends EntityConfirmFormBase {
       ]));
     }
 
-    $this->revision->save();
-
     $this->logger($this->revision->getEntityType()->getProvider())->notice('@type: reverted %title revision %revision.', [
       '@type' => $this->revision->bundle(),
       '%title' => $revisionLabel,
@@ -177,15 +204,81 @@ class RevisionRevertForm extends EntityConfirmFormBase {
   /**
    * Returns the bundle label of an entity.
    *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
+   * @param \Drupal\Core\Entity\RevisionableInterface $entity
    *   The entity.
    *
    * @return string
    *   The bundle label.
    */
-  protected function getBundleLabel(EntityInterface $entity): string {
+  protected function getBundleLabel(RevisionableInterface $entity): string {
     $bundle_info = $this->bundleInformation->getBundleInfo($entity->getEntityTypeId());
     return $bundle_info[$entity->bundle()]['label'];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setOperation($operation) {
+    $this->operation = $operation;
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getOperation() {
+    return $this->operation;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getEntity() {
+    return $this->revision;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setEntity(EntityInterface $entity) {
+    $this->revision = $entity;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getEntityFromRouteMatch(RouteMatchInterface $route_match, $entity_type_id) {
+    return $route_match->getParameter($entity_type_id . '_revision');
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildEntity(array $form, FormStateInterface $form_state) {
+    return $this->revision;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function save(array $form, FormStateInterface $form_state) {
+    $this->revision->save();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setModuleHandler(ModuleHandlerInterface $module_handler) {
+    $this->moduleHandler = $module_handler;
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setEntityTypeManager(EntityTypeManagerInterface $entity_type_manager) {
+    $this->entityTypeManager = $entity_type_manager;
+    return $this;
   }
 
 }
