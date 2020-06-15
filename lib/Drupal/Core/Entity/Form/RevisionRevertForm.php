@@ -2,7 +2,9 @@
 
 namespace Drupal\Core\Entity\Form;
 
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
+use Drupal\Core\Entity\EntityChangedInterface;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
@@ -64,6 +66,13 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
   protected $entityTypeManager;
 
   /**
+   * The time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected $time;
+
+  /**
    * Creates a new RevisionRevertForm instance.
    *
    * @param \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter
@@ -72,11 +81,14 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
    *   The bundle information.
    * @param \Drupal\Core\Messenger\MessengerInterface $messenger
    *   The messenger service.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
    */
-  public function __construct(DateFormatterInterface $dateFormatter, EntityTypeBundleInfoInterface $bundleInformation, MessengerInterface $messenger) {
+  public function __construct(DateFormatterInterface $dateFormatter, EntityTypeBundleInfoInterface $bundleInformation, MessengerInterface $messenger, TimeInterface $time) {
     $this->dateFormatter = $dateFormatter;
     $this->bundleInformation = $bundleInformation;
     $this->messenger = $messenger;
+    $this->time = $time;
   }
 
   /**
@@ -86,7 +98,8 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
     return new static(
       $container->get('date.formatter'),
       $container->get('entity_type.bundle.info'),
-      $container->get('messenger')
+      $container->get('messenger'),
+      $container->get('datetime.time')
     );
   }
 
@@ -198,6 +211,9 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
   protected function prepareRevision(RevisionableInterface $revision): RevisionableInterface {
     $revision->setNewRevision();
     $revision->isDefaultRevision(TRUE);
+    if ($this->revision instanceof EntityChangedInterface) {
+      $this->revision->setChangedTime($this->time->getRequestTime());
+    }
     return $revision;
   }
 
