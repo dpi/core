@@ -26,8 +26,6 @@ class RevisionOverviewIntegrationTest extends KernelTestBase {
   protected function setUp() {
     parent::setUp();
 
-    $this->installSchema('system', 'router');
-
     \Drupal::service('router.builder')->rebuild();
   }
 
@@ -36,18 +34,19 @@ class RevisionOverviewIntegrationTest extends KernelTestBase {
     $local_tasks_manager = \Drupal::service('plugin.manager.menu.local_task');
 
     $tasks = $local_tasks_manager->getDefinitions();
-    $this->assertArrayHasKey('entity.revisions_overview:entity_test_rev', $tasks);
+    $this->assertArrayHasKey('entity.version_history:entity_test_rev.version_history', $tasks);
     $this->assertArrayNotHasKey('entity.revisions_overview:node', $tasks, 'Node should have been excluded because it provides their own');
 
-    $this->assertEquals('entity.entity_test_rev.version_history', $tasks['entity.revisions_overview:entity_test_rev']['route_name']);
-    $this->assertEquals('entity.entity_test_rev.canonical', $tasks['entity.revisions_overview:entity_test_rev']['base_route']);
+    $task = $tasks['entity.version_history:entity_test_rev.version_history'];
+    $this->assertEquals('entity.entity_test_rev.version_history', $task['route_name']);
+    $this->assertEquals('entity.entity_test_rev.canonical', $task['base_route']);
 
     /** @var \Drupal\Core\Routing\RouteProviderInterface $route_provider */
     $route_provider = \Drupal::service('router.route_provider');
 
     $route = $route_provider->getRouteByName('entity.entity_test_rev.version_history');
     $this->assertInstanceOf(Route::class, $route);
-    $this->assertEquals('\Drupal\Core\Entity\Controller\RevisionOverviewController::revisionOverviewController', $route->getDefault('_controller'));
+    $this->assertEquals('Drupal\Core\Entity\Controller\VersionHistoryController::versionHistory', $route->getDefault('_controller'));
   }
 
 }

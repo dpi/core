@@ -4,6 +4,7 @@ namespace Drupal\KernelTests\Core\Entity;
 
 use Drupal\entity_test\Entity\EntityTestRev;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Tests\user\Traits\UserCreationTrait;
 use Drupal\user\Entity\Role;
 use Drupal\user\Entity\User;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,10 +14,12 @@ use Symfony\Component\HttpFoundation\Request;
  */
 class RevisionBasicUITest extends KernelTestBase {
 
+  use UserCreationTrait;
+
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['entity_test', 'system', 'user'];
+  public static $modules = ['system', 'entity_test', 'system', 'user'];
 
   /**
    * {@inheritdoc}
@@ -24,12 +27,17 @@ class RevisionBasicUITest extends KernelTestBase {
   protected function setUp() {
     parent::setUp();
 
+    $this->installSchema('system', ['sequences']);
     $this->installEntitySchema('user');
     $this->installEntitySchema('entity_test_rev');
-    $this->installSchema('system', 'router');
-    $this->installConfig(['system']);
 
     \Drupal::service('router.builder')->rebuild();
+
+    // Required to fix https://www.drupal.org/project/drupal/issues/3056234.
+    User::create([
+      'name' => '',
+      'uid' => 0,
+    ])->save();
   }
 
   /**
@@ -62,9 +70,7 @@ class RevisionBasicUITest extends KernelTestBase {
     $role->grantPermission('administer entity_test content');
     $role->save();
 
-    $user_admin = User::create([
-      'name' => 'Test user admin',
-    ]);
+    $user_admin = $this->createUser([], 'Test user admin');
     $user_admin->addRole($role_admin->id());
     \Drupal::service('account_switcher')->switchTo($user_admin);
     $request = Request::create($revision->toUrl('version-history')->toString());
@@ -72,9 +78,7 @@ class RevisionBasicUITest extends KernelTestBase {
 
     $this->assertEquals(200, $response->getStatusCode());
 
-    $user = User::create([
-      'name' => 'Test user',
-    ]);
+    $user = $this->createUser([], 'Test user');
     $user->addRole($role->id());
     \Drupal::service('account_switcher')->switchTo($user);
 
