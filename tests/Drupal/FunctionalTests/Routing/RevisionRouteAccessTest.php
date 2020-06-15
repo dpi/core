@@ -3,7 +3,7 @@
 namespace Drupal\FunctionalTests\Routing;
 
 use Drupal\entity_test\Entity\EntityTestRev;
-use Drupal\simpletest\BlockCreationTrait;
+use Drupal\Tests\block\Traits\BlockCreationTrait;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -20,16 +20,12 @@ class RevisionRouteAccessTest extends BrowserTestBase {
   use BlockCreationTrait;
 
   /**
-   * The current user.
-   *
-   * @var \Drupal\Core\Session\AccountInterface;
+   * {@inheritdoc}
    */
-  protected $account;
+  protected $defaultTheme = 'stark';
 
   /**
-   * Modules to enable.
-   *
-   * @var array
+   * {@inheritdoc}
    */
   public static $modules = ['entity_test', 'user', 'block'];
 
@@ -42,13 +38,11 @@ class RevisionRouteAccessTest extends BrowserTestBase {
     $this->placeBlock('local_tasks_block');
     $this->placeBlock('system_breadcrumb_block');
 
-    $this->account = $this->drupalCreateUser([
+    $this->drupalLogin($this->drupalCreateUser([
       'administer entity_test content',
       'view test entity',
       'view all entity_test_rev revisions',
-    ]);
-
-    $this->drupalLogin($this->account);
+    ]));
   }
 
   /**
