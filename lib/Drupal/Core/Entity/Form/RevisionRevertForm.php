@@ -7,6 +7,7 @@ use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityChangedInterface;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\RevisionableInterface;
@@ -295,6 +296,12 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
   public function setEntityTypeManager(EntityTypeManagerInterface $entity_type_manager) {
     $this->entityTypeManager = $entity_type_manager;
     return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setEntityManager(EntityManagerInterface $entity_manager) {
   }
 
 }
