@@ -50,6 +50,7 @@ trait UpdatePathTestTrait {
     // Run the update hooks.
     $this->clickLink(t('Apply pending updates'));
     $this->checkForMetaRefresh();
+    $this->doAfterUpdate();
 
     // Ensure there are no failed updates.
     if ($this->checkFailedUpdates) {
@@ -166,6 +167,14 @@ trait UpdatePathTestTrait {
       ->condition('collection', 'system.schema')
       ->condition('name', 'update_script_test')
       ->execute();
+  }
+
+  /**
+   * Preforms actions after an update.
+   */
+  protected function doAfterUpdate() {
+    // No-op. Tests that wish to perform some post-update operations can use
+    // this method to do so.
   }
 
 }
