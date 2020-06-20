@@ -39,12 +39,17 @@ class TimestampAgoFormatterTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['entity_test', 'field_ui'];
+  protected static $modules = ['entity_test', 'field_ui'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $web_user = $this->drupalCreateUser([

@@ -17,6 +17,11 @@ class HelpPageOrderTest extends BrowserTestBase {
   protected static $modules = ['help', 'tour'];
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Strings to search for on admin/help, in order.
    *
    * @var string[]
@@ -29,7 +34,7 @@ class HelpPageOrderTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create and log in user.

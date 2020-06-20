@@ -18,7 +18,7 @@ class ContentLanguageSettingsTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['language', 'node'];
+  protected static $modules = ['language', 'node'];
 
   /**
    * {@inheritdoc}
@@ -36,6 +36,11 @@ class ContentLanguageSettingsTest extends ResourceTestBase {
    * @var \Drupal\language\ContentLanguageSettingsInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

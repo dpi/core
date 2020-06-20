@@ -18,7 +18,19 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected static $modules = ['block', 'dblog', 'node', 'search', 'search_extra_type', 'test_page_test'];
+  protected static $modules = [
+    'block',
+    'dblog',
+    'node',
+    'search',
+    'search_extra_type',
+    'test_page_test',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * User who can search and administer search.
@@ -34,7 +46,7 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
    */
   protected $searchNode;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalCreateContentType(['type' => 'page', 'name' => 'Basic page']);
@@ -53,7 +65,6 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
     $this->drupalPostForm('node/' . $node->id() . '/edit', $edit, t('Save'));
 
     $this->container->get('plugin.manager.search')->createInstance('node_search')->updateIndex();
-    search_update_totals();
 
     // Enable the search block.
     $this->drupalPlaceBlock('search_form_block');
@@ -93,7 +104,7 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
     $text = $this->randomMachineName(5);
     $this->drupalPostForm('search/node', ['keys' => $text], t('Search'));
     $this->drupalGet('admin/reports/dblog');
-    $this->assertNoLink('Searched Content for ' . $text . '.', 'Search was not logged');
+    $this->assertSession()->linkNotExists('Searched Content for ' . $text . '.', 'Search was not logged');
 
     // Turn on logging.
     $edit = ['logging' => TRUE];
@@ -101,7 +112,7 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
     $text = $this->randomMachineName(5);
     $this->drupalPostForm('search/node', ['keys' => $text], t('Search'));
     $this->drupalGet('admin/reports/dblog');
-    $this->assertLink('Searched Content for ' . $text . '.', 0, 'Search was logged');
+    $this->assertSession()->linkExists('Searched Content for ' . $text . '.', 0, 'Search was logged');
 
   }
 
@@ -113,7 +124,7 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
     $this->clickLink(t('Edit'), 1);
 
     // Ensure that the default setting was picked up from the default config
-    $this->assertTrue($this->xpath('//select[@id="edit-extra-type-settings-boost"]//option[@value="bi" and @selected="selected"]'), 'Module specific settings are picked up from the default config');
+    $this->assertSession()->elementExists('xpath', '//select[@id="edit-extra-type-settings-boost"]//option[@value="bi" and @selected="selected"]');
 
     // Change extra type setting and also modify a common search setting.
     $edit = [
@@ -124,7 +135,7 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
     // Ensure that the modifications took effect.
     $this->assertRaw(t('The %label search page has been updated.', ['%label' => 'Dummy search type']));
     $this->drupalGet('admin/config/search/pages/manage/dummy_search_type');
-    $this->assertTrue($this->xpath('//select[@id="edit-extra-type-settings-boost"]//option[@value="ii" and @selected="selected"]'), 'Module specific settings can be changed');
+    $this->assertSession()->elementExists('xpath', '//select[@id="edit-extra-type-settings-boost"]//option[@value="ii" and @selected="selected"]');
   }
 
   /**
@@ -162,7 +173,7 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
       // Run a search from the correct search URL.
       $info = $plugin_info[$entity_id];
       $this->drupalGet('search/' . $entity->getPath(), ['query' => ['keys' => $info['keys']]]);
-      $this->assertResponse(200);
+      $this->assertSession()->statusCodeEquals(200);
       $this->assertNoText('no results', $entity->label() . ' search found results');
       $this->assertText($info['text'], 'Correct search text found');
 
@@ -184,7 +195,7 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
 
       // Try an invalid search path, which should 404.
       $this->drupalGet('search/not_a_plugin_path');
-      $this->assertResponse(404);
+      $this->assertSession()->statusCodeEquals(404);
 
       $entity->disable()->save();
     }
@@ -243,7 +254,7 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
     $edit = [];
     $edit['search_type'] = 'search_extra_type_search';
     $this->drupalPostForm(NULL, $edit, t('Add search page'));
-    $this->assertTitle('Add new search page | Drupal');
+    $this->assertSession()->titleEquals('Add new search page | Drupal');
 
     $first = [];
     $first['label'] = $this->randomString();
@@ -302,14 +313,14 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
 
     // Disable the first search page.
     $this->clickLink(t('Disable'));
-    $this->assertResponse(200);
-    $this->assertNoLink(t('Disable'));
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->linkNotExists(t('Disable'));
     $this->verifySearchPageOperations($first_id, TRUE, TRUE, FALSE, TRUE);
     $this->verifySearchPageOperations($second_id, TRUE, FALSE, FALSE, FALSE);
 
     // Enable the first search page.
     $this->clickLink(t('Enable'));
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->verifySearchPageOperations($first_id, TRUE, TRUE, TRUE, FALSE);
     $this->verifySearchPageOperations($second_id, TRUE, FALSE, FALSE, FALSE);
 
@@ -327,11 +338,11 @@ class SearchConfigSettingsFormTest extends BrowserTestBase {
   public function testRouteProtection() {
     // Ensure that the enable and disable routes are protected.
     $this->drupalGet('admin/config/search/pages/manage/node_search/enable');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
     $this->drupalGet('admin/config/search/pages/manage/node_search/disable');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
     $this->drupalGet('admin/config/search/pages/manage/node_search/set-default');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
   }
 
   /**

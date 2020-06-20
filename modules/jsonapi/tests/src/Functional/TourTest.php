@@ -15,7 +15,12 @@ class TourTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['tour'];
+  protected static $modules = ['tour'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

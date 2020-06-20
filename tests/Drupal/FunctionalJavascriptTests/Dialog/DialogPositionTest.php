@@ -14,7 +14,12 @@ class DialogPositionTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['block'];
+  protected static $modules = ['block'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests if the dialog UI works properly with block layout page.

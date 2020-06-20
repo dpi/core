@@ -3,6 +3,7 @@
 namespace Drupal\Tests\search\Functional;
 
 use Drupal\Core\Database\Database;
+use Drupal\search\SearchIndexInterface;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -18,13 +19,18 @@ class SearchNodeUpdateAndDeletionTest extends BrowserTestBase {
   protected static $modules = ['node', 'search'];
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * A user with permission to access and search content.
    *
    * @var \Drupal\user\UserInterface
    */
   public $testUser;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalCreateContentType(['type' => 'page', 'name' => 'Basic page']);
@@ -48,7 +54,8 @@ class SearchNodeUpdateAndDeletionTest extends BrowserTestBase {
     $node_search_plugin = $this->container->get('plugin.manager.search')->createInstance('node_search');
     // Update the search index.
     $node_search_plugin->updateIndex();
-    search_update_totals();
+    $search_index = \Drupal::service('search.index');
+    assert($search_index instanceof SearchIndexInterface);
 
     // Search the node to verify it appears in search results
     $edit = ['keys' => 'knights'];
@@ -61,7 +68,6 @@ class SearchNodeUpdateAndDeletionTest extends BrowserTestBase {
 
     // Run indexer again
     $node_search_plugin->updateIndex();
-    search_update_totals();
 
     // Search again to verify the new text appears in test results.
     $edit = ['keys' => 'shrubbery'];
@@ -83,7 +89,6 @@ class SearchNodeUpdateAndDeletionTest extends BrowserTestBase {
     $node_search_plugin = $this->container->get('plugin.manager.search')->createInstance('node_search');
     // Update the search index.
     $node_search_plugin->updateIndex();
-    search_update_totals();
 
     // Search the node to verify it appears in search results
     $edit = ['keys' => 'dragons'];

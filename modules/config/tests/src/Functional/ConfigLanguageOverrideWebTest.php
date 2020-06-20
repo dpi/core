@@ -18,7 +18,7 @@ class ConfigLanguageOverrideWebTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'block',
     'language',
     'system',
@@ -27,7 +27,12 @@ class ConfigLanguageOverrideWebTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
   }
 
@@ -66,7 +71,7 @@ class ConfigLanguageOverrideWebTest extends BrowserTestBase {
     // determine the front page. This occurs before language negotiation causing
     // the configuration factory to cache an object without the correct
     // overrides. We are testing that the configuration factory is
-    // re-initialised after language negotiation. Ensure that it applies when
+    // re-initialized after language negotiation. Ensure that it applies when
     // we access the XX front page.
     // @see \Drupal\Core\PathProcessor::processInbound()
     $this->drupalGet('xx');

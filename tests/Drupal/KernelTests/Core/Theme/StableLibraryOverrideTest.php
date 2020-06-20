@@ -49,12 +49,12 @@ class StableLibraryOverrideTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['system', 'user'];
+  protected static $modules = ['system', 'user', 'path_alias'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->container->get('theme_installer')->install(['stable']);
@@ -72,6 +72,7 @@ class StableLibraryOverrideTest extends KernelTestBase {
     $this->allModules = array_keys($all_modules);
     $this->allModules[] = 'system';
     $this->allModules[] = 'user';
+    $this->allModules[] = 'path_alias';
     sort($this->allModules);
     $this->container->get('module_installer')->install($this->allModules);
 

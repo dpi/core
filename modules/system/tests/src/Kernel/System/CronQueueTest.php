@@ -17,7 +17,7 @@ class CronQueueTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['system', 'cron_queue_test'];
+  protected static $modules = ['system', 'cron_queue_test'];
 
   /**
    * The database connection.
@@ -36,7 +36,7 @@ class CronQueueTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // These additional tables are necessary because $this->cron->run() calls
@@ -105,8 +105,8 @@ class CronQueueTest extends KernelTestBase {
     $queue->createItem([]);
     $this->cron->run();
 
-    $this->assertEqual(\Drupal::state()->get('cron_queue_test_requeue_exception'), 2);
-    $this->assertFalse($queue->numberOfItems());
+    $this->assertEquals(2, \Drupal::state()->get('cron_queue_test_requeue_exception'));
+    $this->assertEquals(0, $queue->numberOfItems());
   }
 
 }

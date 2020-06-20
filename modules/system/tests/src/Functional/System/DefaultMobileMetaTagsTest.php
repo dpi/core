@@ -19,7 +19,12 @@ class DefaultMobileMetaTagsTest extends BrowserTestBase {
    */
   protected $defaultMetaTags;
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
     $this->defaultMetaTags = [
       'viewport' => '<meta name="viewport" content="width=device-width, initial-scale=1.0" />',

@@ -19,7 +19,12 @@ class FieldConfigTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['field', 'node'];
+  protected static $modules = ['field', 'node'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

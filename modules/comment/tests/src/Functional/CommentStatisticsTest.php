@@ -20,7 +20,12 @@ class CommentStatisticsTest extends CommentTestBase {
    */
   protected $webUser2;
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     // Create a second user to post comments.

@@ -14,12 +14,17 @@ class FormValuesTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['node', 'ajax_test', 'ajax_forms_test'];
+  protected static $modules = ['node', 'ajax_test', 'ajax_forms_test'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalLogin($this->drupalCreateUser(['access content']));
@@ -56,7 +61,7 @@ class FormValuesTest extends WebDriverTestBase {
 
     // Verify that AJAX elements with invalid callbacks return error code 500.
     // Ensure the test error log is empty before these tests.
-    $this->assertFalse(file_exists(DRUPAL_ROOT . '/' . $this->siteDirectory . '/error.log'), 'PHP error.log is empty.');
+    $this->assertFileNotExists(DRUPAL_ROOT . '/' . $this->siteDirectory . '/error.log');
     // We don't need to check for the X-Drupal-Ajax-Token header with these
     // invalid requests.
     $this->assertAjaxHeader = FALSE;
@@ -70,8 +75,8 @@ class FormValuesTest extends WebDriverTestBase {
 
       // The select element is enabled as the response is receieved.
       $this->assertSession()->waitForElement('css', "select[name=\"$element_name\"]:enabled");
-      $this->assertTrue(file_exists(DRUPAL_ROOT . '/' . $this->siteDirectory . '/error.log'), 'PHP error.log is not empty.');
-      $this->assertContains('"The specified #ajax callback is empty or not callable."', file_get_contents(DRUPAL_ROOT . '/' . $this->siteDirectory . '/error.log'));
+      $this->assertFileExists(DRUPAL_ROOT . '/' . $this->siteDirectory . '/error.log');
+      $this->assertStringContainsString('"The specified #ajax callback is empty or not callable."', file_get_contents(DRUPAL_ROOT . '/' . $this->siteDirectory . '/error.log'));
       // The exceptions are expected. Do not interpret them as a test failure.
       // Not using File API; a potential error must trigger a PHP warning.
       unlink(\Drupal::root() . '/' . $this->siteDirectory . '/error.log');

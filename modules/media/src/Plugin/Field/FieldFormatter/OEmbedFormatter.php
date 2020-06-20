@@ -10,7 +10,6 @@ use Drupal\Core\Field\FormatterBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Messenger\MessengerInterface;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Url;
 use Drupal\media\Entity\MediaType;
 use Drupal\media\IFrameUrlHelper;
@@ -38,7 +37,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   },
  * )
  */
-class OEmbedFormatter extends FormatterBase implements ContainerFactoryPluginInterface {
+class OEmbedFormatter extends FormatterBase {
 
   /**
    * The messenger service.
@@ -228,6 +227,13 @@ class OEmbedFormatter extends FormatterBase implements ContainerFactoryPluginInt
             ],
           ],
         ];
+
+        // An empty title attribute will disable title inheritance, so only
+        // add it if the resource has a title.
+        $title = $resource->getTitle();
+        if ($title) {
+          $element[$delta]['#attributes']['title'] = $title;
+        }
 
         CacheableMetadata::createFromObject($resource)
           ->addCacheTags($this->config->getCacheTags())

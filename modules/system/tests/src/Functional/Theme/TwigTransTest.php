@@ -4,6 +4,7 @@ namespace Drupal\Tests\system\Functional\Theme;
 
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Tests\BrowserTestBase;
+use Twig\Error\SyntaxError;
 
 /**
  * Tests Twig "trans" tags.
@@ -17,12 +18,17 @@ class TwigTransTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'theme_test',
     'twig_theme_test',
     'locale',
     'language',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * An administrative user for testing.
@@ -44,7 +50,7 @@ class TwigTransTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Setup test_theme.
@@ -107,8 +113,8 @@ class TwigTransTest extends BrowserTestBase {
 
       $this->fail('{% trans %}{% endtrans %} did not throw an exception.');
     }
-    catch (\Twig_Error_Syntax $e) {
-      $this->assertTrue(strstr($e->getMessage(), '{% trans %} tag cannot be empty'), '{% trans %}{% endtrans %} threw the expected exception.');
+    catch (SyntaxError $e) {
+      $this->assertStringContainsString('{% trans %} tag cannot be empty', $e->getMessage());
     }
     catch (\Exception $e) {
       $this->fail('{% trans %}{% endtrans %} threw an unexpected exception.');

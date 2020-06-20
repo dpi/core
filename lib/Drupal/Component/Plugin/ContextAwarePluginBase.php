@@ -42,7 +42,7 @@ abstract class ContextAwarePluginBase extends PluginBase implements ContextAware
 
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
-    $this->contexts = $this->createContextFromConfiguration($context_configuration);
+    $this->context = $this->createContextFromConfiguration($context_configuration);
   }
 
   /**

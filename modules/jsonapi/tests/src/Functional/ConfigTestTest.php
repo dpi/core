@@ -15,7 +15,7 @@ class ConfigTestTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['config_test', 'config_test_rest'];
+  protected static $modules = ['config_test', 'config_test_rest'];
 
   /**
    * {@inheritdoc}
@@ -33,6 +33,11 @@ class ConfigTestTest extends ResourceTestBase {
    * @var \Drupal\config_test\ConfigTestInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

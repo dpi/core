@@ -11,21 +11,13 @@ use PHPUnit\TextUI\ResultPrinter;
  * @internal
  */
 class HtmlOutputPrinter extends ResultPrinter {
+
   use HtmlOutputPrinterTrait;
 
   /**
    * {@inheritdoc}
    */
-  public function __construct($out = NULL, $verbose = FALSE, $colors = self::COLOR_DEFAULT, $debug = FALSE, $numberOfColumns = 80, $reverse = FALSE) {
-    parent::__construct($out, $verbose, $colors, $debug, $numberOfColumns, $reverse);
-
-    $this->setUpHtmlOutput();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function printResult(TestResult $result) {
+  public function printResult(TestResult $result): void {
     parent::printResult($result);
 
     $this->printHtmlOutput();

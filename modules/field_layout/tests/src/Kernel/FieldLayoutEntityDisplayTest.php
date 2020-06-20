@@ -14,7 +14,13 @@ class FieldLayoutEntityDisplayTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected static $modules = ['layout_discovery', 'field_layout', 'entity_test', 'field_layout_test', 'system'];
+  protected static $modules = [
+    'layout_discovery',
+    'field_layout',
+    'entity_test',
+    'field_layout_test',
+    'system',
+  ];
 
   /**
    * @covers ::preSave
@@ -29,8 +35,10 @@ class FieldLayoutEntityDisplayTest extends KernelTestBase {
       'status' => TRUE,
       'content' => [
         'foo' => ['type' => 'visible'],
-        'bar' => ['type' => 'hidden'],
         'name' => ['type' => 'hidden', 'region' => 'content'],
+      ],
+      'hidden' => [
+        'bar' => TRUE,
       ],
     ]);
 
@@ -54,11 +62,10 @@ class FieldLayoutEntityDisplayTest extends KernelTestBase {
         'foo' => [
           'type' => 'visible',
         ],
-        'bar' => [
-          'type' => 'hidden',
-        ],
       ],
-      'hidden' => [],
+      'hidden' => [
+        'bar' => TRUE,
+      ],
     ];
     $this->assertEntityValues($expected, $entity_display->toArray());
 
@@ -76,10 +83,6 @@ class FieldLayoutEntityDisplayTest extends KernelTestBase {
     $expected['third_party_settings']['entity_test'] = ['foo' => 'bar'];
     // The visible field is assigned the default region.
     $expected['content']['foo']['region'] = 'content';
-    // The hidden field is removed from the list of visible fields, and marked
-    // as hidden.
-    unset($expected['content']['bar']);
-    $expected['hidden'] = ['bar' => TRUE];
 
     $this->assertEntityValues($expected, $entity_display->toArray());
 

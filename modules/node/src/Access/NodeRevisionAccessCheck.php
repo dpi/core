@@ -56,7 +56,7 @@ class NodeRevisionAccessCheck implements AccessInterface {
    *   The access result.
    */
   public function access(Route $route, AccountInterface $account, $node_revision = NULL, NodeInterface $node = NULL) {
-    @trigger_error('NodeRevisionAccessCheck is deprecated in Drupal 8.8.x and will be removed before Drupal 9.0.x. Use "_entity_access" requirement with relevant operation instead.', E_USER_DEPRECATED);
+    @trigger_error('NodeRevisionAccessCheck is deprecated in Drupal 9.1.x and will be removed before Drupal 10.0.x. Use "_entity_access" requirement with relevant operation instead. See https://www.drupal.org/node/3043321', E_USER_DEPRECATED);
     if ($node_revision) {
       $node = $this->nodeStorage->loadRevision($node_revision);
     }
@@ -79,7 +79,7 @@ class NodeRevisionAccessCheck implements AccessInterface {
    *   TRUE if the operation may be performed, FALSE otherwise.
    */
   public function checkAccess(NodeInterface $node, AccountInterface $account, $op = 'view') {
-    @trigger_error('NodeRevisionAccessCheck is deprecated in Drupal 8.8.x and will be removed before Drupal 9.0.x. Use "_entity_access" requirement with relevant operation instead.', E_USER_DEPRECATED);
+    @trigger_error('NodeRevisionAccessCheck is deprecated in Drupal 9.1.x and will be removed before Drupal 10.0.x. Use "_entity_access" requirement with relevant operation instead. See https://www.drupal.org/node/3043321', E_USER_DEPRECATED);
     // Converts legacy operations for this access check to new revision
     // operation found in access control handler.
     // E.g route _access_node_revision: 'update' to $node->access('revert')

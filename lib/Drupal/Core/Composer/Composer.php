@@ -2,10 +2,8 @@
 
 namespace Drupal\Core\Composer;
 
-use Composer\Composer as ComposerApp;
 use Composer\Installer\PackageEvent;
 use Composer\Script\Event;
-use Composer\Semver\Comparator;
 use Composer\Semver\Constraint\Constraint;
 use Composer\Util\ProcessExecutor;
 use Drupal\Component\FileSecurity\FileSecurity;
@@ -22,13 +20,8 @@ class Composer {
     'behat/mink-browserkit-driver' => ['tests'],
     'behat/mink-goutte-driver' => ['tests'],
     'behat/mink-selenium2-driver' => ['tests'],
-    'brumann/polyfill-unserialize' => ['tests'],
     'composer/composer' => ['bin'],
     'drupal/coder' => ['coder_sniffer/Drupal/Test', 'coder_sniffer/DrupalPractice/Test'],
-    'doctrine/cache' => ['tests'],
-    'doctrine/collections' => ['tests'],
-    'doctrine/common' => ['tests'],
-    'doctrine/inflector' => ['tests'],
     'doctrine/instantiator' => ['tests'],
     'easyrdf/easyrdf' => ['scripts'],
     'egulias/email-validator' => ['documentation', 'tests'],
@@ -36,13 +29,13 @@ class Composer {
     'guzzlehttp/promises' => ['tests'],
     'guzzlehttp/psr7' => ['tests'],
     'instaclick/php-webdriver' => ['doc', 'test'],
-    'jcalderonzumba/gastonjs' => ['docs', 'examples', 'tests'],
-    'jcalderonzumba/mink-phantomjs-driver' => ['tests'],
     'justinrainbow/json-schema' => ['demo'],
+    'laminas/laminas-escaper' => ['doc'],
+    'laminas/laminas-feed' => ['doc'],
+    'laminas/laminas-stdlib' => ['doc'],
     'masterminds/html5' => ['bin', 'test'],
     'mikey179/vfsStream' => ['src/test'],
     'myclabs/deep-copy' => ['doc'],
-    'paragonie/random_compat' => ['tests'],
     'pear/archive_tar' => ['docs', 'tests'],
     'pear/console_getopt' => ['tests'],
     'pear/pear-core-minimal' => ['tests'],
@@ -55,7 +48,6 @@ class Composer {
     'phpunit/php-timer' => ['tests'],
     'phpunit/php-token-stream' => ['tests'],
     'phpunit/phpunit' => ['tests'],
-    'phpunit/phpunit-mock-objects' => ['tests'],
     'sebastian/code-unit-reverse-lookup' => ['tests'],
     'sebastian/comparator' => ['tests'],
     'sebastian/diff' => ['tests'],
@@ -69,7 +61,6 @@ class Composer {
     'squizlabs/php_codesniffer' => ['tests'],
     'stack/builder' => ['tests'],
     'symfony/browser-kit' => ['Tests'],
-    'symfony/class-loader' => ['Tests'],
     'symfony/console' => ['Tests'],
     'symfony/css-selector' => ['Tests'],
     'symfony/debug' => ['Tests'],
@@ -77,6 +68,7 @@ class Composer {
     'symfony/dom-crawler' => ['Tests'],
     'symfony/filesystem' => ['Tests'],
     'symfony/finder' => ['Tests'],
+    'symfony/error-handler' => ['Tests'],
     'symfony/event-dispatcher' => ['Tests'],
     'symfony/http-foundation' => ['Tests'],
     'symfony/http-kernel' => ['Tests'],
@@ -90,26 +82,13 @@ class Composer {
     'symfony/yaml' => ['Tests'],
     'symfony-cmf/routing' => ['Test', 'Tests'],
     'theseer/tokenizer' => ['tests'],
-    'twig/twig' => ['doc', 'ext', 'test'],
-    'zendframework/zend-escaper' => ['doc'],
-    'zendframework/zend-feed' => ['doc'],
-    'zendframework/zend-stdlib' => ['doc'],
+    'twig/twig' => ['doc', 'ext', 'test', 'tests'],
   ];
 
   /**
-   * Ensure that the minimum required version of Composer is running.
-   * Throw an exception if Composer is too old.
-   */
-  public static function ensureComposerVersion() {
-    $composerVersion = method_exists(ComposerApp::class, 'getVersion') ?
-      ComposerApp::getVersion() : ComposerApp::VERSION;
-    if (Comparator::lessThan($composerVersion, '1.9.0')) {
-      throw new \RuntimeException("Drupal core development requires Composer 1.9.0, but Composer $composerVersion is installed. Please run 'composer self-update'.");
-    }
-  }
-
-  /**
    * Add vendor classes to Composer's static classmap.
+   *
+   * @param \Composer\Script\Event $event
    */
   public static function preAutoloadDump(Event $event) {
     // Get the configured vendor directory.
@@ -130,14 +109,18 @@ class Composer {
     if (!isset($autoload['classmap'])) {
       $autoload['classmap'] = [];
     }
-    // Check for our packages, and then optimize them if they're present.
+    // Check for packages used prior to the default classloader being able to
+    // use APCu and optimize them if they're present.
+    // @see \Drupal\Core\DrupalKernel::boot()
     if ($repository->findPackage('symfony/http-foundation', $constraint)) {
       $autoload['classmap'] = array_merge($autoload['classmap'], [
         $vendor_dir . '/symfony/http-foundation/Request.php',
+        $vendor_dir . '/symfony/http-foundation/RequestStack.php',
         $vendor_dir . '/symfony/http-foundation/ParameterBag.php',
         $vendor_dir . '/symfony/http-foundation/FileBag.php',
         $vendor_dir . '/symfony/http-foundation/ServerBag.php',
         $vendor_dir . '/symfony/http-foundation/HeaderBag.php',
+        $vendor_dir . '/symfony/http-foundation/HeaderUtils.php',
       ]);
     }
     if ($repository->findPackage('symfony/http-kernel', $constraint)) {
@@ -145,6 +128,30 @@ class Composer {
         $vendor_dir . '/symfony/http-kernel/HttpKernel.php',
         $vendor_dir . '/symfony/http-kernel/HttpKernelInterface.php',
         $vendor_dir . '/symfony/http-kernel/TerminableInterface.php',
+      ]);
+    }
+    if ($repository->findPackage('symfony/http-kernel', $constraint)) {
+      $autoload['classmap'] = array_merge($autoload['classmap'], [
+        $vendor_dir . '/symfony/http-kernel/HttpKernel.php',
+        $vendor_dir . '/symfony/http-kernel/HttpKernelInterface.php',
+        $vendor_dir . '/symfony/http-kernel/TerminableInterface.php',
+      ]);
+    }
+    if ($repository->findPackage('symfony/dependency-injection', $constraint)) {
+      $autoload['classmap'] = array_merge($autoload['classmap'], [
+        $vendor_dir . '/symfony/dependency-injection/ContainerAwareInterface.php',
+        $vendor_dir . '/symfony/dependency-injection/ContainerInterface.php',
+      ]);
+    }
+    if ($repository->findPackage('psr/container', $constraint)) {
+      $autoload['classmap'] = array_merge($autoload['classmap'], [
+        $vendor_dir . '/psr/container/src/ContainerInterface.php',
+      ]);
+    }
+    if ($repository->findPackage('laminas/laminas-zendframework-bridge', $constraint)) {
+      $autoload['classmap'] = array_merge($autoload['classmap'], [
+        $vendor_dir . '/laminas/laminas-zendframework-bridge/src/Autoloader.php',
+        $vendor_dir . '/laminas/laminas-zendframework-bridge/src/RewriteRules.php',
       ]);
     }
     $package->setAutoload($autoload);
@@ -284,6 +291,48 @@ class Composer {
     $dir->close();
 
     return rmdir($path) && $success;
+  }
+
+  /**
+   * Fires the drupal-phpunit-upgrade script event if necessary.
+   *
+   * @param \Composer\Script\Event $event
+   */
+  public static function upgradePHPUnit(Event $event) {
+    $repository = $event->getComposer()->getRepositoryManager()->getLocalRepository();
+    // This is, essentially, a null constraint. We only care whether the package
+    // is present in the vendor directory yet, but findPackage() requires it.
+    $constraint = new Constraint('>', '');
+    $phpunit_package = $repository->findPackage('phpunit/phpunit', $constraint);
+    if (!$phpunit_package) {
+      // There is nothing to do. The user is probably installing using the
+      // --no-dev flag.
+      return;
+    }
+
+    // If the PHP version is 7.3 or above and PHPUnit is less than version 7
+    // call the drupal-phpunit-upgrade script to upgrade PHPUnit.
+    if (!static::upgradePHPUnitCheck($phpunit_package->getVersion())) {
+      $event->getComposer()
+        ->getEventDispatcher()
+        ->dispatchScript('drupal-phpunit-upgrade');
+    }
+  }
+
+  /**
+   * Determines if PHPUnit needs to be upgraded.
+   *
+   * This method is located in this file because it is possible that it is
+   * called before the autoloader is available.
+   *
+   * @param string $phpunit_version
+   *   The PHPUnit version string.
+   *
+   * @return bool
+   *   TRUE if the PHPUnit needs to be upgraded, FALSE if not.
+   */
+  public static function upgradePHPUnitCheck($phpunit_version) {
+    return !(version_compare(PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION, '7.3') >= 0 && version_compare($phpunit_version, '7.0') < 0);
   }
 
 }

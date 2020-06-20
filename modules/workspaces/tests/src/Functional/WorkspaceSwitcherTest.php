@@ -18,12 +18,17 @@ class WorkspaceSwitcherTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['block', 'workspaces'];
+  protected static $modules = ['block', 'workspaces'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $permissions = [

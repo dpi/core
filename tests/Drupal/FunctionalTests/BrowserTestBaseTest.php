@@ -24,7 +24,17 @@ class BrowserTestBaseTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['test_page_test', 'form_test', 'system_test', 'node'];
+  protected static $modules = [
+    'test_page_test',
+    'form_test',
+    'system_test',
+    'node',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * Tests basic page test.
@@ -42,8 +52,8 @@ class BrowserTestBaseTest extends BrowserTestBase {
 
     // Check that returned plain text is correct.
     $text = $this->getTextContent();
-    $this->assertContains('Test page text.', $text);
-    $this->assertNotContains('</html>', $text);
+    $this->assertStringContainsString('Test page text.', $text);
+    $this->assertStringNotContainsString('</html>', $text);
 
     // Response includes cache tags that we can assert.
     $this->assertSession()->responseHeaderEquals('X-Drupal-Cache-Tags', 'http_response rendered');
@@ -141,7 +151,7 @@ class BrowserTestBaseTest extends BrowserTestBase {
 
     // Test drupalPostForm() with no-html response.
     $values = Json::decode($this->drupalPostForm('form_test/form-state-values-clean', [], t('Submit')));
-    $this->assertTrue(1000, $values['beer']);
+    $this->assertSame(1000, $values['beer']);
 
     // Test drupalPostForm() with form by HTML id.
     $this->drupalCreateContentType(['type' => 'page']);
@@ -159,13 +169,13 @@ class BrowserTestBaseTest extends BrowserTestBase {
   public function testClickLink() {
     $this->drupalGet('test-page');
     $this->clickLink('Visually identical test links');
-    $this->assertContains('user/login', $this->getSession()->getCurrentUrl());
+    $this->assertStringContainsString('user/login', $this->getSession()->getCurrentUrl());
     $this->drupalGet('test-page');
     $this->clickLink('Visually identical test links', 0);
-    $this->assertContains('user/login', $this->getSession()->getCurrentUrl());
+    $this->assertStringContainsString('user/login', $this->getSession()->getCurrentUrl());
     $this->drupalGet('test-page');
     $this->clickLink('Visually identical test links', 1);
-    $this->assertContains('user/register', $this->getSession()->getCurrentUrl());
+    $this->assertStringContainsString('user/register', $this->getSession()->getCurrentUrl());
   }
 
   public function testError() {
@@ -229,6 +239,41 @@ class BrowserTestBaseTest extends BrowserTestBase {
   }
 
   /**
+   * Tests legacy assertResponse().
+   *
+   * @group legacy
+   * @expectedDeprecation AssertLegacyTrait::assertResponse() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->statusCodeEquals() instead. See https://www.drupal.org/node/3129738
+   */
+  public function testAssertResponse() {
+    $this->drupalGet('test-encoded');
+    $this->assertResponse(200);
+  }
+
+  /**
+   * Tests legacy assertTitle().
+   *
+   * @group legacy
+   * @expectedDeprecation AssertLegacyTrait::assertTitle() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->titleEquals() instead. See https://www.drupal.org/node/3129738
+   */
+  public function testAssertTitle() {
+    $this->drupalGet('test-encoded');
+    $this->assertTitle("Page with encoded HTML | Drupal");
+  }
+
+  /**
+   * Tests legacy assertHeader().
+   *
+   * @group legacy
+   * @expectedDeprecation AssertLegacyTrait::assertHeader() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->responseHeaderEquals() instead. See https://www.drupal.org/node/3129738
+   */
+  public function testAssertHeader() {
+    $account = $this->drupalCreateUser();
+    $this->drupalLogin($account);
+    $this->drupalGet('test-page');
+    $this->assertHeader('X-Drupal-Cache-Tags', 'http_response rendered');
+  }
+
+  /**
    * Tests legacy text asserts.
    */
   public function testTextAsserts() {
@@ -237,9 +282,17 @@ class BrowserTestBaseTest extends BrowserTestBase {
     $sanitized = Html::escape($dangerous);
     $this->assertNoText($dangerous);
     $this->assertText($sanitized);
+  }
 
-    // Test getRawContent().
-    $this->assertSame($this->getSession()->getPage()->getContent(), $this->getSession()->getPage()->getContent());
+  /**
+   * Tests legacy getRawContent().
+   *
+   * @group legacy
+   * @expectedDeprecation AssertLegacyTrait::getRawContent() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->getSession()->getPage()->getContent() instead. See https://www.drupal.org/node/3129738
+   */
+  public function testGetRawContent() {
+    $this->drupalGet('test-encoded');
+    $this->assertSame($this->getSession()->getPage()->getContent(), $this->getRawContent());
   }
 
   /**
@@ -429,6 +482,11 @@ class BrowserTestBaseTest extends BrowserTestBase {
 
   /**
    * Tests legacy field asserts for options field type.
+   *
+   * @group legacy
+   * @expectedDeprecation AssertLegacyTrait::assertOptionByText() is deprecated in drupal:8.4.0 and is removed from drupal:10.0.0. Use $this->assertSession()->optionExists() instead. See https://www.drupal.org/node/3129738
+   * @expectedDeprecation AssertLegacyTrait::assertOption() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->optionExists() instead. See https://www.drupal.org/node/3129738
+   * @expectedDeprecation AssertLegacyTrait::assertNoOption() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->optionNotExists() instead. See https://www.drupal.org/node/3129738
    */
   public function testFieldAssertsForOptions() {
     $this->drupalGet('test-field-xpath');
@@ -638,7 +696,7 @@ class BrowserTestBaseTest extends BrowserTestBase {
    */
   public function testInstall() {
     $htaccess_filename = $this->tempFilesDirectory . '/.htaccess';
-    $this->assertTrue(file_exists($htaccess_filename), "$htaccess_filename exists");
+    $this->assertFileExists($htaccess_filename);
   }
 
   /**
@@ -736,6 +794,39 @@ class BrowserTestBaseTest extends BrowserTestBase {
     $assert->responseContains('<div class="unescaped">');
     $assert->responseContains("<script>alert('Marked safe');alert(\"Marked safe\");</script>");
     $assert->assertNoEscaped("<script>alert('Marked safe');alert(\"Marked safe\");</script>");
+  }
+
+  /**
+   * Tests that deprecation headers do not get duplicated.
+   *
+   * @group legacy
+   *
+   * @see \Drupal\Core\Test\HttpClientMiddleware\TestHttpClientMiddleware::__invoke()
+   */
+  public function testDeprecationHeaders() {
+    $this->drupalGet('/test-deprecations');
+
+    $deprecation_messages = [];
+    foreach ($this->getSession()->getResponseHeaders() as $name => $values) {
+      if (preg_match('/^X-Drupal-Assertion-[0-9]+$/', $name, $matches)) {
+        foreach ($values as $value) {
+          // Call \Drupal\simpletest\WebTestBase::error() with the parameters from
+          // the header.
+          $parameters = unserialize(urldecode($value));
+          if (count($parameters) === 3) {
+            if ($parameters[1] === 'User deprecated function') {
+              $deprecation_messages[] = (string) $parameters[0];
+            }
+          }
+        }
+      }
+    }
+
+    $this->assertContains('Test deprecation message', $deprecation_messages);
+    $test_deprecation_messages = array_filter($deprecation_messages, function ($message) {
+      return $message === 'Test deprecation message';
+    });
+    $this->assertCount(1, $test_deprecation_messages);
   }
 
 }

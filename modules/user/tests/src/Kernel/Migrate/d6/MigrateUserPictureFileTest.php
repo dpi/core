@@ -18,7 +18,7 @@ class MigrateUserPictureFileTest extends MigrateDrupal6TestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('file');
@@ -46,7 +46,7 @@ class MigrateUserPictureFileTest extends MigrateDrupal6TestBase {
     $this->assertIdentical('image-test.png', $file->getFilename());
     $this->assertIdentical('public://image-test.png', $file->getFileUri());
     $this->assertIdentical('8', $file->getOwnerId());
-    $this->assertFalse($files);
+    $this->assertEmpty($files);
   }
 
 }

@@ -28,7 +28,12 @@ class TokenReplaceTest extends TaxonomyTestBase {
    */
   protected $fieldName;
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
     $this->drupalLogin($this->drupalCreateUser(['administer taxonomy', 'bypass node access']));
     $this->vocabulary = $this->createVocabulary();
@@ -123,7 +128,7 @@ class TokenReplaceTest extends TaxonomyTestBase {
     $tests['[term:vocabulary:name]'] = $this->vocabulary->label();
 
     // Test to make sure that we generated something for each token.
-    $this->assertFalse(in_array(0, array_map('strlen', $tests)), 'No empty tokens generated.');
+    $this->assertNotContains(0, array_map('strlen', $tests), 'No empty tokens generated.');
 
     foreach ($tests as $input => $expected) {
       $output = $token_service->replace($input, ['term' => $term2], ['langcode' => $language_interface->getId()]);
@@ -139,7 +144,7 @@ class TokenReplaceTest extends TaxonomyTestBase {
     $tests['[vocabulary:term-count]'] = 2;
 
     // Test to make sure that we generated something for each token.
-    $this->assertFalse(in_array(0, array_map('strlen', $tests)), 'No empty tokens generated.');
+    $this->assertNotContains(0, array_map('strlen', $tests), 'No empty tokens generated.');
 
     foreach ($tests as $input => $expected) {
       $output = $token_service->replace($input, ['vocabulary' => $this->vocabulary], ['langcode' => $language_interface->getId()]);

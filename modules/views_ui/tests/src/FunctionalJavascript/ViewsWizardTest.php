@@ -15,12 +15,17 @@ class ViewsWizardTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['node', 'views', 'views_ui', 'block', 'user'];
+  protected static $modules = ['node', 'views', 'views_ui', 'block', 'user'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $admin_user = $this->drupalCreateUser([

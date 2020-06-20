@@ -19,7 +19,7 @@ class BlockFormMessagesTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'layout_builder',
     'block',
     'node',
@@ -29,7 +29,12 @@ class BlockFormMessagesTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $this->createContentType(['type' => 'bundle_with_section_field']);
   }

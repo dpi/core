@@ -20,7 +20,17 @@ class SearchMultilingualTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'search', 'language', 'content_translation'];
+  protected static $modules = [
+    'node',
+    'search',
+    'language',
+    'content_translation',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Views used by this test.
@@ -77,8 +87,8 @@ class SearchMultilingualTest extends ViewTestBase {
     // translated node, which has 'pizza' in the title, but not the English
     // one, which does not have the word 'pizza' in it.
     $this->drupalGet('test-filter');
-    $this->assertLink('pizza', 0, 'Found translation with matching title');
-    $this->assertNoLink('sandwich', 'Did not find translation with non-matching title');
+    $this->assertSession()->linkExists('pizza', 0, 'Found translation with matching title');
+    $this->assertSession()->linkNotExists('sandwich', 'Did not find translation with non-matching title');
   }
 
 }

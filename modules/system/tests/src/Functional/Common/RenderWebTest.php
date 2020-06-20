@@ -21,16 +21,21 @@ class RenderWebTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['common_test'];
+  protected static $modules = ['common_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Asserts the cache context for the wrapper format is always present.
    */
   public function testWrapperFormatCacheContext() {
     $this->drupalGet('common-test/type-link-active-class');
-    $this->assertIdentical(0, strpos($this->getSession()->getPage()->getContent(), "<!DOCTYPE html>\n<html"));
+    $this->assertStringStartsWith("<!DOCTYPE html>\n<html", $this->getSession()->getPage()->getContent());
     $this->assertIdentical('text/html; charset=UTF-8', $this->drupalGetHeader('Content-Type'));
-    $this->assertTitle('Test active link class | Drupal');
+    $this->assertSession()->titleEquals('Test active link class | Drupal');
     $this->assertCacheContext('url.query_args:' . MainContentViewSubscriber::WRAPPER_FORMAT);
 
     $this->drupalGet('common-test/type-link-active-class', ['query' => [MainContentViewSubscriber::WRAPPER_FORMAT => 'json']]);

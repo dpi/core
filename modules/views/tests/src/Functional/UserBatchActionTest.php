@@ -17,7 +17,12 @@ class UserBatchActionTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['user', 'user_batch_action_test', 'views'];
+  protected static $modules = ['user', 'user_batch_action_test', 'views'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests user admin batch.

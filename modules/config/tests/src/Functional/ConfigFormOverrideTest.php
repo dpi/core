@@ -13,6 +13,11 @@ use Drupal\Tests\BrowserTestBase;
 class ConfigFormOverrideTest extends BrowserTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Tests that overrides do not affect forms.
    */
   public function testFormsWithOverrides() {
@@ -30,7 +35,7 @@ class ConfigFormOverrideTest extends BrowserTestBase {
     // Test that everything on the form is the same, but that the override
     // worked for the actual site name.
     $this->drupalGet('admin/config/system/site-information');
-    $this->assertTitle('Basic site settings | ' . $overridden_name);
+    $this->assertSession()->titleEquals('Basic site settings | ' . $overridden_name);
     $elements = $this->xpath('//input[@name="site_name"]');
     $this->assertIdentical($elements[0]->getValue(), 'Drupal');
 
@@ -39,7 +44,7 @@ class ConfigFormOverrideTest extends BrowserTestBase {
       'site_name' => 'Custom site name',
     ];
     $this->drupalPostForm('admin/config/system/site-information', $edit, t('Save configuration'));
-    $this->assertTitle('Basic site settings | ' . $overridden_name);
+    $this->assertSession()->titleEquals('Basic site settings | ' . $overridden_name);
     $elements = $this->xpath('//input[@name="site_name"]');
     $this->assertIdentical($elements[0]->getValue(), $edit['site_name']);
   }

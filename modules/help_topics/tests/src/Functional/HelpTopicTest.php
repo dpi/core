@@ -18,12 +18,17 @@ class HelpTopicTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'help_topics_test',
     'help',
     'help_topics',
     'block',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * The admin user that will be created.
@@ -42,7 +47,7 @@ class HelpTopicTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // These tests rely on some markup from the 'Seven' theme and we test theme
@@ -66,6 +71,7 @@ class HelpTopicTest extends BrowserTestBase {
       'access administration pages',
       'view the administration theme',
       'administer permissions',
+      'administer site configuration',
     ]);
     $this->anyUser = $this->createUser([]);
   }
@@ -86,10 +92,11 @@ class HelpTopicTest extends BrowserTestBase {
     $this->verifyHelpLinks();
     $this->verifyBreadCrumb();
 
-    // Verify that help topics text appears on admin/help.
+    // Verify that help topics text appears on admin/help, and cache tags.
     $this->drupalGet('admin/help');
     $session->responseContains('<h2>Topics</h2>');
     $session->pageTextContains('Topics can be provided by modules or themes');
+    $session->responseHeaderContains('X-Drupal-Cache-Tags', 'core.extension');
 
     // Verify links for for help topics and order.
     $page_text = $this->getTextContent();
@@ -130,18 +137,6 @@ class HelpTopicTest extends BrowserTestBase {
     $this->container->get('theme_installer')->uninstall(['help_topics_test_theme']);
     $this->drupalGet('admin/help');
     $session->linkNotExists('XYZ Help Test theme');
-
-    // Verify the Help Topics provided by the Help Topics module for optional
-    // extensions do not exist.
-    $this->drupalGet('admin/help/topic/core.ui_components');
-    $session->linkNotExists('Shortcuts');
-    $session->linkExists('Accessibility features');
-    $this->container->get('module_installer')->install(['shortcut']);
-    $this->drupalGet('admin/help/topic/core.ui_components');
-    $session->linkExists('Shortcuts');
-    $session->linkExists('Accessibility features');
-    $this->clickLink('Shortcuts');
-    $session->pageTextContains('What are shortcuts?');
   }
 
   /**
@@ -160,9 +155,13 @@ class HelpTopicTest extends BrowserTestBase {
       $session = $this->assertSession();
       $session->statusCodeEquals($response);
       if ($response == 200) {
+        // Verify page information.
         $name = $info['name'];
         $session->titleEquals($name . ' | Drupal');
         $session->responseContains('<h1 class="page-title">' . $name . '</h1>');
+        foreach ($info['tags'] as $tag) {
+          $session->responseHeaderContains('X-Drupal-Cache-Tags', $tag);
+        }
       }
     }
   }
@@ -190,12 +189,7 @@ class HelpTopicTest extends BrowserTestBase {
     // Verify theme provided help topics work and can be related.
     $this->drupalGet('admin/help/topic/help_topics_test_theme.test');
     $session->pageTextContains('This is a theme provided topic.');
-    // Use the article element to provide a positive assertion to improve the
-    // assertion that the help html does not contain meta tags.
-    $this->assertContains('This is a theme provided topic.', $session->elementExists('css', 'article')->getText());
-    // Ensure that meta tags containing plugin information do not appear on
-    // topic pages
-    $session->elementNotExists('css', 'article meta');
+    $this->assertStringContainsString('This is a theme provided topic.', $session->elementExists('css', 'article')->getText());
     $this->clickLink('Additional topic');
     $session->linkExists('XYZ Help Test theme');
 
@@ -213,17 +207,21 @@ class HelpTopicTest extends BrowserTestBase {
    *   keys are the machine names of the topics. The values are arrays with the
    *   following elements:
    *   - name: Displayed name.
+   *   - tags: Cache tags to test for.
    */
   protected function getTopicList() {
     return [
       'help_topics_test.test' => [
         'name' => 'ABC Help Test module',
+        'tags' => ['core.extension'],
       ],
       'help_topics_derivatives:test_derived_topic' => [
         'name' => 'Label for test_derived_topic',
+        'tags' => ['foobar'],
       ],
       'help_topics_test_direct_yml' => [
         'name' => 'Test direct yaml topic label',
+        'tags' => ['foobar'],
       ],
     ];
   }
@@ -234,13 +232,22 @@ class HelpTopicTest extends BrowserTestBase {
   public function verifyBreadCrumb() {
     // Verify Help Topics administration breadcrumbs.
     $trail = [
-        '' => 'Home',
-        'admin' => t('Administration'),
-        'admin/help' => t('Help'),
-      ];
+      '' => 'Home',
+      'admin' => 'Administration',
+      'admin/help' => 'Help',
+    ];
     $this->assertBreadcrumb('admin/help/topic/help_topics_test.test', $trail);
     // Ensure we are on the expected help topic page.
     $this->assertSession()->pageTextContains('Also there should be a related topic link below to the Help module topic page and the linked topic.');
+
+    // Verify that another page does not have the help breadcrumb.
+    $trail = [
+      '' => 'Home',
+      'admin' => 'Administration',
+      'admin/config' => 'Configuration',
+      'admin/config/system' => 'System',
+    ];
+    $this->assertBreadcrumb('admin/config/system/site-information', $trail);
   }
 
 }

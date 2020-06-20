@@ -17,7 +17,12 @@ class DownloadFunctionalTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['migrate', 'file'];
+  protected static $modules = ['migrate', 'file'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests that an exception is thrown bu migration continues with the next row.
@@ -68,7 +73,7 @@ class DownloadFunctionalTest extends BrowserTestBase {
     $messages = $id_map_plugin->getMessages(['url' => $invalid_url])->fetchAll();
     $this->assertCount(1, $messages);
     $message = reset($messages);
-    $this->assertEquals("Cannot read from non-readable stream ($invalid_url)", $message->message);
+    $this->assertEquals("Client error: `GET $invalid_url` resulted in a `404 Not Found` response ($invalid_url)", $message->message);
     $this->assertEquals(MigrationInterface::MESSAGE_ERROR, $message->level);
 
     // Check that the second row was migrated successfully.

@@ -23,10 +23,15 @@ class LayoutBuilderQuickEditTest extends QuickEditJavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'node',
     'layout_builder',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * The article node under test.
@@ -57,7 +62,7 @@ class LayoutBuilderQuickEditTest extends QuickEditJavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalPlaceBlock('page_title_block');

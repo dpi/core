@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\locale\Functional;
 
+use Drupal\Core\File\FileSystemInterface;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -16,7 +17,12 @@ class LocaleExportTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['locale'];
+  protected static $modules = ['locale'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * A user able to create languages and export translations.
@@ -26,15 +32,15 @@ class LocaleExportTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->adminUser = $this->drupalCreateUser(['administer languages', 'translate interface', 'access administration pages']);
     $this->drupalLogin($this->adminUser);
 
     // Copy test po files to the translations directory.
-    \Drupal::service('file_system')->copy(__DIR__ . '/../../../tests/test.de.po', 'translations://', FILE_EXISTS_REPLACE);
-    \Drupal::service('file_system')->copy(__DIR__ . '/../../../tests/test.xx.po', 'translations://', FILE_EXISTS_REPLACE);
+    \Drupal::service('file_system')->copy(__DIR__ . '/../../../tests/test.de.po', 'translations://', FileSystemInterface::EXISTS_REPLACE);
+    \Drupal::service('file_system')->copy(__DIR__ . '/../../../tests/test.xx.po', 'translations://', FileSystemInterface::EXISTS_REPLACE);
   }
 
   /**

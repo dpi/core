@@ -2,7 +2,6 @@
 
 namespace Drupal\views;
 
-use Drupal\Core\DependencyInjection\DeprecatedServicePropertyTrait;
 use Drupal\Core\Entity\ContentEntityType;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityHandlerInterface;
@@ -23,12 +22,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 class EntityViewsData implements EntityHandlerInterface, EntityViewsDataInterface {
 
   use StringTranslationTrait;
-  use DeprecatedServicePropertyTrait;
-
-  /**
-   * {@inheritdoc}
-   */
-  protected $deprecatedProperties = ['entityManager' => 'entity.manager'];
 
   /**
    * Entity type for this views data handler instance.
@@ -95,7 +88,7 @@ class EntityViewsData implements EntityHandlerInterface, EntityViewsDataInterfac
    * @param \Drupal\Core\Entity\EntityFieldManagerInterface $entity_field_manager
    *   The entity field manager.
    */
-  public function __construct(EntityTypeInterface $entity_type, SqlEntityStorageInterface $storage_controller, EntityTypeManagerInterface $entity_type_manager, ModuleHandlerInterface $module_handler, TranslationInterface $translation_manager, EntityFieldManagerInterface $entity_field_manager = NULL) {
+  public function __construct(EntityTypeInterface $entity_type, SqlEntityStorageInterface $storage_controller, EntityTypeManagerInterface $entity_type_manager, ModuleHandlerInterface $module_handler, TranslationInterface $translation_manager, EntityFieldManagerInterface $entity_field_manager) {
     $this->entityType = $entity_type;
     $this->entityTypeManager = $entity_type_manager;
     $this->storage = $storage_controller;
@@ -174,6 +167,7 @@ class EntityViewsData implements EntityHandlerInterface, EntityViewsDataInterfac
       'field' => $base_field,
       'title' => $this->entityType->getLabel(),
       'cache_contexts' => $this->entityType->getListCacheContexts(),
+      'access query tag' => $this->entityType->id() . '_access',
     ];
     $data[$base_table]['table']['entity revision'] = FALSE;
 
@@ -295,7 +289,7 @@ class EntityViewsData implements EntityHandlerInterface, EntityViewsDataInterfac
       $duplicate_fields = array_intersect_key($entity_keys, array_flip(['id', 'revision', 'bundle']));
       // Iterate over each table we have so far and collect field data for each.
       // Based on whether the field is in the field_definitions provided by the
-      // entity manager.
+      // entity field manager.
       // @todo We should better just rely on information coming from the entity
       //   storage.
       // @todo https://www.drupal.org/node/2337511

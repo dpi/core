@@ -85,33 +85,6 @@ class ModerationInformation implements ModerationInformationInterface {
   /**
    * {@inheritdoc}
    */
-  public function getLatestRevision($entity_type_id, $entity_id) {
-    if ($latest_revision_id = $this->getLatestRevisionId($entity_type_id, $entity_id)) {
-      return $this->entityTypeManager->getStorage($entity_type_id)->loadRevision($latest_revision_id);
-    }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getLatestRevisionId($entity_type_id, $entity_id) {
-    if ($storage = $this->entityTypeManager->getStorage($entity_type_id)) {
-      $result = $storage->getQuery()
-        ->latestRevision()
-        ->condition($this->entityTypeManager->getDefinition($entity_type_id)->getKey('id'), $entity_id)
-        // No access check is performed here since this is an API function and
-        // should return the same ID regardless of the current user.
-        ->accessCheck(FALSE)
-        ->execute();
-      if ($result) {
-        return key($result);
-      }
-    }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function getDefaultRevisionId($entity_type_id, $entity_id) {
     if ($storage = $this->entityTypeManager->getStorage($entity_type_id)) {
       $result = $storage->getQuery()
@@ -142,13 +115,6 @@ class ModerationInformation implements ModerationInformationInterface {
   /**
    * {@inheritdoc}
    */
-  public function isLatestRevision(ContentEntityInterface $entity) {
-    return $entity->getRevisionId() == $this->getLatestRevisionId($entity->getEntityTypeId(), $entity->id());
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function hasPendingRevision(ContentEntityInterface $entity) {
     $result = FALSE;
     if ($this->isModeratedEntity($entity)) {
@@ -171,7 +137,7 @@ class ModerationInformation implements ModerationInformationInterface {
    */
   public function isLiveRevision(ContentEntityInterface $entity) {
     $workflow = $this->getWorkflowForEntity($entity);
-    return $this->isLatestRevision($entity)
+    return $entity->isLatestRevision()
       && $entity->isDefaultRevision()
       && $entity->moderation_state->value
       && $workflow->getTypePlugin()->getState($entity->moderation_state->value)->isPublishedState();
@@ -186,7 +152,7 @@ class ModerationInformation implements ModerationInformationInterface {
     // If no default revision could be loaded, the entity has not yet been
     // saved. In this case the moderation_state of the unsaved entity can be
     // used, since once saved it will become the default.
-    $default_revision = $default_revision  ?: $entity;
+    $default_revision = $default_revision ?: $entity;
 
     // Ensure we are checking all translations of the default revision.
     if ($default_revision instanceof TranslatableInterface && $default_revision->isTranslatable()) {
@@ -272,7 +238,8 @@ class ModerationInformation implements ModerationInformationInterface {
    *   TRUE if this is the entity's first time being moderated, FALSE otherwise.
    */
   protected function isFirstTimeModeration(ContentEntityInterface $entity) {
-    $original_entity = $this->getLatestRevision($entity->getEntityTypeId(), $entity->id());
+    $storage = $this->entityTypeManager->getStorage($entity->getEntityTypeId());
+    $original_entity = $storage->loadRevision($storage->getLatestRevisionId($entity->id()));
 
     if ($original_entity) {
       $original_id = $original_entity->moderation_state;

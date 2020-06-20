@@ -27,6 +27,11 @@ class SearchCommentTest extends BrowserTestBase {
   protected static $modules = ['filter', 'node', 'comment', 'search'];
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Test subject for comments.
    *
    * @var string
@@ -54,7 +59,7 @@ class SearchCommentTest extends BrowserTestBase {
    */
   protected $node;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalCreateContentType(['type' => 'page', 'name' => 'Basic page']);
@@ -168,7 +173,7 @@ class SearchCommentTest extends BrowserTestBase {
     // Verify that comment is rendered using proper format.
     $this->assertText($comment_body, 'Comment body text found in search results.');
     $this->assertNoRaw(t('n/a'), 'HTML in comment body is not hidden.');
-    $this->assertNoEscaped($edit_comment['comment_body[0][value]'], 'HTML in comment body is not escaped.');
+    $this->assertNoEscaped($edit_comment['comment_body[0][value]']);
 
     // Search for the evil script comment subject.
     $edit = [
@@ -294,7 +299,7 @@ class SearchCommentTest extends BrowserTestBase {
    */
   public function assertCommentAccess($assume_access, $message) {
     // Invoke search index update.
-    search_mark_for_reindex('node_search', $this->node->id());
+    \Drupal::service('search.index')->markForReindex('node_search', $this->node->id());
     $this->cronRun();
 
     // Search for the comment subject.

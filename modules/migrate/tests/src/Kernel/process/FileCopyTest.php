@@ -23,7 +23,7 @@ class FileCopyTest extends FileTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['migrate', 'system'];
+  protected static $modules = ['migrate', 'system'];
 
   /**
    * The file system service.
@@ -35,7 +35,7 @@ class FileCopyTest extends FileTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->fileSystem = $this->container->get('file_system');
     $this->container->get('stream_wrapper_manager')->registerWrapper('temporary', 'Drupal\Core\StreamWrapper\TemporaryStream', StreamWrapperInterface::LOCAL_NORMAL);
@@ -50,7 +50,7 @@ class FileCopyTest extends FileTestBase {
     $data_sets = [
       // Test a local to local copy.
       [
-        $this->root . '/core/modules/simpletest/files/image-test.jpg',
+        $this->root . '/core/tests/fixtures/files/image-test.jpg',
         'public://file1.jpg',
       ],
       // Test a temporary file using an absolute path.
@@ -61,16 +61,15 @@ class FileCopyTest extends FileTestBase {
       // Test a temporary file using a relative path.
       [
         $file_absolute,
-        'temporary://core/modules/simpletest/files/test.jpg',
+        'temporary://core/tests/fixtures/files/test.jpg',
       ],
     ];
     foreach ($data_sets as $data) {
       list($source_path, $destination_path) = $data;
       $actual_destination = $this->doTransform($source_path, $destination_path);
-      $message = sprintf('File %s exists', $destination_path);
-      $this->assertFileExists($destination_path, $message);
+      $this->assertFileExists($destination_path);
       // Make sure we didn't accidentally do a move.
-      $this->assertFileExists($source_path, $message);
+      $this->assertFileExists($source_path);
       $this->assertSame($actual_destination, $destination_path, 'The import returned the copied filename.');
     }
   }
@@ -90,7 +89,7 @@ class FileCopyTest extends FileTestBase {
     clearstatcache(TRUE, $destination_path);
 
     $timestamp = (new \SplFileInfo($file_reuse))->getMTime();
-    $this->assertInternalType('int', $timestamp);
+    $this->assertIsInt($timestamp);
 
     // We need to make sure the modified timestamp on the file is sooner than
     // the attempted migration.
@@ -113,7 +112,7 @@ class FileCopyTest extends FileTestBase {
   public function providerSuccessfulReuse() {
     return [
       [
-        'local_source_path' => static::getDrupalRoot() . '/core/modules/simpletest/files/image-test.jpg',
+        'local_source_path' => static::getDrupalRoot() . '/core/tests/fixtures/files/image-test.jpg',
         'local_destination_path' => 'public://file1.jpg',
       ],
       [
@@ -146,16 +145,14 @@ class FileCopyTest extends FileTestBase {
       // Test a temporary file using a relative path.
       [
         $file_2_absolute,
-        'temporary://core/modules/simpletest/files/test.jpg',
+        'temporary://core/tests/fixtures/files/test.jpg',
       ],
     ];
     foreach ($data_sets as $data) {
       list($source_path, $destination_path) = $data;
       $actual_destination = $this->doTransform($source_path, $destination_path, ['move' => TRUE]);
-      $message = sprintf('File %s exists', $destination_path);
-      $this->assertFileExists($destination_path, $message);
-      $message = sprintf('File %s does not exist', $source_path);
-      $this->assertFileNotExists($source_path, $message);
+      $this->assertFileExists($destination_path);
+      $this->assertFileNotExists($source_path);
       $this->assertSame($actual_destination, $destination_path, 'The importer returned the moved filename.');
     }
   }
@@ -205,7 +202,7 @@ class FileCopyTest extends FileTestBase {
     $destination = $this->createUri('foo.txt', NULL, 'public');
     $expected_destination = 'public://foo_0.txt';
     $actual_destination = $this->doTransform($source, $destination, ['file_exists' => 'rename']);
-    $this->assertFileExists($expected_destination, 'File was renamed on import');
+    $this->assertFileExists($expected_destination);
     $this->assertSame($actual_destination, $expected_destination, 'The importer returned the renamed filename.');
   }
 

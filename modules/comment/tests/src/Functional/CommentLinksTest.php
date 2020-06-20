@@ -36,7 +36,12 @@ class CommentLinksTest extends CommentTestBase {
    *
    * @todo Remove this dependency.
    */
-  public static $modules = ['views'];
+  protected static $modules = ['views'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests that comment links are output and can be hidden.
@@ -96,9 +101,9 @@ class CommentLinksTest extends CommentTestBase {
       // In teaser view, a link containing the comment count is always
       // expected.
       if ($path == 'node') {
-        $this->assertLink(t('1 comment'));
+        $this->assertSession()->linkExists(t('1 comment'));
       }
-      $this->assertLink('Add new comment');
+      $this->assertSession()->linkExists('Add new comment');
     }
 
     $display_repository = $this->container->get('entity_display.repository');
@@ -128,13 +133,13 @@ class CommentLinksTest extends CommentTestBase {
       ->removeComponent('links')
       ->save();
     $this->drupalGet($this->node->toUrl());
-    $this->assertNoLink('1 comment');
-    $this->assertNoLink('Add new comment');
+    $this->assertSession()->linkNotExists('1 comment');
+    $this->assertSession()->linkNotExists('Add new comment');
 
     // Visit the full node, make sure there are links for the comment.
     $this->drupalGet('node/' . $this->node->id());
     $this->assertText($comment->getSubject());
-    $this->assertLink('Reply');
+    $this->assertSession()->linkExists('Reply');
 
     // Make sure we can hide comment links.
     $display_repository->getViewDisplay('comment', 'comment')
@@ -142,7 +147,7 @@ class CommentLinksTest extends CommentTestBase {
       ->save();
     $this->drupalGet('node/' . $this->node->id());
     $this->assertText($comment->getSubject());
-    $this->assertNoLink('Reply');
+    $this->assertSession()->linkNotExists('Reply');
   }
 
 }

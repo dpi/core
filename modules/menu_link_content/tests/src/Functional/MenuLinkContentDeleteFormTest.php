@@ -18,12 +18,17 @@ class MenuLinkContentDeleteFormTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['menu_link_content'];
+  protected static $modules = ['menu_link_content'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $web_user = $this->drupalCreateUser(['administer menu']);
     $this->drupalLogin($web_user);
@@ -47,7 +52,7 @@ class MenuLinkContentDeleteFormTest extends BrowserTestBase {
     $menu_link = MenuLinkContent::load(1);
     $this->drupalGet($menu_link->toUrl('delete-form'));
     $this->assertRaw(t('Are you sure you want to delete the custom menu link %name?', ['%name' => $menu_link->label()]));
-    $this->assertLink(t('Cancel'));
+    $this->assertSession()->linkExists(t('Cancel'));
     // Make sure cancel link points to link edit
     $this->assertLinkByHref($menu_link->toUrl('edit-form')->toString());
 

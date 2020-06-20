@@ -18,9 +18,14 @@ class BlockInvalidRegionTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['block', 'block_test'];
+  protected static $modules = ['block', 'block_test'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
+
+  protected function setUp(): void {
     parent::setUp();
     // Create an admin user.
     $admin_user = $this->drupalCreateUser([

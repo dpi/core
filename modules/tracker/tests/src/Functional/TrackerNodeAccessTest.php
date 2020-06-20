@@ -21,9 +21,19 @@ class TrackerNodeAccessTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'comment', 'tracker', 'node_access_test'];
+  protected static $modules = [
+    'node',
+    'comment',
+    'tracker',
+    'node_access_test',
+  ];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
     node_access_rebuild();
     $this->drupalCreateContentType(['type' => 'page']);

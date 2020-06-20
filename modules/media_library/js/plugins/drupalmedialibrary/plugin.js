@@ -17,6 +17,7 @@
             attributes: {
               '!data-entity-type': true,
               '!data-entity-uuid': true,
+              '!data-view-mode': true,
               '!data-align': true,
               '!data-caption': true,
               '!alt': true,
@@ -25,7 +26,6 @@
             classes: {}
           }
         },
-
         requiredContent: new CKEDITOR.style({
           element: 'drupal-media',
           attributes: {
@@ -33,8 +33,9 @@
             'data-entity-uuid': ''
           }
         }),
-        modes: { wysiwyg: 1 },
-
+        modes: {
+          wysiwyg: 1
+        },
         canUndo: true,
         exec: function exec(editor) {
           var saveCallback = function saveCallback(values) {

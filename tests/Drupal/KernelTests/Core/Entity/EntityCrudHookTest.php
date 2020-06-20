@@ -5,7 +5,6 @@ namespace Drupal\KernelTests\Core\Entity;
 use Drupal\comment\Entity\Comment;
 use Drupal\comment\Plugin\Field\FieldType\CommentItemInterface;
 use Drupal\comment\Tests\CommentTestTrait;
-use Drupal\Core\Database\Database;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\block\Entity\Block;
 use Drupal\entity_test\Entity\EntityTest;
@@ -41,11 +40,19 @@ class EntityCrudHookTest extends EntityKernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['block', 'block_test', 'entity_crud_hook_test', 'file', 'taxonomy', 'node', 'comment'];
+  protected static $modules = [
+    'block',
+    'block_test',
+    'entity_crud_hook_test',
+    'file',
+    'taxonomy',
+    'node',
+    'comment',
+  ];
 
   protected $ids = [];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installSchema('user', ['users_data']);
@@ -69,9 +76,8 @@ class EntityCrudHookTest extends EntityKernelTestBase {
     foreach ($messages as $message) {
       // Verify that each message is found and record its position.
       $position = array_search($message, $GLOBALS['entity_crud_hook_test']);
-      if ($this->assertTrue($position !== FALSE, $message)) {
-        $positions[] = $position;
-      }
+      $this->assertNotFalse($position, $message);
+      $positions[] = $position;
     }
 
     // Sort the positions and ensure they remain in the same order.
@@ -547,16 +553,9 @@ class EntityCrudHookTest extends EntityKernelTestBase {
       $this->pass('Expected exception has been thrown.');
     }
 
-    if (Database::getConnection()->supportsTransactions()) {
-      // Check that the block does not exist in the database.
-      $ids = \Drupal::entityQuery('entity_test')->condition('name', 'fail_insert')->execute();
-      $this->assertTrue(empty($ids), 'Transactions supported, and entity not found in database.');
-    }
-    else {
-      // Check that the block exists in the database.
-      $ids = \Drupal::entityQuery('entity_test')->condition('name', 'fail_insert')->execute();
-      $this->assertFalse(empty($ids), 'Transactions not supported, and entity found in database.');
-    }
+    // Check that the block does not exist in the database.
+    $ids = \Drupal::entityQuery('entity_test')->condition('name', 'fail_insert')->execute();
+    $this->assertEmpty($ids);
   }
 
 }

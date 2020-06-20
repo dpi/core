@@ -26,7 +26,12 @@ class FieldGroupRowsWebTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = ['node'];
+  protected static $modules = ['node'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * The page node type.
@@ -59,7 +64,7 @@ class FieldGroupRowsWebTest extends ViewTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     // Create content type with unlimited text field.

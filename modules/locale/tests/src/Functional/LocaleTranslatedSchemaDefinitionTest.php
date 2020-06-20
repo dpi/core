@@ -20,18 +20,23 @@ class LocaleTranslatedSchemaDefinitionTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['language', 'locale', 'node'];
+  protected static $modules = ['language', 'locale', 'node'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     ConfigurableLanguage::createFromLangcode('fr')->save();
     $this->config('system.site')->set('default_langcode', 'fr')->save();
 
     // Clear all caches so that the base field definition, its cache in the
-    // entity manager, the t() cache, etc. are all cleared.
+    // entity field manager, the t() cache, etc. are all cleared.
     drupal_flush_all_caches();
   }
 

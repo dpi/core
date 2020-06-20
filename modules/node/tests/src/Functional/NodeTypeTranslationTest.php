@@ -21,12 +21,17 @@ class NodeTypeTranslationTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'block',
     'config_translation',
     'field_ui',
     'node',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * The default language code to use in this test.
@@ -49,7 +54,7 @@ class NodeTypeTranslationTest extends BrowserTestBase {
    */
   protected $adminUser;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $admin_permissions = [
@@ -171,9 +176,9 @@ class NodeTypeTranslationTest extends BrowserTestBase {
     // Try re-using the email field.
     $this->drupalGet("es/admin/structure/types/manage/$type/fields/add-field");
     $this->drupalPostForm(NULL, ['existing_storage_name' => 'field_email', 'existing_storage_label' => 'Email'], 'Save and continue');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->drupalGet("es/admin/structure/types/manage/$type/fields/node.$type.field_email/translate");
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertText("The configuration objects have different language codes so they cannot be translated");
   }
 

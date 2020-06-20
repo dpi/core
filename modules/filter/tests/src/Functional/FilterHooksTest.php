@@ -17,7 +17,12 @@ class FilterHooksTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'filter_test'];
+  protected static $modules = ['node', 'filter_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests hooks on format management.

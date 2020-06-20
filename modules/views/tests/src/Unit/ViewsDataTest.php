@@ -58,7 +58,7 @@ class ViewsDataTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     $this->cacheTagsInvalidator = $this->createMock('Drupal\Core\Cache\CacheTagsInvalidatorInterface');
     $this->cacheBackend = $this->createMock('Drupal\Core\Cache\CacheBackendInterface');
     $this->getContainerWithCacheTagsInvalidator($this->cacheTagsInvalidator);
@@ -638,29 +638,24 @@ class ViewsDataTest extends UnitTestCase {
   }
 
   /**
-   * Tests that getting all data has same results as getting data with NULL
-   * logic.
+   * Tests that getting data with an empty key throws an exception.
    *
-   * @covers ::getAll
+   * @covers ::get
+   * @dataProvider providerTestGetEmptyKey
    */
-  public function testGetAllEqualsToGetNull() {
-    $expected_views_data = $this->viewsDataWithProvider();
-    $this->setupMockedModuleHandler();
+  public function testGetEmptyKey($key) {
+    $this->expectException(\InvalidArgumentException::class);
+    $this->expectExceptionMessage('A valid cache entry key is required. Use getAll() to get all table data.');
 
-    // Setup a warm cache backend for a single table.
-    $this->cacheBackend->expects($this->once())
-      ->method('get')
-      ->with("views_data:en");
-    $this->cacheBackend->expects($this->once())
-      ->method('set')
-      ->with('views_data:en', $expected_views_data);
+    $this->viewsData->get($key);
+  }
 
-    // Initialize the views data cache and repeat with no specified table. This
-    // should only load the cache entry for all tables.
-    for ($i = 0; $i < 5; $i++) {
-      $this->assertSame($expected_views_data, $this->viewsData->getAll());
-      $this->assertSame($expected_views_data, $this->viewsData->get());
-    }
+  public function providerTestGetEmptyKey() {
+    return [
+      [NULL],
+      [''],
+      [0],
+    ];
   }
 
 }

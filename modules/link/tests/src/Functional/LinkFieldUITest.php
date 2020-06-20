@@ -25,7 +25,12 @@ class LinkFieldUITest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'link', 'field_ui', 'block'];
+  protected static $modules = ['node', 'link', 'field_ui', 'block'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * A user that can edit content types.
@@ -58,7 +63,7 @@ class LinkFieldUITest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->firstContentType = $this->drupalCreateContentType();

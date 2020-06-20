@@ -21,6 +21,11 @@ class ContentTranslationSyncImageTest extends ContentTranslationTestBase {
   }
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * The cardinality of the image field.
    *
    * @var int
@@ -39,9 +44,15 @@ class ContentTranslationSyncImageTest extends ContentTranslationTestBase {
    *
    * @var array
    */
-  public static $modules = ['language', 'content_translation', 'entity_test', 'image', 'field_ui'];
+  protected static $modules = [
+    'language',
+    'content_translation',
+    'entity_test',
+    'image',
+    'field_ui',
+  ];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->files = $this->drupalGetTestFiles('image');
   }
@@ -112,7 +123,7 @@ class ContentTranslationSyncImageTest extends ContentTranslationTestBase {
     ];
     $this->drupalPostForm('admin/config/regional/content-language', $edit, t('Save configuration'));
     $errors = $this->xpath('//div[contains(@class, "messages--error")]');
-    $this->assertFalse($errors, 'Settings correctly stored.');
+    $this->assertEmpty($errors, 'Settings correctly stored.');
     $this->assertFieldChecked('edit-settings-entity-test-mul-entity-test-mul-columns-field-test-et-ui-image-alt');
     $this->assertFieldChecked('edit-settings-entity-test-mul-entity-test-mul-columns-field-test-et-ui-image-title');
     $this->drupalLogin($this->translator);

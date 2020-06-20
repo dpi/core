@@ -27,7 +27,7 @@ class NodeOperationAccessTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Cache utility calls container directly.
@@ -78,7 +78,7 @@ class NodeOperationAccessTest extends UnitTestCase {
       ->will($this->returnValue('de'));
 
     $nid = 333;
-    /** @var \Drupal\node\NodeInterface|\PHPUnit_Framework_MockObject_MockObject $node */
+    /** @var \Drupal\node\NodeInterface|\PHPUnit\Framework\MockObject\MockObject $node */
     $node = $this->createMock(NodeInterface::class);
     $node->expects($this->any())
       ->method('language')
@@ -86,6 +86,15 @@ class NodeOperationAccessTest extends UnitTestCase {
     $node->expects($this->any())
       ->method('id')
       ->willReturn($nid);
+    $node->expects($this->any())
+      ->method('getCacheContexts')
+      ->willReturn([]);
+    $node->expects($this->any())
+      ->method('getCacheTags')
+      ->willReturn([]);
+    $node->expects($this->any())
+      ->method('getCacheMaxAge')
+      ->willReturn(-1);
 
     if (isset($isDefaultRevision)) {
       $node->expects($this->atLeastOnce())
@@ -116,6 +125,15 @@ class NodeOperationAccessTest extends UnitTestCase {
       $nodeType->expects($this->atLeastOnce())
         ->method('shouldCreateNewRevision')
         ->willReturn($shouldCreateNewRevision);
+      $nodeType->expects($this->any())
+        ->method('getCacheContexts')
+        ->willReturn([]);
+      $nodeType->expects($this->any())
+        ->method('getCacheTags')
+        ->willReturn([]);
+      $nodeType->expects($this->any())
+        ->method('getCacheMaxAge')
+        ->willReturn(-1);
     }
     $typeProperty = new \stdClass();
     $typeProperty->entity = $nodeType;

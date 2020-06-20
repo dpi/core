@@ -2,6 +2,11 @@
 
 namespace Drupal\Tests;
 
+use Drupal\Composer\Plugin\VendorHardening\Config;
+use Drupal\Core\Composer\Composer;
+use Drupal\Tests\Composer\ComposerIntegrationTrait;
+use Symfony\Component\Yaml\Yaml;
+
 /**
  * Tests Composer integration.
  *
@@ -9,75 +14,7 @@ namespace Drupal\Tests;
  */
 class ComposerIntegrationTest extends UnitTestCase {
 
-  /**
-   * Gets human-readable JSON error messages.
-   *
-   * @return string[]
-   *   Keys are JSON_ERROR_* constants.
-   */
-  protected function getErrorMessages() {
-    $messages = [
-      0 => 'No errors found',
-      JSON_ERROR_DEPTH => 'The maximum stack depth has been exceeded',
-      JSON_ERROR_STATE_MISMATCH => 'Invalid or malformed JSON',
-      JSON_ERROR_CTRL_CHAR => 'Control character error, possibly incorrectly encoded',
-      JSON_ERROR_SYNTAX => 'Syntax error',
-      JSON_ERROR_UTF8 => 'Malformed UTF-8 characters, possibly incorrectly encoded',
-      JSON_ERROR_RECURSION => 'One or more recursive references in the value to be encoded',
-      JSON_ERROR_INF_OR_NAN => 'One or more NAN or INF values in the value to be encoded',
-      JSON_ERROR_UNSUPPORTED_TYPE => 'A value of a type that cannot be encoded was given',
-    ];
-
-    return $messages;
-  }
-
-  /**
-   * Gets the paths to the folders that contain the Composer integration.
-   *
-   * @return string[]
-   *   The paths.
-   */
-  protected function getPaths() {
-    return [
-      $this->root,
-      $this->root . '/core',
-      $this->root . '/core/lib/Drupal/Component/Annotation',
-      $this->root . '/core/lib/Drupal/Component/Assertion',
-      $this->root . '/core/lib/Drupal/Component/Bridge',
-      $this->root . '/core/lib/Drupal/Component/ClassFinder',
-      $this->root . '/core/lib/Drupal/Component/Datetime',
-      $this->root . '/core/lib/Drupal/Component/DependencyInjection',
-      $this->root . '/core/lib/Drupal/Component/Diff',
-      $this->root . '/core/lib/Drupal/Component/Discovery',
-      $this->root . '/core/lib/Drupal/Component/EventDispatcher',
-      $this->root . '/core/lib/Drupal/Component/FileCache',
-      $this->root . '/core/lib/Drupal/Component/FileSystem',
-      $this->root . '/core/lib/Drupal/Component/Gettext',
-      $this->root . '/core/lib/Drupal/Component/Graph',
-      $this->root . '/core/lib/Drupal/Component/HttpFoundation',
-      $this->root . '/core/lib/Drupal/Component/PhpStorage',
-      $this->root . '/core/lib/Drupal/Component/Plugin',
-      $this->root . '/core/lib/Drupal/Component/ProxyBuilder',
-      $this->root . '/core/lib/Drupal/Component/Render',
-      $this->root . '/core/lib/Drupal/Component/Serialization',
-      $this->root . '/core/lib/Drupal/Component/Transliteration',
-      $this->root . '/core/lib/Drupal/Component/Utility',
-      $this->root . '/core/lib/Drupal/Component/Uuid',
-      $this->root . '/core/lib/Drupal/Component/Version',
-      $this->root . '/composer/Plugin/VendorHardening',
-    ];
-  }
-
-  /**
-   * Tests composer.json.
-   */
-  public function testComposerJson() {
-    foreach ($this->getPaths() as $path) {
-      $json = file_get_contents($path . '/composer.json');
-      $result = json_decode($json);
-      $this->assertNotNull($result, $this->getErrorMessages()[json_last_error()]);
-    }
-  }
+  use ComposerIntegrationTrait;
 
   /**
    * Tests composer.lock content-hash.
@@ -86,6 +23,19 @@ class ComposerIntegrationTest extends UnitTestCase {
     $content_hash = self::getContentHash(file_get_contents($this->root . '/composer.json'));
     $lock = json_decode(file_get_contents($this->root . '/composer.lock'), TRUE);
     $this->assertSame($content_hash, $lock['content-hash']);
+
+    // @see \Composer\Repository\PathRepository::initialize()
+    $core_lock_file_hash = '';
+    $options = [];
+    foreach ($lock['packages'] as $package) {
+      if ($package['name'] === 'drupal/core') {
+        $core_lock_file_hash = $package['dist']['reference'];
+        $options = $package['transport-options'] ?? [];
+        break;
+      }
+    }
+    $core_content_hash = sha1(file_get_contents($this->root . '/core/composer.json') . serialize($options));
+    $this->assertSame($core_content_hash, $core_lock_file_hash);
   }
 
   /**
@@ -109,7 +59,7 @@ class ComposerIntegrationTest extends UnitTestCase {
         if (strpos($dependency, 'symfony/') === 0) {
           continue;
         }
-        $this->assertFalse(strpos($version, '~'), "Dependency $dependency in $path contains a tilde, use a caret.");
+        $this->assertStringNotContainsString('~', $version, "Dependency $dependency in $path contains a tilde, use a caret.");
       }
     }
   }
@@ -120,17 +70,12 @@ class ComposerIntegrationTest extends UnitTestCase {
    * @return array
    */
   public function providerTestComposerJson() {
-    $root = realpath(__DIR__ . '/../../../../');
-    $tests = [[$root . '/composer.json']];
-    $directory = new \RecursiveDirectoryIterator($root . '/core');
-    $iterator = new \RecursiveIteratorIterator($directory);
-    /** @var \SplFileInfo $file */
-    foreach ($iterator as $file) {
-      if ($file->getFilename() === 'composer.json' && strpos($file->getPath(), 'core/modules/system/tests/fixtures/HtaccessTest') === FALSE) {
-        $tests[] = [$file->getRealPath()];
-      }
+    $data = [];
+    $composer_json_finder = $this->getComposerJsonFinder(realpath(__DIR__ . '/../../../../'));
+    foreach ($composer_json_finder->getIterator() as $composer_json) {
+      $data[] = [$composer_json->getPathname()];
     }
-    return $tests;
+    return $data;
   }
 
   /**
@@ -155,9 +100,18 @@ class ComposerIntegrationTest extends UnitTestCase {
     $discard = ['.', '..'];
     foreach ($folders as $file_name) {
       if ((!in_array($file_name, $discard)) && is_dir($module_path . '/' . $file_name)) {
+        // Skip any modules marked as hidden.
+        $info_yml = $module_path . '/' . $file_name . '/' . $file_name . '.info.yml';
+        if (file_exists($info_yml)) {
+          $info = Yaml::parseFile($info_yml);
+          if (!empty($info['hidden'])) {
+            continue;
+          }
+        }
         $module_names[] = $file_name;
       }
     }
+    $this->assertNotEmpty($module_names);
 
     // Assert that each core module has a corresponding 'replace' in
     // composer.json.
@@ -177,11 +131,11 @@ class ComposerIntegrationTest extends UnitTestCase {
    */
   public function providerTestExpectedScaffoldFiles() {
     return [
+      ['.editorconfig', 'assets/scaffold/files/editorconfig', '[project-root]'],
+      ['.gitattributes', 'assets/scaffold/files/gitattributes', '[project-root]'],
       ['.csslintrc', 'assets/scaffold/files/csslintrc'],
-      ['.editorconfig', 'assets/scaffold/files/editorconfig'],
       ['.eslintignore', 'assets/scaffold/files/eslintignore'],
       ['.eslintrc.json', 'assets/scaffold/files/eslintrc.json'],
-      ['.gitattributes', 'assets/scaffold/files/gitattributes'],
       ['.ht.router.php', 'assets/scaffold/files/ht.router.php'],
       ['.htaccess', 'assets/scaffold/files/htaccess'],
       ['example.gitignore', 'assets/scaffold/files/example.gitignore'],
@@ -204,7 +158,7 @@ class ComposerIntegrationTest extends UnitTestCase {
   }
 
   /**
-   * Tests core's composer.json extra composer-scaffold file-mappings section.
+   * Tests core's composer.json extra drupal-scaffold file-mappings section.
    *
    * Verify that every file listed in file-mappings exists in its destination
    * path (mapping key) and also at its source path (mapping value), and that
@@ -221,17 +175,19 @@ class ComposerIntegrationTest extends UnitTestCase {
    *   Path to scaffold file destination location
    * @param string $sourceRelPath
    *   Path to scaffold file source location
+   * @param string $expectedDestination
+   *   Named location to the destination path of the scaffold file
    *
    * @dataProvider providerTestExpectedScaffoldFiles
    */
-  public function testExpectedScaffoldFiles($destRelPath, $sourceRelPath) {
+  public function testExpectedScaffoldFiles($destRelPath, $sourceRelPath, $expectedDestination = '[web-root]') {
     // Grab the 'file-mapping' section of the core composer.json file.
     $json = json_decode(file_get_contents($this->root . '/core/composer.json'));
-    $scaffold_file_mapping = (array) $json->extra->{'composer-scaffold'}->{'file-mapping'};
+    $scaffold_file_mapping = (array) $json->extra->{'drupal-scaffold'}->{'file-mapping'};
 
     // Assert that the 'file-mapping' section has the expected entry.
-    $this->assertArrayHasKey("[web-root]/$destRelPath", $scaffold_file_mapping);
-    $this->assertEquals($sourceRelPath, $scaffold_file_mapping["[web-root]/$destRelPath"]);
+    $this->assertArrayHasKey("$expectedDestination/$destRelPath", $scaffold_file_mapping);
+    $this->assertEquals($sourceRelPath, $scaffold_file_mapping["$expectedDestination/$destRelPath"]);
 
     // Assert that the source file exists.
     $this->assertFileExists($this->root . '/core/' . $sourceRelPath);
@@ -288,5 +244,37 @@ class ComposerIntegrationTest extends UnitTestCase {
     return md5(json_encode($relevantContent));
   }
   // @codingStandardsIgnoreEnd
+
+  /**
+   * Tests the vendor cleanup utilities do not have obsolete packages listed.
+   *
+   * @dataProvider providerTestVendorCleanup
+   */
+  public function testVendorCleanup($class, $property) {
+    $lock = json_decode(file_get_contents($this->root . '/composer.lock'), TRUE);
+    $packages = [];
+    foreach (array_merge($lock['packages'], $lock['packages-dev']) as $package) {
+      $packages[] = $package['name'];
+    }
+
+    $reflection = new \ReflectionProperty($class, $property);
+    $reflection->setAccessible(TRUE);
+    $config = $reflection->getValue();
+    foreach (array_keys($config) as $package) {
+      $this->assertContains(strtolower($package), $packages);
+    }
+  }
+
+  /**
+   * Data provider for the vendor cleanup utility classes.
+   *
+   * @return array[]
+   */
+  public function providerTestVendorCleanup() {
+    return [
+      [Composer::class, 'packageToCleanup'],
+      [Config::class, 'defaultConfig'],
+    ];
+  }
 
 }

@@ -16,12 +16,17 @@ class ShortcutSetsTest extends ShortcutTestBase {
    *
    * @var string[]
    */
-  public static $modules = ['block'];
+  protected static $modules = ['block'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalPlaceBlock('local_actions_block');
@@ -55,15 +60,15 @@ class ShortcutSetsTest extends ShortcutTestBase {
     $this->drupalGet('admin/config/user-interface/shortcut/manage/' . $set->id() . '/customize');
 
     // Test for the page title.
-    $this->assertTitle(t('List links') . ' | Drupal');
+    $this->assertSession()->titleEquals('List links | Drupal');
 
     // Test for the table.
     $element = $this->xpath('//div[@class="layout-content"]//table');
-    $this->assertTrue($element, 'Shortcut entity list table found.');
+    $this->assertNotEmpty($element, 'Shortcut entity list table found.');
 
     // Test the table header.
     $elements = $this->xpath('//div[@class="layout-content"]//table/thead/tr/th');
-    $this->assertEqual(count($elements), 3, 'Correct number of table header cells found.');
+    $this->assertCount(3, $elements, 'Correct number of table header cells found.');
 
     // Test the contents of each th cell.
     $expected_items = [t('Name'), t('Weight'), t('Operations')];
@@ -78,7 +83,7 @@ class ShortcutSetsTest extends ShortcutTestBase {
       $title = $shortcut->getTitle();
 
       // Confirm that a link to the shortcut is found within the table.
-      $this->assertLink($title);
+      $this->assertSession()->linkExists($title);
 
       // Look for a test shortcut weight select form element.
       $this->assertFieldByName('shortcuts[links][' . $shortcut->id() . '][weight]');
@@ -106,7 +111,7 @@ class ShortcutSetsTest extends ShortcutTestBase {
     // Attempt to switch the default shortcut set to the newly created shortcut
     // set.
     $this->drupalPostForm('user/' . $this->adminUser->id() . '/shortcuts', ['set' => $new_set->id()], t('Change set'));
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $current_set = shortcut_current_displayed_set($this->adminUser);
     $this->assertTrue($new_set->id() == $current_set->id(), 'Successfully switched own shortcut set.');
   }
@@ -193,7 +198,7 @@ class ShortcutSetsTest extends ShortcutTestBase {
    */
   public function testShortcutSetDeleteDefault() {
     $this->drupalGet('admin/config/user-interface/shortcut/manage/default/delete');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
   }
 
   /**

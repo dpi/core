@@ -18,7 +18,7 @@ class QuickEditFileTest extends QuickEditJavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'node',
     'file',
   ];
@@ -26,7 +26,12 @@ class QuickEditFileTest extends QuickEditJavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     // Create the Article node type.

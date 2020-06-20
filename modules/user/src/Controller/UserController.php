@@ -6,6 +6,7 @@ use Drupal\Component\Utility\Crypt;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
+use Drupal\Core\Flood\FloodInterface;
 use Drupal\Core\Url;
 use Drupal\user\Form\UserPasswordResetForm;
 use Drupal\user\UserDataInterface;
@@ -50,6 +51,13 @@ class UserController extends ControllerBase {
   protected $logger;
 
   /**
+   * The flood service.
+   *
+   * @var \Drupal\Core\Flood\FloodInterface
+   */
+  protected $flood;
+
+  /**
    * Constructs a UserController object.
    *
    * @param \Drupal\Core\Datetime\DateFormatterInterface $date_formatter
@@ -60,12 +68,15 @@ class UserController extends ControllerBase {
    *   The user data service.
    * @param \Psr\Log\LoggerInterface $logger
    *   A logger instance.
+   * @param \Drupal\Core\Flood\FloodInterface $flood
+   *   The flood service.
    */
-  public function __construct(DateFormatterInterface $date_formatter, UserStorageInterface $user_storage, UserDataInterface $user_data, LoggerInterface $logger) {
+  public function __construct(DateFormatterInterface $date_formatter, UserStorageInterface $user_storage, UserDataInterface $user_data, LoggerInterface $logger, FloodInterface $flood) {
     $this->dateFormatter = $date_formatter;
     $this->userStorage = $user_storage;
     $this->userData = $user_data;
     $this->logger = $logger;
+    $this->flood = $flood;
   }
 
   /**
@@ -76,7 +87,8 @@ class UserController extends ControllerBase {
       $container->get('date.formatter'),
       $container->get('entity_type.manager')->getStorage('user'),
       $container->get('user.data'),
-      $container->get('logger.factory')->get('user')
+      $container->get('logger.factory')->get('user'),
+      $container->get('flood')
     );
   }
 
@@ -235,6 +247,8 @@ class UserController extends ControllerBase {
       // check.
       $token = Crypt::randomBytesBase64(55);
       $_SESSION['pass_reset_' . $user->id()] = $token;
+      // Clear any flood events for this user.
+      $this->flood->clear('user.password_request_user', $uid);
       return $this->redirect(
         'entity.user.edit_form',
         ['user' => $user->id()],

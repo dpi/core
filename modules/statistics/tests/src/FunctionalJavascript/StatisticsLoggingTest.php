@@ -17,7 +17,12 @@ class StatisticsLoggingTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['node', 'statistics', 'language'];
+  protected static $modules = ['node', 'statistics', 'language'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * Node for tests.
@@ -29,7 +34,7 @@ class StatisticsLoggingTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->config('statistics.settings')

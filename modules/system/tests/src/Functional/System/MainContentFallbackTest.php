@@ -16,12 +16,17 @@ class MainContentFallbackTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['block', 'system_test'];
+  protected static $modules = ['block', 'system_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   protected $adminUser;
   protected $webUser;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create and log in admin user.

@@ -27,7 +27,12 @@ class AccessTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = ['node'];
+  protected static $modules = ['node'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Web user for testing.
@@ -43,7 +48,7 @@ class AccessTest extends ViewTestBase {
    */
   protected $normalUser;
 
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->enableViewsTestModule();
@@ -87,7 +92,7 @@ class AccessTest extends ViewTestBase {
 
     $this->assertFalse($access_plugin->access($this->normalUser));
     $this->drupalGet('test_access_static');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
 
     $display = &$view->storage->getDisplay('default');
     $display['display_options']['access']['options']['access'] = TRUE;
@@ -100,7 +105,7 @@ class AccessTest extends ViewTestBase {
     $this->assertTrue($access_plugin->access($this->normalUser));
 
     $this->drupalGet('test_access_static');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
   }
 
 }

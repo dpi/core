@@ -15,6 +15,11 @@ class InstallerExistingSettingsNoProfileTest extends InstallerTestBase {
 
   /**
    * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
    *
    * Configures a preexisting settings.php file without an install_profile
    * setting before invoking the interactive installer.
@@ -60,7 +65,7 @@ class InstallerExistingSettingsNoProfileTest extends InstallerTestBase {
    */
   public function testInstaller() {
     $this->assertUrl('user/1');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertEqual('testing', \Drupal::installProfile());
   }
 

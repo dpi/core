@@ -18,7 +18,7 @@ class LayoutBuilderTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'views',
     'layout_builder',
     'layout_builder_views_test',
@@ -32,7 +32,12 @@ class LayoutBuilderTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalPlaceBlock('local_tasks_block');

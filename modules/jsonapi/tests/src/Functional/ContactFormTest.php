@@ -15,7 +15,7 @@ class ContactFormTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['contact'];
+  protected static $modules = ['contact'];
 
   /**
    * {@inheritdoc}
@@ -33,6 +33,11 @@ class ContactFormTest extends ResourceTestBase {
    * @var \Drupal\contact\ContactFormInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

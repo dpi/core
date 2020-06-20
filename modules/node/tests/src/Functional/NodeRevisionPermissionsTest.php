@@ -14,6 +14,11 @@ class NodeRevisionPermissionsTest extends NodeTestBase {
   use GeneratePermutationsTrait;
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * The node revisions.
    *
    * @var array
@@ -41,7 +46,7 @@ class NodeRevisionPermissionsTest extends NodeTestBase {
     'delete' => 'delete page revisions',
   ];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $types = ['page', 'article'];

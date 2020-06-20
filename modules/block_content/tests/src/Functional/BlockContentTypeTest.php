@@ -2,7 +2,6 @@
 
 namespace Drupal\Tests\block_content\Functional;
 
-use Drupal\Component\Render\FormattableMarkup;
 use Drupal\block_content\Entity\BlockContentType;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Url;
@@ -21,7 +20,12 @@ class BlockContentTypeTest extends BlockContentTestBase {
    *
    * @var array
    */
-  public static $modules = ['field_ui'];
+  protected static $modules = ['field_ui'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * Permissions to grant admin user.
@@ -40,7 +44,7 @@ class BlockContentTypeTest extends BlockContentTestBase {
    */
   protected $autoCreateBasicBlockType = FALSE;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalPlaceBlock('page_title_block');
@@ -55,7 +59,7 @@ class BlockContentTypeTest extends BlockContentTestBase {
 
     // Test the page with no block-types.
     $this->drupalGet('block/add');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertText('You have not created any block types yet');
     $this->clickLink('block type creation page');
 
@@ -66,7 +70,7 @@ class BlockContentTypeTest extends BlockContentTestBase {
     ];
     $this->drupalPostForm(NULL, $edit, t('Save'));
     $block_type = BlockContentType::load('foo');
-    $this->assertTrue($block_type, 'The new block type has been created.');
+    $this->assertInstanceOf(BlockContentType::class, $block_type);
 
     $field_definitions = \Drupal::service('entity_field.manager')->getFieldDefinitions('block_content', 'foo');
     $this->assertTrue(isset($field_definitions['body']), 'Body field created when using the UI to create block content types.');
@@ -85,10 +89,10 @@ class BlockContentTypeTest extends BlockContentTestBase {
     $this->assertFalse(isset($field_definitions['body']), "Body field for 'other' block type not created when using the testing API to create block content types.");
 
     $block_type = BlockContentType::load('other');
-    $this->assertTrue($block_type, 'The new block type has been created.');
+    $this->assertInstanceOf(BlockContentType::class, $block_type);
 
     $this->drupalGet('block/add/' . $block_type->id());
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
   }
 
   /**
@@ -116,7 +120,7 @@ class BlockContentTypeTest extends BlockContentTestBase {
       'label' => 'Bar',
     ];
     $this->drupalGet('admin/structure/block/block-content/manage/basic');
-    $this->assertTitle(new FormattableMarkup('Edit @type custom block type | Drupal', ['@type' => 'basic']));
+    $this->assertSession()->titleEquals('Edit basic custom block type | Drupal');
     $this->drupalPostForm(NULL, $edit, t('Save'));
     $front_page_path = Url::fromRoute('<front>')->toString();
     $this->assertBreadcrumb('admin/structure/block/block-content/manage/basic/fields', [
@@ -183,8 +187,8 @@ class BlockContentTypeTest extends BlockContentTestBase {
 
     $this->drupalLogin($this->adminUser);
     // Create two block types programmatically.
-    $type = $this->createBlockContentType('foo');
-    $type = $this->createBlockContentType('bar');
+    $this->createBlockContentType('foo');
+    $this->createBlockContentType('bar');
 
     // Get the custom block storage.
     $storage = $this->container
@@ -197,6 +201,7 @@ class BlockContentTypeTest extends BlockContentTestBase {
     foreach (['bartik', 'seven', 'stark'] as $default_theme) {
       // Change the default theme.
       $theme_settings->set('default', $default_theme)->save();
+      $this->drupalPlaceBlock('local_actions_block');
       \Drupal::service('router.builder')->rebuild();
 
       // For each installed theme, go to its block page and test the redirects.

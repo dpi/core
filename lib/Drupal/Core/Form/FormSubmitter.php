@@ -60,7 +60,9 @@ class FormSubmitter implements FormSubmitterInterface {
 
       $batch['progressive'] = !$form_state->isProgrammed();
       $response = batch_process();
-      if ($batch['progressive']) {
+      // If the batch has been completed and _batch_finished() called then
+      // $batch will be NULL.
+      if ($batch && $batch['progressive']) {
         return $response;
       }
 
@@ -141,15 +143,6 @@ class FormSubmitter implements FormSubmitterInterface {
       // @see http://tools.ietf.org/html/rfc7231#section-6.4.4
       return new RedirectResponse($url, Response::HTTP_SEE_OTHER);
     }
-  }
-
-  /**
-   * Wraps drupal_installation_attempted().
-   *
-   * @return bool
-   */
-  protected function drupalInstallationAttempted() {
-    return drupal_installation_attempted();
   }
 
   /**

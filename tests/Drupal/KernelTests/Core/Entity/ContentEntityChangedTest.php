@@ -18,7 +18,15 @@ class ContentEntityChangedTest extends EntityKernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['language', 'user', 'system', 'field', 'text', 'filter', 'entity_test'];
+  protected static $modules = [
+    'language',
+    'user',
+    'system',
+    'field',
+    'text',
+    'filter',
+    'entity_test',
+  ];
 
   /**
    * The EntityTestMulChanged entity type storage.
@@ -37,7 +45,7 @@ class ContentEntityChangedTest extends EntityKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Enable an additional language.
@@ -203,7 +211,7 @@ class ContentEntityChangedTest extends EntityKernelTestBase {
     $query = $this->mulChangedStorage->getQuery();
     $ids = $query->condition('changed', $changed_de, '=', 'en')->execute();
 
-    $this->assertFalse(
+    $this->assertEmpty(
       $ids,
       'There\'s no original entity stored having the changed time of the German translation.'
     );
@@ -219,7 +227,7 @@ class ContentEntityChangedTest extends EntityKernelTestBase {
     $query = $this->mulChangedStorage->getQuery();
     $ids = $query->condition('changed', $changed_de)->condition('default_langcode', '1')->execute();
 
-    $this->assertFalse(
+    $this->assertEmpty(
       $ids,
       'There\'s no entity stored using the default language having the changed time of the German translation.'
     );
@@ -243,7 +251,7 @@ class ContentEntityChangedTest extends EntityKernelTestBase {
     $query = $this->mulChangedStorage->getQuery();
     $ids = $query->condition('changed', $changed_en, '=', 'de')->execute();
 
-    $this->assertFalse(
+    $this->assertEmpty(
       $ids,
       'There\'s no German translation stored having the changed time of the original language.'
     );
@@ -275,7 +283,7 @@ class ContentEntityChangedTest extends EntityKernelTestBase {
     $query = $this->mulChangedStorage->getQuery();
     $ids = $query->condition('changed', $changed_en, '>')->execute();
 
-    $this->assertFalse(
+    $this->assertEmpty(
       $ids,
       'Entity query can access changed time regardless of translation.'
     );

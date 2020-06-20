@@ -16,9 +16,14 @@ class ShutdownFunctionsTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['system_test'];
+  protected static $modules = ['system_test'];
 
-  protected function tearDown() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function tearDown(): void {
     // This test intentionally throws an exception in a PHP shutdown function.
     // Prevent it from being interpreted as an actual test failure.
     // Not using File API; a potential error must trigger a PHP warning.

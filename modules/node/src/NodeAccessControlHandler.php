@@ -3,6 +3,7 @@
 namespace Drupal\node;
 
 use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
 use Drupal\Core\Entity\EntityHandlerInterface;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
@@ -71,7 +72,7 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
     parent::__construct($entity_type);
     $this->grantStorage = $grant_storage;
     if (!isset($nodeStorage)) {
-      @trigger_error('The $nodeStorage parameter was added in Drupal 8.8.0 and will be required in 9.0.0.', E_USER_DEPRECATED);
+      @trigger_error('The $nodeStorage parameter is deprecated in Drupal 9.1.0 and will be required in 10.0.0.', E_USER_DEPRECATED);
       $nodeStorage = \Drupal::entityTypeManager()->getStorage('node');
     }
     $this->nodeStorage = $nodeStorage;
@@ -151,13 +152,13 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
       $bundle = $node->bundle();
       // If user doesn't have any of these then quit.
       if (!$account->hasPermission("$revisionPermissionOperation all revisions") && !$account->hasPermission("$revisionPermissionOperation $bundle revisions") && !$account->hasPermission('administer nodes')) {
-        return AccessResult::neutral();
+        return AccessResult::neutral()->cachePerPermissions();
       }
 
       // If the revisions checkbox is selected for the content type, display the
       // revisions tab.
       if ($operation === 'view all revisions' && $node->type->entity->shouldCreateNewRevision()) {
-        return AccessResult::allowed();
+        return AccessResult::allowed()->addCacheableDependency($node->type->entity);
       }
 
       // There should be at least two revisions. If the vid of the given node
@@ -166,10 +167,10 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
       // check. Also, if you try to revert to or delete the default revision,
       // that's not good.
       if ($node->isDefaultRevision() && ($this->nodeStorage->countDefaultLanguageRevisions($node) == 1 || $entityOperation === 'update' || $entityOperation === 'delete')) {
-        return AccessResult::neutral();
+        return AccessResult::neutral()->addCacheableDependency($node);
       }
       elseif ($account->hasPermission('administer nodes')) {
-        return AccessResult::allowed();
+        return AccessResult::allowed()->cachePerPermissions();
       }
       else {
         // First check the access to the default revision and finally, if the
@@ -183,7 +184,16 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
     }
 
     // Evaluate node grants.
-    return $this->grantStorage->access($node, $operation, $account);
+    $access_result = $this->grantStorage->access($node, $operation, $account);
+    if ($operation === 'view' && $access_result instanceof RefinableCacheableDependencyInterface) {
+      // Node variations can affect the access to the node. For instance, the
+      // access result cache varies on the node's published status. Only the
+      // 'view' node grant can currently be cached. The 'update' and 'delete'
+      // grants are already marked as uncacheable in the node grant storage.
+      // @see \Drupal\node\NodeGrantDatabaseStorage::access()
+      $access_result->addCacheableDependency($node);
+    }
+    return $access_result;
   }
 
   /**
@@ -233,14 +243,6 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
       $grants[] = ['realm' => 'all', 'gid' => 0, 'grant_view' => 1, 'grant_update' => 0, 'grant_delete' => 0];
     }
     return $grants;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function writeGrants(NodeInterface $node, $delete = TRUE) {
-    $grants = $this->acquireGrants($node);
-    $this->grantStorage->write($node, $grants, NULL, $delete);
   }
 
   /**

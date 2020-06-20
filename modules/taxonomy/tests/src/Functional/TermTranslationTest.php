@@ -36,12 +36,17 @@ class TermTranslationTest extends TaxonomyTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['taxonomy', 'language', 'content_translation'];
+  protected static $modules = ['taxonomy', 'language', 'content_translation'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $this->setupLanguages();
     $this->vocabulary = $this->createVocabulary();

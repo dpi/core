@@ -21,9 +21,18 @@ class NodeCreationTest extends NodeTestBase {
    *
    * @var array
    */
-  public static $modules = ['node_test_exception', 'dblog', 'test_page_test'];
+  protected static $modules = [
+    'node_test_exception',
+    'dblog',
+    'test_page_test',
+  ];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     $web_user = $this->drupalCreateUser(['create page content', 'edit own page content']);
@@ -39,7 +48,7 @@ class NodeCreationTest extends NodeTestBase {
     // Test /node/add page with only one content type.
     $node_type_storage->load('article')->delete();
     $this->drupalGet('node/add');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertUrl('node/add/page');
     // Create a node.
     $edit = [];
@@ -56,7 +65,7 @@ class NodeCreationTest extends NodeTestBase {
 
     // Check that the node exists in the database.
     $node = $this->drupalGetNodeByTitle($edit['title[0][value]']);
-    $this->assertTrue($node, 'Node found in database.');
+    $this->assertNotEmpty($node, 'Node found in database.');
 
     // Verify that pages do not show submitted information by default.
     $this->drupalGet('node/' . $node->id());
@@ -103,20 +112,9 @@ class NodeCreationTest extends NodeTestBase {
       $this->pass('Expected exception has been thrown.');
     }
 
-    if (Database::getConnection()->supportsTransactions()) {
-      // Check that the node does not exist in the database.
-      $node = $this->drupalGetNodeByTitle($edit['title']);
-      $this->assertFalse($node, 'Transactions supported, and node not found in database.');
-    }
-    else {
-      // Check that the node exists in the database.
-      $node = $this->drupalGetNodeByTitle($edit['title']);
-      $this->assertTrue($node, 'Transactions not supported, and node found in database.');
-
-      // Check that the failed rollback was logged.
-      $records = static::getWatchdogIdsForFailedExplicitRollback();
-      $this->assertTrue(count($records) > 0, 'Transactions not supported, and rollback error logged to watchdog.');
-    }
+    // Check that the node does not exist in the database.
+    $node = $this->drupalGetNodeByTitle($edit['title']);
+    $this->assertFalse($node);
 
     // Check that the rollback error was logged.
     $records = static::getWatchdogIdsForTestExceptionRollback();
@@ -228,7 +226,7 @@ class NodeCreationTest extends NodeTestBase {
     $this->drupalGet('node/add/page');
 
     $result = $this->xpath('//input[@id="edit-uid-0-value" and contains(@data-autocomplete-path, "user/autocomplete")]');
-    $this->assertEqual(count($result), 0, 'No autocompletion without access user profiles.');
+    $this->assertCount(0, $result, 'No autocompletion without access user profiles.');
 
     $admin_user = $this->drupalCreateUser(['administer nodes', 'create page content', 'access user profiles']);
     $this->drupalLogin($admin_user);
@@ -236,7 +234,7 @@ class NodeCreationTest extends NodeTestBase {
     $this->drupalGet('node/add/page');
 
     $result = $this->xpath('//input[@id="edit-uid-0-target-id" and contains(@data-autocomplete-path, "/entity_reference_autocomplete/user/default")]');
-    $this->assertEqual(count($result), 1, 'Ensure that the user does have access to the autocompletion');
+    $this->assertCount(1, $result, 'Ensure that the user does have access to the autocompletion');
   }
 
   /**
@@ -244,7 +242,7 @@ class NodeCreationTest extends NodeTestBase {
    */
   public function testNodeAddWithoutContentTypes() {
     $this->drupalGet('node/add');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertNoLinkByHref('/admin/structure/types/add');
 
     // Test /node/add page without content types.
@@ -253,7 +251,7 @@ class NodeCreationTest extends NodeTestBase {
     }
 
     $this->drupalGet('node/add');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
 
     $admin_content_types = $this->drupalCreateUser(['administer content types']);
     $this->drupalLogin($admin_content_types);
@@ -282,17 +280,6 @@ class NodeCreationTest extends NodeTestBase {
       }
     }
     return $matches;
-  }
-
-  /**
-   * Gets the log records with the explicit rollback failed exception message.
-   *
-   * @return \Drupal\Core\Database\StatementInterface
-   *   A prepared statement object (already executed), which contains the log
-   *   records with the explicit rollback failed exception message.
-   */
-  protected static function getWatchdogIdsForFailedExplicitRollback() {
-    return Database::getConnection()->query("SELECT wid FROM {watchdog} WHERE message LIKE 'Explicit rollback failed%'")->fetchAll();
   }
 
 }

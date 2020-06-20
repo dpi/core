@@ -109,20 +109,6 @@ interface FieldStorageDefinitionInterface extends CacheableDependencyInterface {
   public function isRevisionable();
 
   /**
-   * Determines whether the field is queryable via QueryInterface.
-   *
-   * @return bool
-   *   TRUE if the field is queryable.
-   *
-   * @deprecated in Drupal 8.4.0 and will be removed before Drupal 9.0.0. Use
-   *   \Drupal\Core\Field\FieldStorageDefinitionInterface::hasCustomStorage()
-   *   instead.
-   *
-   * @see https://www.drupal.org/node/2856563
-   */
-  public function isQueryable();
-
-  /**
    * Returns the human-readable label for the field.
    *
    * @return string

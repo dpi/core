@@ -22,6 +22,11 @@ use GuzzleHttp\RequestOptions;
 class ExternalNormalizersTest extends BrowserTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * The original value for the test field.
    *
    * @var string
@@ -54,7 +59,7 @@ class ExternalNormalizersTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  public function setUp(): void {
     parent::setUp();
 
     // This test is not about access control at all, so allow anonymous users to

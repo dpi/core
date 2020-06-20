@@ -314,18 +314,19 @@ EOF;
     $test_profile_info = <<<EOF
 name: Testing
 type: profile
-core: 8.x
+core_version_requirement: '*'
 EOF;
 
     $test_module_info = <<<EOF
 name: Testing
 type: module
-core: 8.x
+core_version_requirement: '*'
 EOF;
 
     vfsStream::create([
       'modules' => [
         'test_module' => [
+          'test_module.info.yml' => $test_module_info,
           'tests' => [
             'src' => [
               'Functional' => [
@@ -486,12 +487,12 @@ EOF;
 
     $container = new Container();
     $container->set('kernel', new DrupalKernel('prod', new ClassLoader()));
-    $container->set('site.path', 'sites/default');
+    $container->setParameter('site.path', 'sites/default');
     \Drupal::setContainer($container);
 
     $test_discovery = new TestDiscovery('vfs://drupal', $class_loader->reveal(), $module_handler->reveal());
 
-    $result = $test_discovery->getTestClasses(NULL, ['PHPUnit-Kernel']);
+    $result = $test_discovery->getTestClasses('test_profile_module', ['PHPUnit-Kernel']);
     $expected = [
       'example3' => [
         'Drupal\Tests\test_profile_module\Kernel\KernelExampleTest4' => [
@@ -528,6 +529,7 @@ EOF;
     $data['core-kerneltest'] = ['\Drupal\KernelTests\KernelTestBaseTest', 'Kernel'];
     $data['core-functionaltest'] = ['\Drupal\FunctionalTests\ExampleTest', 'Functional'];
     $data['core-functionaljavascripttest'] = ['\Drupal\FunctionalJavascriptTests\ExampleTest', 'FunctionalJavascript'];
+    $data['core-buildtest'] = ['\Drupal\BuildTests\Framework\Tests\BuildTestTest', 'Build'];
 
     return $data;
   }

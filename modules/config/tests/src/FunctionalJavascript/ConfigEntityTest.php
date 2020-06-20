@@ -14,7 +14,12 @@ class ConfigEntityTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['config_test'];
+  protected static $modules = ['config_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests ajax operations through the UI on 'Add' page.

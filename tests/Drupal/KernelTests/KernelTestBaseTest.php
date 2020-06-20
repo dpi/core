@@ -285,7 +285,7 @@ class KernelTestBaseTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function tearDown() {
+  protected function tearDown(): void {
     parent::tearDown();
 
     // Check that all tables of the test instance have been deleted. At this
@@ -316,6 +316,16 @@ class KernelTestBaseTest extends KernelTestBase {
       'core/profiles/demo_umami/modules/demo_umami_content/demo_umami_content.info.yml',
       \Drupal::service('extension.list.module')->getPathname('demo_umami_content')
     );
+  }
+
+  /**
+   * Tests the deprecation of AssertLegacyTrait::assertIdenticalObject.
+   *
+   * @group legacy
+   * @expectedDeprecation AssertLegacyTrait::assertIdenticalObject() is deprecated in drupal:8.0.0 and is removed from drupal:10.0.0. Use $this->assertEquals() instead. See https://www.drupal.org/node/3129738
+    */
+  public function testAssertIdenticalObject() {
+    $this->assertIdenticalObject((object) ['foo' => 'bar'], (object) ['foo' => 'bar']);
   }
 
 }

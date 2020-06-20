@@ -72,18 +72,17 @@ services:
     class: Drupal\jsonapi\Normalizer\LinkCollectionNormalizer
     tags:
       - { name: jsonapi_normalizer }
-  serializer.normalizer.entity_reference_field.jsonapi:
-    class: Drupal\jsonapi\Normalizer\EntityReferenceFieldNormalizer
+  serializer.normalizer.relationship.jsonapi:
+    class: Drupal\jsonapi\Normalizer\RelationshipNormalizer
     tags:
-      # This must have a higher priority than the 'serializer.normalizer.field.jsonapi' to take effect.
-      - { name: jsonapi_normalizer, priority: 1 }
+      - { name: jsonapi_normalizer }
   serializer.encoder.jsonapi:
     class: Drupal\jsonapi\Encoder\JsonEncoder
     tags:
       - { name: jsonapi_encoder, format: 'api_json' }
   jsonapi.resource_type.repository:
     class: Drupal\jsonapi\ResourceType\ResourceTypeRepository
-    arguments: ['@entity_type.manager', '@entity_type.bundle.info', '@entity_field.manager', '@cache.jsonapi_resource_types']
+    arguments: ['@entity_type.manager', '@entity_type.bundle.info', '@entity_field.manager', '@cache.jsonapi_resource_types', '@event_dispatcher']
   jsonapi.route_enhancer:
     class: Drupal\jsonapi\Routing\RouteEnhancer
     tags:
@@ -139,7 +138,7 @@ services:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [jsonapi_normalizations]
 
   # Route filter.
@@ -208,7 +207,7 @@ services:
       - { name: event_subscriber }
   jsonapi.resource_response_validator.subscriber:
     class: Drupal\jsonapi\EventSubscriber\ResourceResponseValidator
-    arguments: ['@jsonapi.serializer', '@logger.channel.jsonapi', '@module_handler', '@app.root']
+    arguments: ['@logger.channel.jsonapi', '@module_handler', '%app.root%']
     calls:
       - [setValidator, []]
     tags:
@@ -241,11 +240,6 @@ services:
       - '@jsonapi.version_negotiator'
     tags:
       - { name: route_enhancer }
-
-  # Deprecated services.
-  serializer.normalizer.htt_exception.jsonapi:
-    alias: serializer.normalizer.http_exception.jsonapi
-    deprecated: The "%service_id%" service is deprecated. You should use the 'serializer.normalizer.http_exception.jsonapi' service instead.
 
   # @todo Remove once https://www.drupal.org/project/drupal/issues/2940383 lands.
   jsonapi.file.uploader.field:

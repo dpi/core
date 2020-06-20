@@ -21,6 +21,11 @@ class FilterFormTest extends BrowserTestBase {
   protected static $modules = ['filter', 'filter_test'];
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * An administrative user account that can administer text formats.
    *
    * @var \Drupal\user\Entity\User
@@ -37,7 +42,7 @@ class FilterFormTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     /** @var \Drupal\filter\FilterFormatInterface $filter_test_format */

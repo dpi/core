@@ -16,7 +16,12 @@ class TokenizeAreaUITest extends UITestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['entity_test'];
+  protected static $modules = ['entity_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Test that the right tokens are shown as available for replacement.

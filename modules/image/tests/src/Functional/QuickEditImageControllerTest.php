@@ -22,7 +22,12 @@ class QuickEditImageControllerTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['node', 'image', 'quickedit'];
+  protected static $modules = ['node', 'image', 'quickedit'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * The machine name of our image field.
@@ -41,7 +46,7 @@ class QuickEditImageControllerTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create the Article node type.
@@ -81,12 +86,12 @@ class QuickEditImageControllerTest extends BrowserTestBase {
       'title' => t('Test Node'),
     ]);
     $this->drupalGet('quickedit/image/info/node/' . $node->id() . '/' . $this->fieldName . '/' . $node->language()->getId() . '/default');
-    $this->assertResponse('403');
+    $this->assertSession()->statusCodeEquals(403);
 
     /** @var \Symfony\Component\BrowserKit\Client $client */
     $client = $this->getSession()->getDriver()->getClient();
     $client->request('POST', '/quickedit/image/upload/node/' . $node->id() . '/' . $this->fieldName . '/' . $node->language()->getId() . '/default');
-    $this->assertEquals('403', $client->getResponse()->getStatus());
+    $this->assertEquals('403', $client->getResponse()->getStatusCode());
   }
 
   /**
@@ -126,11 +131,11 @@ class QuickEditImageControllerTest extends BrowserTestBase {
         break;
       }
     }
-    $this->assertTrue($valid_image);
+    $this->assertNotFalse($valid_image);
 
     $this->drupalLogin($this->contentAuthorUser);
     $this->uploadImage($valid_image, $node->id(), $this->fieldName, $node->language()->getId());
-    $this->assertContains('"fid":"1"', $this->getSession()->getPage()->getContent(), 'Valid upload completed successfully.');
+    $this->assertStringContainsString('"fid":"1"', $this->getSession()->getPage()->getContent(), 'Valid upload completed successfully.');
   }
 
   /**
@@ -155,11 +160,11 @@ class QuickEditImageControllerTest extends BrowserTestBase {
         break;
       }
     }
-    $this->assertTrue($invalid_image);
+    $this->assertNotFalse($invalid_image);
 
     $this->drupalLogin($this->contentAuthorUser);
     $this->uploadImage($invalid_image, $node->id(), $this->fieldName, $node->language()->getId());
-    $this->assertContains('"main_error":"The image failed validation."', $this->getSession()->getPage()->getContent(), 'Invalid upload returned errors.');
+    $this->assertStringContainsString('"main_error":"The image failed validation."', $this->getSession()->getPage()->getContent(), 'Invalid upload returned errors.');
   }
 
   /**

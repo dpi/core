@@ -23,7 +23,12 @@ class LayoutBuilderSectionStorageTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $this->createContentType(['type' => 'bundle_with_section_field']);

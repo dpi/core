@@ -12,6 +12,11 @@ use Drupal\Component\Render\FormattableMarkup;
 class UpdateFeedTest extends AggregatorTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Creates a feed and attempts to update it.
    */
   public function testUpdateFeed() {
@@ -39,7 +44,7 @@ class UpdateFeedTest extends AggregatorTestBase {
 
       // Check feed source.
       $this->drupalGet('aggregator/sources/' . $feed->id());
-      $this->assertResponse(200, 'Feed source exists.');
+      $this->assertSession()->statusCodeEquals(200);
       $this->assertText($edit['title[0][value]'], 'Page title');
 
       // Set correct title so deleteFeed() will work.

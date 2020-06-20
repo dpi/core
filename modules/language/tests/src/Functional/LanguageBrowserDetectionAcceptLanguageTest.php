@@ -17,12 +17,22 @@ class LanguageBrowserDetectionAcceptLanguageTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['language', 'locale', 'content_translation', 'system_test'];
+  protected static $modules = [
+    'language',
+    'locale',
+    'content_translation',
+    'system_test',
+  ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     // User to manage languages.
     $admin = $this->drupalCreateUser([], NULL, TRUE);
@@ -74,32 +84,32 @@ class LanguageBrowserDetectionAcceptLanguageTest extends BrowserTestBase {
 
     $this->drupalGet('/system-test/echo/language test', [], ['Accept-Language' => 'en']);
     $this->assertSession()->responseHeaderEquals('Content-Language', 'en');
-    $this->assertFalse($this->drupalGetHeader('X-Drupal-Cache'));
+    $this->assertNull($this->drupalGetHeader('X-Drupal-Cache'));
 
     // Check with UK browser.
     $this->drupalGet('/system-test/echo/language test', [], ['Accept-Language' => 'en-UK,en']);
     $this->assertSession()->responseHeaderEquals('Content-Language', 'en');
-    $this->assertFalse($this->drupalGetHeader('X-Drupal-Cache'));
+    $this->assertNull($this->drupalGetHeader('X-Drupal-Cache'));
 
     // Check with french browser.
     $this->drupalGet('/system-test/echo/language test', [], ['Accept-Language' => 'fr-FR,fr']);
     $this->assertSession()->responseHeaderEquals('Content-Language', 'fr');
-    $this->assertFalse($this->drupalGetHeader('X-Drupal-Cache'));
+    $this->assertNull($this->drupalGetHeader('X-Drupal-Cache'));
 
     // Check with browser without language settings - should return fallback language.
     $this->drupalGet('/system-test/echo/language test', [], ['Accept-Language' => NULL]);
     $this->assertSession()->responseHeaderEquals('Content-Language', 'en');
-    $this->assertFalse($this->drupalGetHeader('X-Drupal-Cache'));
+    $this->assertNull($this->drupalGetHeader('X-Drupal-Cache'));
 
     // Check with french browser again.
     $this->drupalGet('/system-test/echo/language test', [], ['Accept-Language' => 'fr-FR,fr']);
     $this->assertSession()->responseHeaderEquals('Content-Language', 'fr');
-    $this->assertFalse($this->drupalGetHeader('X-Drupal-Cache'));
+    $this->assertNull($this->drupalGetHeader('X-Drupal-Cache'));
 
     // Check with UK browser.
     $this->drupalGet('/system-test/echo/language test', [], ['Accept-Language' => 'en-UK,en']);
     $this->assertSession()->responseHeaderEquals('Content-Language', 'en');
-    $this->assertFalse($this->drupalGetHeader('X-Drupal-Cache'));
+    $this->assertNull($this->drupalGetHeader('X-Drupal-Cache'));
 
     // Check if prefixed URLs are still cached.
     $this->drupalGet('/en/system-test/echo/language test', [], ['Accept-Language' => 'en']);

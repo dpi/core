@@ -28,6 +28,11 @@ class EntityTestDateonlyTest extends EntityTestResourceTestBase {
   protected static $dateString = '2017-03-01';
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Datetime test field name.
    *
    * @var string
@@ -37,12 +42,12 @@ class EntityTestDateonlyTest extends EntityTestResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['datetime', 'entity_test'];
+  protected static $modules = ['datetime', 'entity_test'];
 
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  public function setUp(): void {
     parent::setUp();
 
     // Add datetime field.

@@ -15,12 +15,22 @@ class FieldLayoutTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['field_layout', 'field_ui', 'field_layout_test', 'layout_test'];
+  protected static $modules = [
+    'field_layout',
+    'field_ui',
+    'field_layout_test',
+    'layout_test',
+  ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $entity = EntityTest::create([

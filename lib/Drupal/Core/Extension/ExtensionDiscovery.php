@@ -103,7 +103,7 @@ class ExtensionDiscovery {
    * @param string $site_path
    *   The path to the site.
    */
-  public function __construct($root, $use_file_cache = TRUE, $profile_directories = NULL, $site_path = NULL) {
+  public function __construct(string $root, $use_file_cache = TRUE, array $profile_directories = NULL, string $site_path = NULL) {
     $this->root = $root;
     $this->fileCache = $use_file_cache ? FileCacheFactory::get('extension_discovery') : NULL;
     $this->profileDirectories = $profile_directories;
@@ -184,7 +184,7 @@ class ExtensionDiscovery {
     // at install time. Therefore Kernel service is not always available, but is
     // preferred.
     if (\Drupal::hasService('kernel')) {
-      $searchdirs[static::ORIGIN_SITE] = \Drupal::service('site.path');
+      $searchdirs[static::ORIGIN_SITE] = \Drupal::getContainer()->getParameter('site.path');
     }
     else {
       $searchdirs[static::ORIGIN_SITE] = $this->sitePath ?: DrupalKernel::findSitePath(Request::createFromGlobals());
@@ -228,19 +228,7 @@ class ExtensionDiscovery {
    */
   public function setProfileDirectoriesFromSettings() {
     $this->profileDirectories = [];
-    $profile = \Drupal::installProfile();
-    // For SimpleTest to be able to test modules packaged together with a
-    // distribution we need to include the profile of the parent site (in
-    // which test runs are triggered).
-    if (drupal_valid_test_ua() && !drupal_installation_attempted()) {
-      $testing_profile = \Drupal::config('simpletest.settings')->get('parent_profile');
-      if ($testing_profile && $testing_profile != $profile) {
-        $this->profileDirectories[] = drupal_get_path('profile', $testing_profile);
-      }
-    }
-    // In case both profile directories contain the same extension, the actual
-    // profile always has precedence.
-    if ($profile) {
+    if ($profile = \Drupal::installProfile()) {
       $this->profileDirectories[] = drupal_get_path('profile', $profile);
     }
     return $this;

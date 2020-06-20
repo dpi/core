@@ -23,6 +23,11 @@ class EditorSecurityTest extends BrowserTestBase {
   protected static $sampleContent = '<p style="color: red">Hello, Dumbo Octopus!</p><script>alert(0)</script><embed type="image/svg+xml" src="image.svg" />';
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * The secured sample content to use in most tests.
    *
    * @var string
@@ -41,7 +46,7 @@ class EditorSecurityTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['filter', 'editor', 'editor_test', 'node'];
+  protected static $modules = ['filter', 'editor', 'editor_test', 'node'];
 
   /**
    * User with access to Restricted HTML text format without text editor.
@@ -72,7 +77,7 @@ class EditorSecurityTest extends BrowserTestBase {
    */
   protected $privilegedUser;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create 5 text formats, to cover all potential use cases:

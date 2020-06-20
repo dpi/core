@@ -136,14 +136,11 @@ abstract class ResourceTestBase extends BrowserTestBase {
   protected static $secondCreatedEntityId = 3;
 
   /**
-   * Optionally specify which field is the 'label' field.
-   *
-   * Some entities specify a 'label_callback', but not a 'label' entity key.
-   * For example: User.
+   * Specify which field is the 'label' field for testing a POST edge case.
    *
    * @var string|null
    *
-   * @see ::getInvalidNormalizedEntityToCreate()
+   * @see ::testPostIndividual()
    */
   protected static $labelFieldName = NULL;
 
@@ -380,7 +377,7 @@ abstract class ResourceTestBase extends BrowserTestBase {
     // Don't use cached normalizations in tests.
     $this->container->get('cache.jsonapi_normalizations')->deleteAll();
 
-    $self_link = new Link(new CacheableMetadata(), $url, ['self']);
+    $self_link = new Link(new CacheableMetadata(), $url, 'self');
     $resource_type = $this->container->get('jsonapi.resource_type.repository')->getByTypeName(static::$resourceTypeName);
     $doc = new JsonApiDocumentTopLevel(new ResourceObjectData([ResourceObject::createFromEntity($resource_type, $entity)], 1), new NullIncludedData(), new LinkCollection(['self' => $self_link]));
     return $this->serializer->normalize($doc, 'api_json', [
@@ -704,7 +701,7 @@ abstract class ResourceTestBase extends BrowserTestBase {
       // sets it to 'text/html' by default. We also cannot detect the presence
       // of Apache either here in the CLI. For now having this documented here
       // is all we can do.
-      /* $this->assertSame(FALSE, $response->hasHeader('Content-Type')); */
+      /* $this->assertFalse($response->hasHeader('Content-Type')); */
       $this->assertSame('', (string) $response->getBody());
     }
     else {
@@ -1121,7 +1118,7 @@ abstract class ResourceTestBase extends BrowserTestBase {
           'related_author_id' => [
             'operator' => '<>',
             'path' => 'field_jsonapi_test_entity_ref.status',
-            'value' => 'doesnt@matter.com',
+            'value' => 'does_not@matter.com',
           ],
         ],
       ]);
@@ -1496,11 +1493,11 @@ abstract class ResourceTestBase extends BrowserTestBase {
         // Test POST: invalid target.
         $request_options[RequestOptions::BODY] = Json::encode(['data' => [$resource_identifier]]);
         $response = $this->request('POST', $url, $request_options);
-        $this->assertResourceErrorResponse(400, sprintf('The provided type (%s) does not mach the destination resource types (%s).', $resource_identifier['type'], $target_identifier['type']), $url, $response, FALSE);
+        $this->assertResourceErrorResponse(400, sprintf('The provided type (%s) does not match the destination resource types (%s).', $resource_identifier['type'], $target_identifier['type']), $url, $response, FALSE);
         // Test PATCH: invalid target.
         $request_options[RequestOptions::BODY] = Json::encode(['data' => [$resource_identifier]]);
         $response = $this->request('POST', $url, $request_options);
-        $this->assertResourceErrorResponse(400, sprintf('The provided type (%s) does not mach the destination resource types (%s).', $resource_identifier['type'], $target_identifier['type']), $url, $response, FALSE);
+        $this->assertResourceErrorResponse(400, sprintf('The provided type (%s) does not match the destination resource types (%s).', $resource_identifier['type'], $target_identifier['type']), $url, $response, FALSE);
       }
 
       // Test POST: duplicate targets, no arity.
@@ -1722,7 +1719,6 @@ abstract class ResourceTestBase extends BrowserTestBase {
     if (static::$resourceTypeIsVersionable) {
       assert($entity instanceof RevisionableInterface);
       $version_query = ['resourceVersion' => 'id:' . $entity->getRevisionId()];
-      $self_link->setOption('query', $version_query);
       $related_link->setOption('query', $version_query);
     }
     $data = $this->getExpectedGetRelationshipDocumentData($relationship_field_name, $entity);
@@ -1882,8 +1878,10 @@ abstract class ResourceTestBase extends BrowserTestBase {
     $unparseable_request_body = '!{>}<';
     $parseable_valid_request_body = Json::encode($this->getPostDocument());
     /* $parseable_valid_request_body_2 = Json::encode($this->getNormalizedPostEntity()); */
-    $parseable_invalid_request_body_missing_type = Json::encode($this->removeResourceTypeFromDocument($this->getPostDocument(), 'type'));
-    $parseable_invalid_request_body = Json::encode($this->makeNormalizationInvalid($this->getPostDocument(), 'label'));
+    $parseable_invalid_request_body_missing_type = Json::encode($this->removeResourceTypeFromDocument($this->getPostDocument()));
+    if ($this->entity->getEntityType()->hasKey('label')) {
+      $parseable_invalid_request_body = Json::encode($this->makeNormalizationInvalid($this->getPostDocument(), 'label'));
+    }
     $parseable_invalid_request_body_2 = Json::encode(NestedArray::mergeDeep(['data' => ['id' => $this->randomMachineName(129)]], $this->getPostDocument()));
     $parseable_invalid_request_body_3 = Json::encode(NestedArray::mergeDeep(['data' => ['attributes' => ['field_rest_test' => $this->randomString()]]], $this->getPostDocument()));
     $parseable_invalid_request_body_4 = Json::encode(NestedArray::mergeDeep(['data' => ['attributes' => ['field_nonexistent' => $this->randomString()]]], $this->getPostDocument()));
@@ -1939,13 +1937,14 @@ abstract class ResourceTestBase extends BrowserTestBase {
     $response = $this->request('POST', $url, $request_options);
     $this->assertResourceErrorResponse(400, 'Resource object must include a "type".', $url, $response, FALSE);
 
-    $request_options[RequestOptions::BODY] = $parseable_invalid_request_body;
-
-    // DX: 422 when invalid entity: multiple values sent for single-value field.
-    $response = $this->request('POST', $url, $request_options);
-    $label_field = $this->entity->getEntityType()->hasKey('label') ? $this->entity->getEntityType()->getKey('label') : static::$labelFieldName;
-    $label_field_capitalized = $this->entity->getFieldDefinition($label_field)->getLabel();
-    $this->assertResourceErrorResponse(422, "$label_field: $label_field_capitalized: this field cannot hold more than 1 values.", NULL, $response, '/data/attributes/' . $label_field);
+    if ($this->entity->getEntityType()->hasKey('label')) {
+      $request_options[RequestOptions::BODY] = $parseable_invalid_request_body;
+      // DX: 422 when invalid entity: multiple values sent for single-value field.
+      $response = $this->request('POST', $url, $request_options);
+      $label_field = $this->entity->getEntityType()->getKey('label');
+      $label_field_capitalized = $this->entity->getFieldDefinition($label_field)->getLabel();
+      $this->assertResourceErrorResponse(422, "$label_field: $label_field_capitalized: this field cannot hold more than 1 values.", NULL, $response, '/data/attributes/' . $label_field);
+    }
 
     $request_options[RequestOptions::BODY] = $parseable_invalid_request_body_2;
 
@@ -2006,7 +2005,9 @@ abstract class ResourceTestBase extends BrowserTestBase {
         // properties are present, the server could be computing additional
         // properties.
         if (is_array($field_normalization)) {
-          $this->assertArraySubset($field_normalization, $created_entity_document['data']['attributes'][$field_name]);
+          foreach ($field_normalization as $value) {
+            $this->assertContains($value, $created_entity_document['data']['attributes'][$field_name]);
+          }
         }
         else {
           $this->assertSame($field_normalization, $created_entity_document['data']['attributes'][$field_name]);
@@ -2050,7 +2051,10 @@ abstract class ResourceTestBase extends BrowserTestBase {
       // 500 when creating an entity with a duplicate UUID.
       $doc = $this->getModifiedEntityForPostTesting();
       $doc['data']['id'] = $uuid;
-      $doc['data']['attributes'][$label_field] = [['value' => $this->randomMachineName()]];
+      $label_field = $this->entity->getEntityType()->hasKey('label') ? $this->entity->getEntityType()->getKey('label') : static::$labelFieldName;
+      if (isset($label_field)) {
+        $doc['data']['attributes'][$label_field] = [['value' => $this->randomMachineName()]];
+      }
       $request_options[RequestOptions::BODY] = Json::encode($doc);
 
       $response = $this->request('POST', $url, $request_options);
@@ -2060,7 +2064,9 @@ abstract class ResourceTestBase extends BrowserTestBase {
       $doc = $this->getModifiedEntityForPostTesting();
       $new_uuid = \Drupal::service('uuid')->generate();
       $doc['data']['id'] = $new_uuid;
-      $doc['data']['attributes'][$label_field] = [['value' => $this->randomMachineName()]];
+      if (isset($label_field)) {
+        $doc['data']['attributes'][$label_field] = [['value' => $this->randomMachineName()]];
+      }
       $request_options[RequestOptions::BODY] = Json::encode($doc);
 
       $response = $this->request('POST', $url, $request_options);
@@ -2094,7 +2100,9 @@ abstract class ResourceTestBase extends BrowserTestBase {
     $unparseable_request_body = '!{>}<';
     $parseable_valid_request_body = Json::encode($this->getPatchDocument());
     /* $parseable_valid_request_body_2 = Json::encode($this->getNormalizedPatchEntity()); */
-    $parseable_invalid_request_body = Json::encode($this->makeNormalizationInvalid($this->getPatchDocument(), 'label'));
+    if ($this->entity->getEntityType()->hasKey('label')) {
+      $parseable_invalid_request_body = Json::encode($this->makeNormalizationInvalid($this->getPatchDocument(), 'label'));
+    }
     $parseable_invalid_request_body_2 = Json::encode(NestedArray::mergeDeep(['data' => ['attributes' => ['field_rest_test' => $this->randomString()]]], $this->getPatchDocument()));
     // The 'field_rest_test' field does not allow 'view' access, so does not end
     // up in the JSON:API document. Even when we explicitly add it to the JSON
@@ -2148,13 +2156,14 @@ abstract class ResourceTestBase extends BrowserTestBase {
     $response = $this->request('PATCH', $url, $request_options);
     $this->assertResourceErrorResponse(400, 'Syntax error', $url, $response, FALSE);
 
-    $request_options[RequestOptions::BODY] = $parseable_invalid_request_body;
-
     // DX: 422 when invalid entity: multiple values sent for single-value field.
-    $response = $this->request('PATCH', $url, $request_options);
-    $label_field = $this->entity->getEntityType()->hasKey('label') ? $this->entity->getEntityType()->getKey('label') : static::$labelFieldName;
-    $label_field_capitalized = $this->entity->getFieldDefinition($label_field)->getLabel();
-    $this->assertResourceErrorResponse(422, "$label_field: $label_field_capitalized: this field cannot hold more than 1 values.", NULL, $response, '/data/attributes/' . $label_field);
+    if ($this->entity->getEntityType()->hasKey('label')) {
+      $request_options[RequestOptions::BODY] = $parseable_invalid_request_body;
+      $response = $this->request('PATCH', $url, $request_options);
+      $label_field = $this->entity->getEntityType()->getKey('label');
+      $label_field_capitalized = $this->entity->getFieldDefinition($label_field)->getLabel();
+      $this->assertResourceErrorResponse(422, "$label_field: $label_field_capitalized: this field cannot hold more than 1 values.", NULL, $response, '/data/attributes/' . $label_field);
+    }
 
     $request_options[RequestOptions::BODY] = $parseable_invalid_request_body_2;
 
@@ -2252,7 +2261,9 @@ abstract class ResourceTestBase extends BrowserTestBase {
       // properties are present, the server could be computing additional
       // properties.
       if (is_array($field_normalization)) {
-        $this->assertArraySubset($field_normalization, $updated_entity_document['data']['attributes'][$field_name]);
+        foreach ($field_normalization as $value) {
+          $this->assertContains($value, $updated_entity_document['data']['attributes'][$field_name]);
+        }
       }
       else {
         $this->assertSame($field_normalization, $updated_entity_document['data']['attributes'][$field_name]);
@@ -2339,7 +2350,7 @@ abstract class ResourceTestBase extends BrowserTestBase {
 
     // Ensure that PATCHing an entity that is not the latest revision is
     // unsupported.
-    if (!$this->entity->getEntityType()->isRevisionable() || !$this->entity instanceof FieldableEntityInterface) {
+    if (!$this->entity->getEntityType()->isRevisionable() || !$this->entity->getEntityType()->hasHandlerClass('moderation') || !$this->entity instanceof FieldableEntityInterface) {
       return;
     }
     assert($this->entity instanceof RevisionableInterface);
@@ -3010,9 +3021,9 @@ abstract class ResourceTestBase extends BrowserTestBase {
     $forward_revision_id_url = $forward_revision_id_url->setOption('query', ['resourceVersion' => "id:$forward_revision_id"]);
     $expected_document['data']['links']['self']['href'] = $forward_revision_id_url->setAbsolute()->toString();
     $amend_relationship_urls($expected_document, $forward_revision_id);
-    // Since the the working copy is not the default revision. A
-    // `latest-version` link is required to indicate that the requested version
-    // is not the default revision.
+    // Since the working copy is not the default revision. A `latest-version`
+    // link is required to indicate that the requested version is not the
+    // default revision.
     unset($expected_document['data']['links']['working-copy']);
     $expected_document['data']['links']['latest-version']['href'] = $rel_latest_version_url->setAbsolute()->toString();
     $expected_cache_tags = $this->getExpectedCacheTags();
@@ -3092,6 +3103,7 @@ abstract class ResourceTestBase extends BrowserTestBase {
       $actual_response = $this->request('GET', $relationship_url, $request_options);
       $expected_response = $this->getExpectedGetRelationshipResponse('field_jsonapi_test_entity_ref', $revision);
       $expected_document = $expected_response->getResponseData();
+      $expected_document['links']['self']['href'] = $relationship_url->setAbsolute()->toString();
       $expected_cacheability = $expected_response->getCacheableMetadata();
       $this->assertResourceResponse(200, $expected_document, $actual_response, $expected_cacheability->getCacheTags(), $expected_cacheability->getCacheContexts(), FALSE, 'MISS');
       // Request the related route.
@@ -3322,7 +3334,7 @@ abstract class ResourceTestBase extends BrowserTestBase {
   }
 
   /**
-   * Gets an array of of all nested include paths to be tested.
+   * Gets an array of all nested include paths to be tested.
    *
    * @param int $depth
    *   (optional) The maximum depth to which included paths should be nested.

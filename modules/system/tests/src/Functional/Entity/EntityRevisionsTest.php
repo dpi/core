@@ -22,7 +22,12 @@ class EntityRevisionsTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['entity_test', 'language'];
+  protected static $modules = ['entity_test', 'language'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * A user with permission to administer entity_test content.
@@ -31,7 +36,7 @@ class EntityRevisionsTest extends BrowserTestBase {
    */
   protected $webUser;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create and log in user.

@@ -12,9 +12,14 @@ use Drupal\language\Entity\ContentLanguageSettings;
  */
 class VocabularyLanguageTest extends TaxonomyTestBase {
 
-  public static $modules = ['language'];
+  protected static $modules = ['language'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     // Create an administrative user.
@@ -80,7 +85,7 @@ class VocabularyLanguageTest extends TaxonomyTestBase {
 
     // Check that the vocabulary was actually created.
     $this->drupalGet('admin/structure/taxonomy/manage/' . $edit['vid']);
-    $this->assertResponse(200, 'The vocabulary has been created.');
+    $this->assertSession()->statusCodeEquals(200);
 
     // Check that the language settings were saved.
     $language_settings = ContentLanguageSettings::loadByEntityTypeBundle('taxonomy_term', $edit['vid']);

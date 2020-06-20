@@ -21,7 +21,12 @@ class BlockContentRedirectTest extends BlockContentTestBase {
    *
    * @var array
    */
-  public static $modules = ['block', 'block_content', 'views'];
+  protected static $modules = ['block', 'block_content', 'views'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests the redirect destination when editing block content.

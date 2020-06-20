@@ -293,24 +293,6 @@ class Node extends DrupalSqlBase {
   }
 
   /**
-   * Retrieves raw field data for a node.
-   *
-   * @deprecated in Drupal 8.2.x, to be removed in Drupal 9.0.x. Use
-   *   getFieldData() instead.
-   *
-   * @param array $field
-   *   A field and instance definition from getFieldInfo().
-   * @param \Drupal\migrate\Row $node
-   *   The node.
-   *
-   * @return array
-   *   The field values, keyed by delta.
-   */
-  protected function getCckData(array $field, Row $node) {
-    return $this->getFieldData($field, $node);
-  }
-
-  /**
    * {@inheritdoc}
    */
   public function getIds() {

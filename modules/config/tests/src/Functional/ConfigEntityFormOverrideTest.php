@@ -14,7 +14,12 @@ class ConfigEntityFormOverrideTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['config_test'];
+  protected static $modules = ['config_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests that overrides do not affect forms or listing screens.

@@ -16,7 +16,7 @@ class BaseFieldOverrideTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['field', 'node'];
+  protected static $modules = ['field', 'node'];
 
   /**
    * {@inheritdoc}
@@ -34,6 +34,11 @@ class BaseFieldOverrideTest extends ResourceTestBase {
    * @var \Drupal\Core\Field\Entity\BaseFieldOverride
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

@@ -22,7 +22,12 @@ class TestCoverageTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $all_modules = \Drupal::service('extension.list.module')->getList();

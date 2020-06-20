@@ -24,7 +24,7 @@ class RowRenderCacheTest extends ViewsKernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['user', 'node'];
+  protected static $modules = ['user', 'node'];
 
   /**
    * Views used by this test.
@@ -195,7 +195,7 @@ class RowRenderCacheTest extends ViewsKernelTestBase {
           ],
         ];
         $element = $render_cache->get($cache);
-        $this->assertTrue($element);
+        $this->assertNotEmpty($element);
       }
 
       $index++;

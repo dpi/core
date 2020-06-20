@@ -25,12 +25,25 @@ class ManageDisplayTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'field_ui', 'taxonomy', 'search', 'field_test', 'field_third_party_test', 'block'];
+  protected static $modules = [
+    'node',
+    'field_ui',
+    'taxonomy',
+    'search',
+    'field_test',
+    'field_third_party_test',
+    'block',
+  ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $this->drupalPlaceBlock('system_breadcrumb_block');
     $this->drupalPlaceBlock('local_tasks_block');
@@ -136,12 +149,12 @@ class ManageDisplayTest extends BrowserTestBase {
   public function testViewModeLocalTasks() {
     $manage_display = 'admin/structure/types/manage/' . $this->type . '/display';
     $this->drupalGet($manage_display);
-    $this->assertNoLink('Full content');
-    $this->assertLink('Teaser');
+    $this->assertSession()->linkNotExists('Full content');
+    $this->assertSession()->linkExists('Teaser');
 
     $this->drupalGet($manage_display . '/teaser');
-    $this->assertNoLink('Full content');
-    $this->assertLink('Default');
+    $this->assertSession()->linkNotExists('Full content');
+    $this->assertSession()->linkExists('Default');
   }
 
   /**
@@ -212,6 +225,7 @@ class ManageDisplayTest extends BrowserTestBase {
    *   Plain text to look for.
    * @param $message
    *   Message to display.
+   *
    * @return
    *   TRUE on pass, FALSE on fail.
    */
@@ -249,9 +263,12 @@ class ManageDisplayTest extends BrowserTestBase {
     $output = (string) \Drupal::service('renderer')->renderRoot($element);
     $this->verbose(t('Rendered node - view mode: @view_mode', ['@view_mode' => $view_mode]) . '<hr />' . $output);
 
-    $method = $not_exists ? 'assertNotContains' : 'assertContains';
-
-    $this->{$method}((string) $text, $output, $message);
+    if ($not_exists) {
+      $this->assertStringNotContainsString((string) $text, $output, $message);
+    }
+    else {
+      $this->assertStringContainsString((string) $text, $output, $message);
+    }
   }
 
   /**

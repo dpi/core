@@ -42,7 +42,7 @@ class RequestPathTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['system', 'user', 'field', 'path'];
+  protected static $modules = ['system', 'user', 'field', 'path'];
 
   /**
    * The current path.
@@ -54,7 +54,7 @@ class RequestPathTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installSchema('system', ['sequences']);
@@ -63,7 +63,7 @@ class RequestPathTest extends KernelTestBase {
 
     // Set a mock alias manager in the container.
     $this->aliasManager = new MockAliasManager();
-    $this->container->set('path.alias_manager', $this->aliasManager);
+    $this->container->set('path_alias.manager', $this->aliasManager);
 
     // Set the test request stack in the container.
     $this->requestStack = new RequestStack();

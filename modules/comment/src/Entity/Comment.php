@@ -326,13 +326,6 @@ class Comment extends ContentEntityBase implements CommentInterface {
   /**
    * {@inheritdoc}
    */
-  public static function getDefaultEntityOwner() {
-    return 0;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public static function bundleFieldDefinitions(EntityTypeInterface $entity_type, $bundle, array $base_field_definitions) {
     if ($comment_type = CommentType::load($bundle)) {
       $fields['entity_id'] = clone $base_field_definitions['entity_id'];
@@ -484,14 +477,6 @@ class Comment extends ContentEntityBase implements CommentInterface {
   public function setCreatedTime($created) {
     $this->set('created', $created);
     return $this;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getStatus() {
-    @trigger_error(__NAMESPACE__ . '\Comment::getStatus() is deprecated in drupal:8.3.0 and is removed from drupal:9.0.0. Use \Drupal\Core\Entity\EntityPublishedInterface::isPublished() instead. See https://www.drupal.org/node/2830201', E_USER_DEPRECATED);
-    return $this->get('status')->value;
   }
 
   /**

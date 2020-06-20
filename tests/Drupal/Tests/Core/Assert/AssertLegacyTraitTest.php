@@ -44,7 +44,7 @@ class AssertLegacyTraitTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  public function setUp(): void {
     parent::setUp();
 
     $this->page = $this->prophesize(DocumentElement::class);
@@ -156,7 +156,7 @@ class AssertLegacyTraitTest extends UnitTestCase {
 
   /**
    * @covers ::assertNoPattern
-   * @expectedDeprecation assertNoPattern() is deprecated and scheduled for removal in Drupal 9.0.0. Use $this->assertSession()->responseNotMatches($pattern) instead. See https://www.drupal.org/node/2864262.
+   * @expectedDeprecation AssertLegacyTrait::assertNoPattern() is deprecated in drupal:8.4.0 and is removed from drupal:10.0.0. Use $this->assertSession()->responseNotMatches() instead. See https://www.drupal.org/node/3129738
    */
   public function testAssertNoPattern() {
     $this->webAssert
@@ -168,7 +168,7 @@ class AssertLegacyTraitTest extends UnitTestCase {
 
   /**
    * @covers ::assertNoCacheTag
-   * @expectedDeprecation assertNoCacheTag() is deprecated and scheduled for removal in Drupal 9.0.0. Use $this->assertSession()->responseHeaderNotContains() instead. See https://www.drupal.org/node/2864029.
+   * @expectedDeprecation AssertLegacyTrait::assertNoCacheTag() is deprecated in drupal:8.4.0 and is removed from drupal:10.0.0. Use $this->assertSession()->responseHeaderNotContains() instead. See https://www.drupal.org/node/3129738
    */
   public function testAssertNoCacheTag() {
     $this->webAssert
@@ -176,6 +176,30 @@ class AssertLegacyTraitTest extends UnitTestCase {
       ->shouldBeCalled();
 
     $this->assertNoCacheTag('some-cache-tag');
+  }
+
+  /**
+   * @covers ::assertElementPresent
+   * @expectedDeprecation AssertLegacyTrait::assertElementPresent() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->elementExists() instead. See https://www.drupal.org/node/3129738
+   */
+  public function testAssertElementPresent() {
+    $this->webAssert
+      ->elementExists('css', '.pager')
+      ->shouldBeCalled();
+
+    $this->assertElementPresent('.pager');
+  }
+
+  /**
+   * @covers ::assertElementNotPresent
+   * @expectedDeprecation AssertLegacyTrait::assertElementNotPresent() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->elementNotExists() instead. See https://www.drupal.org/node/3129738
+   */
+  public function testAssertElementNotPresent() {
+    $this->webAssert
+      ->elementNotExists('css', '.pager')
+      ->shouldBeCalled();
+
+    $this->assertElementNotPresent('.pager');
   }
 
   /**

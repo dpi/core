@@ -20,12 +20,22 @@ class BookContentModerationTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['book', 'block', 'book_test', 'content_moderation'];
+  protected static $modules = [
+    'book',
+    'block',
+    'book_test',
+    'content_moderation',
+  ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalPlaceBlock('system_breadcrumb_block');
@@ -65,7 +75,7 @@ class BookContentModerationTest extends BrowserTestBase {
     ];
     $this->drupalPostForm('node/add/book', $edit, t('Save'));
     $node = $this->drupalGetNodeByTitle($edit['title[0][value]']);
-    $this->assertTrue($node);
+    $this->assertNotEmpty($node);
 
     $edit = [
       'moderation_state[0][state]' => 'draft',

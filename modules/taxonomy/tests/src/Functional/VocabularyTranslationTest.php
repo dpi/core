@@ -12,12 +12,17 @@ class VocabularyTranslationTest extends TaxonomyTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['content_translation', 'language'];
+  protected static $modules = ['content_translation', 'language'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     // Create an administrative user.

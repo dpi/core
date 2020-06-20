@@ -23,7 +23,7 @@ class BreadcrumbTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['menu_test', 'block'];
+  protected static $modules = ['menu_test', 'block'];
 
   /**
    * An administrative user.
@@ -46,7 +46,7 @@ class BreadcrumbTest extends BrowserTestBase {
    */
   protected $profile = 'standard';
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $perms = array_keys(\Drupal::service('user.permissions')->getPermissions());
@@ -154,9 +154,9 @@ class BreadcrumbTest extends BrowserTestBase {
     $trail = $home;
     $this->assertBreadcrumb("node/$nid1", $trail);
     // Also verify that the node does not appear elsewhere (e.g., menu trees).
-    $this->assertNoLink($node1->getTitle());
+    $this->assertSession()->linkNotExists($node1->getTitle());
     // Also verify that the node does not appear elsewhere (e.g., menu trees).
-    $this->assertNoLink($node1->getTitle());
+    $this->assertSession()->linkNotExists($node1->getTitle());
 
     $trail += [
       "node/$nid1" => $node1->getTitle(),
@@ -286,7 +286,8 @@ class BreadcrumbTest extends BrowserTestBase {
         $link_path => $link->getTitle(),
       ];
       $this->assertBreadcrumb($link_path, $trail, $term->getName(), $tree);
-      $this->assertEscaped($parent->getTitle(), 'Tagged node found.');
+      // Ensure that the tagged node is found.
+      $this->assertEscaped($parent->getTitle());
 
       // Additionally make sure that this link appears only once; i.e., the
       // untranslated menu links automatically generated from menu router items
@@ -296,7 +297,7 @@ class BreadcrumbTest extends BrowserTestBase {
         ':menu' => 'block-bartik-tools',
         ':href' => Url::fromUri('base:' . $link_path)->toString(),
       ]);
-      $this->assertTrue(count($elements) == 1, "Link to {$link_path} appears only once.");
+      $this->assertCount(1, $elements, "Link to {$link_path} appears only once.");
 
       // Next iteration should expect this tag as parent link.
       // Note: Term name, not link name, due to taxonomy_term_page().

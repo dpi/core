@@ -15,9 +15,19 @@ class SearchDateIntervalTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected static $modules = ['language', 'search_date_query_alter', 'node', 'search'];
+  protected static $modules = [
+    'language',
+    'search_date_query_alter',
+    'node',
+    'search',
+  ];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalCreateContentType(['type' => 'page', 'name' => 'Basic page']);
@@ -56,7 +66,6 @@ class SearchDateIntervalTest extends BrowserTestBase {
     // Update the index.
     $plugin = $this->container->get('plugin.manager.search')->createInstance('node_search');
     $plugin->updateIndex();
-    search_update_totals();
   }
 
   /**
@@ -69,8 +78,8 @@ class SearchDateIntervalTest extends BrowserTestBase {
 
     // The nodes must have the same node ID but the created date is different.
     // So only the Spanish translation must appear.
-    $this->assertLink('Node ES', 0, 'Spanish translation found in search results');
-    $this->assertNoLink('Node EN', 'Search results do not contain English node');
+    $this->assertSession()->linkExists('Node ES', 0, 'Spanish translation found in search results');
+    $this->assertSession()->linkNotExists('Node EN', 'Search results do not contain English node');
   }
 
 }

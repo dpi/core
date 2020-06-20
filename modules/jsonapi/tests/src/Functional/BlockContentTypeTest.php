@@ -15,7 +15,7 @@ class BlockContentTypeTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['block_content'];
+  protected static $modules = ['block_content'];
 
   /**
    * {@inheritdoc}
@@ -33,6 +33,11 @@ class BlockContentTypeTest extends ResourceTestBase {
    * @var \Drupal\block_content\BlockContentTypeInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

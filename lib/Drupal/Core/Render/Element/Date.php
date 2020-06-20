@@ -16,7 +16,7 @@ use Drupal\Core\Render\Element;
  * $form['expiration'] = [
  *   '#type' => 'date',
  *   '#title' => $this->t('Content expiration'),
- *   '#default_value' => 2020-02-05',
+ *   '#default_value' => '2020-02-05',
  * ];
  * @endcode
  *
@@ -73,8 +73,8 @@ class Date extends FormElement {
    * Adds form-specific attributes to a 'date' #type element.
    *
    * Supports HTML5 types of 'date', 'datetime', 'datetime-local', and 'time'.
-   * Falls back to a plain textfield with JS datepicker support. Used as a
-   * sub-element by the datetime element type.
+   * Falls back to a plain textfield. Used as a sub-element by the datetime
+   * element type.
    *
    * @param array $element
    *   An associative array containing the properties of the element.

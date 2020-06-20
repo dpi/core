@@ -22,7 +22,14 @@ class RelationshipUserImageDataTest extends ViewsKernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['file', 'field', 'image', 'image_test_views', 'system', 'user'];
+  protected static $modules = [
+    'file',
+    'field',
+    'image',
+    'image_test_views',
+    'system',
+    'user',
+  ];
 
   /**
    * Views used by this test.
@@ -31,7 +38,7 @@ class RelationshipUserImageDataTest extends ViewsKernelTestBase {
    */
   public static $testViews = ['test_image_user_image_data'];
 
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->installEntitySchema('file');
@@ -72,7 +79,7 @@ class RelationshipUserImageDataTest extends ViewsKernelTestBase {
       'status' => FILE_STATUS_PERMANENT,
     ]);
     $file->enforceIsNew();
-    file_put_contents($file->getFileUri(), file_get_contents('core/modules/simpletest/files/image-1.png'));
+    file_put_contents($file->getFileUri(), file_get_contents('core/tests/fixtures/files/image-1.png'));
     $file->save();
 
     $account = User::create([

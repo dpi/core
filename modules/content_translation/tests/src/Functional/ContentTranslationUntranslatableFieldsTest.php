@@ -17,12 +17,17 @@ class ContentTranslationUntranslatableFieldsTest extends ContentTranslationPendi
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['field_test'];
+  protected static $modules = ['field_test'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     // Configure one field as untranslatable.

@@ -19,7 +19,12 @@ class BulkFormTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'action_bulk_test'];
+  protected static $modules = ['node', 'action_bulk_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests the bulk form.
@@ -38,6 +43,7 @@ class BulkFormTest extends BrowserTestBase {
       // array.
       $timestamp = REQUEST_TIME - $i;
       $nodes[] = $this->drupalCreateNode([
+        'title' => 'Node ' . $i,
         'sticky' => FALSE,
         'created' => $timestamp,
         'changed' => $timestamp,
@@ -48,7 +54,7 @@ class BulkFormTest extends BrowserTestBase {
 
     // Test that the views edit header appears first.
     $first_form_element = $this->xpath('//form/div[1][@id = :id]', [':id' => 'edit-header']);
-    $this->assertTrue($first_form_element, 'The views form edit header appears first.');
+    $this->assertNotEmpty($first_form_element, 'The views form edit header appears first.');
 
     $this->assertFieldById('edit-action', NULL, 'The action select field appears.');
 
@@ -107,9 +113,9 @@ class BulkFormTest extends BrowserTestBase {
 
     $this->drupalGet('test_bulk_form');
     $options = $this->xpath('//select[@id=:id]/option', [':id' => 'edit-action']);
-    $this->assertEqual(count($options), 2);
-    $this->assertOption('edit-action', 'node_make_sticky_action');
-    $this->assertOption('edit-action', 'node_make_unsticky_action');
+    $this->assertCount(2, $options);
+    $this->assertSession()->optionExists('edit-action', 'node_make_sticky_action');
+    $this->assertSession()->optionExists('edit-action', 'node_make_unsticky_action');
 
     // Set up to exclude the sticky actions.
     $view = Views::getView('test_bulk_form');
@@ -118,8 +124,8 @@ class BulkFormTest extends BrowserTestBase {
     $view->save();
 
     $this->drupalGet('test_bulk_form');
-    $this->assertNoOption('edit-action', 'node_make_sticky_action');
-    $this->assertNoOption('edit-action', 'node_make_unsticky_action');
+    $this->assertSession()->optionNotExists('edit-action', 'node_make_sticky_action');
+    $this->assertSession()->optionNotExists('edit-action', 'node_make_unsticky_action');
 
     // Check the default title.
     $this->drupalGet('test_bulk_form');
@@ -147,11 +153,62 @@ class BulkFormTest extends BrowserTestBase {
     // Make sure we don't show an action message while we are still on the
     // confirmation page.
     $errors = $this->xpath('//div[contains(@class, "messages--status")]');
-    $this->assertFalse($errors, 'No action message shown.');
+    $this->assertEmpty($errors, 'No action message shown.');
     $this->drupalPostForm(NULL, [], t('Delete'));
     $this->assertText(t('Deleted 5 content items.'));
     // Check if we got redirected to the original page.
     $this->assertUrl('test_bulk_form');
+
+    // Test that the bulk form works when a node gets deleted by another user
+    // before the loaded bulk form can be used.
+    $this->drupalGet('test_bulk_form');
+    // Now delete the node we want to delete with the bulk form.
+    $link = $this->getSession()->getPage()->findLink($nodes[6]->label());
+    $checkbox = $link->getParent()->getParent()->find('css', 'input');
+    $nodes[6]->delete();
+    $edit = [
+      $checkbox->getAttribute('name') => TRUE,
+      'action' => 'node_delete_action',
+    ];
+    $this->drupalPostForm(NULL, $edit, t('Apply to selected items'));
+    // Make sure we just return to the bulk view with no warnings.
+    $this->assertUrl('test_bulk_form');
+    $errors = $this->xpath('//div[contains(@class, "messages--status")]');
+    $this->assertEmpty($errors, 'No action message shown.');
+
+    // Test that the bulk form works when multiple nodes are selected
+    // but one of the selected nodes are already deleted by another user before
+    // the loaded bulk form was submitted.
+    $this->drupalGet('test_bulk_form');
+    // Call the node delete action.
+    $nodes[7]->delete();
+    $edit = [
+      'node_bulk_form[0]' => TRUE,
+      'node_bulk_form[1]' => TRUE,
+      'action' => 'node_delete_action',
+    ];
+    $this->drupalPostForm(NULL, $edit, t('Apply to selected items'));
+    // Make sure we don't show an action message while we are still on the
+    // confirmation page.
+    $errors = $this->xpath('//div[contains(@class, "messages--status")]');
+    $this->assertEmpty($errors, 'No action message shown.');
+    $this->drupalPostForm(NULL, [], t('Delete'));
+    $this->assertText(t('Deleted 1 content item.'));
+
+    // Test that the bulk form works when multiple nodes are selected
+    // but all of the selected nodes are already deleted
+    //  by another user before the loaded bulk form was submitted.
+    $this->drupalGet('test_bulk_form');
+    // Call the node delete action.
+    foreach ($nodes as $key => $node) {
+      $node->delete();
+    }
+    $edit = [
+      'node_bulk_form[0]' => TRUE,
+      'action' => 'node_delete_action',
+    ];
+    $this->drupalPostForm(NULL, $edit, t('Apply to selected items'));
+    $this->assertText('No content selected.');
   }
 
 }

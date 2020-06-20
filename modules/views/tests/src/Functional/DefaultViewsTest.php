@@ -30,7 +30,20 @@ class DefaultViewsTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = ['views', 'node', 'search', 'comment', 'taxonomy', 'block', 'user'];
+  protected static $modules = [
+    'views',
+    'node',
+    'search',
+    'comment',
+    'taxonomy',
+    'block',
+    'user',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * An array of argument arrays to use for default views.
@@ -43,7 +56,7 @@ class DefaultViewsTest extends ViewTestBase {
     'glossary' => ['all'],
   ];
 
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->drupalPlaceBlock('page_title_block');
@@ -227,7 +240,7 @@ class DefaultViewsTest extends ViewTestBase {
     \Drupal::service('router.builder')->rebuild();
 
     $this->drupalGet('archive');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
   }
 
 }

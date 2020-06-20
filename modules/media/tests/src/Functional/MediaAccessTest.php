@@ -21,7 +21,7 @@ class MediaAccessTest extends MediaFunctionalTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'block',
     'media_test_source',
   ];
@@ -29,7 +29,12 @@ class MediaAccessTest extends MediaFunctionalTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     // This is needed to provide the user cache context for a below assertion.
     $this->drupalPlaceBlock('local_tasks_block');
@@ -178,7 +183,7 @@ class MediaAccessTest extends MediaFunctionalTestBase {
     $this->drupalGet('admin/content');
     $assert_session->linkByHrefExists('/admin/content/media');
     $this->clickLink('Media');
-    $this->assertCacheContext('user.permissions');
+    $this->assertCacheContext('user');
     $assert_session->statusCodeEquals(200);
     $assert_session->elementExists('css', '.view-media');
     $assert_session->pageTextContains($this->loggedInUser->getDisplayName());

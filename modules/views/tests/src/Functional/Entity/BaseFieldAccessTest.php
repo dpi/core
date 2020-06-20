@@ -25,14 +25,19 @@ class BaseFieldAccessTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'views', 'views_test_config', 'entity_test', 'node', 'views_entity_test',
   ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     ViewTestData::createTestViews(get_class($this), ['comment_test_views']);

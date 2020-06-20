@@ -21,9 +21,14 @@ class NodeAccessPagerTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node_access_test', 'comment', 'forum'];
+  protected static $modules = ['node_access_test', 'comment', 'forum'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     node_access_rebuild();
@@ -71,12 +76,12 @@ class NodeAccessPagerTest extends BrowserTestBase {
   public function testForumPager() {
     // Look up the forums vocabulary ID.
     $vid = $this->config('forum.settings')->get('vocabulary');
-    $this->assertTrue($vid, 'Forum navigation vocabulary ID is set.');
+    $this->assertNotEmpty($vid, 'Forum navigation vocabulary ID is set.');
 
     // Look up the general discussion term.
     $tree = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadTree($vid, 0, 1);
     $tid = reset($tree)->tid;
-    $this->assertTrue($tid, 'General discussion term is found in the forum vocabulary.');
+    $this->assertNotEmpty($tid, 'General discussion term is found in the forum vocabulary.');
 
     // Create 30 nodes.
     for ($i = 0; $i < 30; $i++) {

@@ -11,11 +11,16 @@ use Drupal\Tests\BrowserTestBase;
  */
 class UserRolesAssignmentTest extends BrowserTestBase {
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $admin_user = $this->drupalCreateUser(['administer permissions', 'administer users']);
     $this->drupalLogin($admin_user);
   }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests that a user can be assigned a role and that the role can be removed
@@ -84,10 +89,10 @@ class UserRolesAssignmentTest extends BrowserTestBase {
     $user_storage->resetCache([$account->id()]);
     $account = $user_storage->load($account->id());
     if ($is_assigned) {
-      $this->assertFalse(array_search($rid, $account->getRoles()) === FALSE, 'The role is present in the user object.');
+      $this->assertContains($rid, $account->getRoles());
     }
     else {
-      $this->assertTrue(array_search($rid, $account->getRoles()) === FALSE, 'The role is not present in the user object.');
+      $this->assertNotContains($rid, $account->getRoles());
     }
   }
 

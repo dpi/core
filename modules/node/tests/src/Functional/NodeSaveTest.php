@@ -23,9 +23,14 @@ class NodeSaveTest extends NodeTestBase {
    *
    * @var array
    */
-  public static $modules = ['node_test'];
+  protected static $modules = ['node_test'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     // Create a user that is allowed to post; we'll use this to test the submission.
@@ -67,10 +72,10 @@ class NodeSaveTest extends NodeTestBase {
     $node->save();
     // Test the import.
     $node_by_nid = Node::load($test_nid);
-    $this->assertTrue($node_by_nid, 'Node load by node ID.');
+    $this->assertNotEmpty($node_by_nid, 'Node load by node ID.');
 
     $node_by_title = $this->drupalGetNodeByTitle($title);
-    $this->assertTrue($node_by_title, 'Node load by node title.');
+    $this->assertNotEmpty($node_by_title, 'Node load by node title.');
   }
 
   /**

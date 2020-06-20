@@ -16,14 +16,12 @@ class MigrateTermLocalizedTranslationTest extends MigrateDrupal6TestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'content_translation',
     'language',
     'menu_ui',
     'node',
     'taxonomy',
-    // Required for translation migrations.
-    'migrate_drupal_multilingual',
   ];
 
   /**
@@ -36,7 +34,7 @@ class MigrateTermLocalizedTranslationTest extends MigrateDrupal6TestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('taxonomy_term');
     $this->installConfig(static::$modules);
@@ -116,8 +114,8 @@ class MigrateTermLocalizedTranslationTest extends MigrateDrupal6TestBase {
    * Tests the Drupal 6 i18n localized taxonomy term to Drupal 8 migration.
    */
   public function testTranslatedLocalizedTaxonomyTerms() {
-    $this->assertEntity(14, 'en', 'Talos IV', 'vocabulary_name_much_longer_than', 'The home of Captain Christopher Pike.', NULL, '0', []);
-    $this->assertEntity(15, 'en', 'Vulcan', 'vocabulary_name_much_longer_than', NULL, NULL, '0', []);
+    $this->assertEntity(14, 'en', 'Talos IV', 'vocabulary_name_much_longer_th', 'The home of Captain Christopher Pike.', NULL, '0', []);
+    $this->assertEntity(15, 'en', 'Vulcan', 'vocabulary_name_much_longer_th', NULL, NULL, '0', []);
 
     /** @var \Drupal\taxonomy\TermInterface $entity */
     $entity = Term::load(14);

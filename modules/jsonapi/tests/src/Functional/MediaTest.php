@@ -22,7 +22,12 @@ class MediaTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['media'];
+  protected static $modules = ['media'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

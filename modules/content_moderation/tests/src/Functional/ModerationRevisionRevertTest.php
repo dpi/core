@@ -21,7 +21,7 @@ class ModerationRevisionRevertTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'content_moderation',
     'node',
   ];
@@ -29,7 +29,12 @@ class ModerationRevisionRevertTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp(): void {
     parent::setUp();
 
     $moderated_bundle = $this->createContentType(['type' => 'moderated_bundle']);

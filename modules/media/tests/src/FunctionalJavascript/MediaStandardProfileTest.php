@@ -26,12 +26,17 @@ class MediaStandardProfileTest extends MediaJavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['media_test_oembed'];
+  protected static $modules = ['media_test_oembed'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $this->lockHttpClientToFixtures();
     $this->hijackProviderEndpoints();
@@ -230,10 +235,13 @@ class MediaStandardProfileTest extends MediaJavascriptTestBase {
     $assert_session->elementsCount('css', 'article.media--type-image > *', 1);
 
     // Assert the image element is present inside the media element and that its
-    // src attribute matches the image.
+    // src attribute uses the large image style, the label is visually hidden,
+    // and there is no link to the image file.
     $image_element = $assert_session->elementExists('css', 'article.media--type-image img');
-    $expected_image_src = file_url_transform_relative(file_create_url(\Drupal::token()->replace('public://[date:custom:Y]-[date:custom:m]/' . $image_media_name)));
-    $this->assertSame($expected_image_src, $image_element->getAttribute('src'));
+    $expected_image_src = file_url_transform_relative(file_create_url(\Drupal::token()->replace('public://styles/large/public/[date:custom:Y]-[date:custom:m]/' . $image_media_name)));
+    $this->assertStringContainsString($expected_image_src, $image_element->getAttribute('src'));
+    $assert_session->elementExists('css', '.field--name-field-media-image .field__label.visually-hidden');
+    $assert_session->elementNotExists('css', '.field--name-field-media-image a');
 
     // Assert the media name is updated through the field mapping when changing
     // the source field.
@@ -259,10 +267,13 @@ class MediaStandardProfileTest extends MediaJavascriptTestBase {
     $assert_session->elementsCount('css', 'article.media--type-image > *', 1);
 
     // Assert the image element is present inside the media element and that its
-    // src attribute matches the updated image.
+    // src attribute uses the large image style, the label is visually hidden,
+    // and there is no link to the image file.
     $image_element = $assert_session->elementExists('css', 'article.media--type-image img');
-    $expected_image_src = file_url_transform_relative(file_create_url(\Drupal::token()->replace('public://[date:custom:Y]-[date:custom:m]/' . $image_media_name_updated)));
-    $this->assertSame($expected_image_src, $image_element->getAttribute('src'));
+    $expected_image_src = file_url_transform_relative(file_create_url(\Drupal::token()->replace('public://styles/large/public/[date:custom:Y]-[date:custom:m]/' . $image_media_name_updated)));
+    $this->assertStringContainsString($expected_image_src, $image_element->getAttribute('src'));
+    $assert_session->elementExists('css', '.field--name-field-media-image .field__label.visually-hidden');
+    $assert_session->elementNotExists('css', '.field--name-field-media-image a');
   }
 
   /**

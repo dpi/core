@@ -25,9 +25,21 @@ class ContentTranslationSettingsTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['language', 'content_translation', 'node', 'comment', 'field_ui', 'entity_test'];
+  protected static $modules = [
+    'language',
+    'content_translation',
+    'node',
+    'comment',
+    'field_ui',
+    'entity_test',
+  ];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
+
+  protected function setUp(): void {
     parent::setUp();
 
     // Set up two content types to test fields shared between different
@@ -47,7 +59,7 @@ class ContentTranslationSettingsTest extends BrowserTestBase {
   public function testSettingsUI() {
     // Check for the content_translation_menu_links_discovered_alter() changes.
     $this->drupalGet('admin/config');
-    $this->assertLink('Content language and translation');
+    $this->assertSession()->linkExists('Content language and translation');
     $this->assertText('Configure language and translation support for content.');
     // Test that the translation settings are ignored if the bundle is marked
     // translatable but the entity type is not.
@@ -77,7 +89,7 @@ class ContentTranslationSettingsTest extends BrowserTestBase {
     ];
     $this->assertSettings('comment', 'comment_article', FALSE, $edit);
     $xpath_err = '//div[contains(@class, "error")]';
-    $this->assertTrue($this->xpath($xpath_err), 'Enabling translation only for entity bundles generates a form error.');
+    $this->assertNotEmpty($this->xpath($xpath_err), 'Enabling translation only for entity bundles generates a form error.');
 
     // Test that the translation settings are not stored if a non-configurable
     // language is set as default and the language selector is hidden.
@@ -89,7 +101,7 @@ class ContentTranslationSettingsTest extends BrowserTestBase {
       'settings[comment][comment_article][fields][comment_body]' => TRUE,
     ];
     $this->assertSettings('comment', 'comment_article', FALSE, $edit);
-    $this->assertTrue($this->xpath($xpath_err), 'Enabling translation with a fixed non-configurable language generates a form error.');
+    $this->assertNotEmpty($this->xpath($xpath_err), 'Enabling translation with a fixed non-configurable language generates a form error.');
 
     // Test that a field shared among different bundles can be enabled without
     // needing to make all the related bundles translatable.

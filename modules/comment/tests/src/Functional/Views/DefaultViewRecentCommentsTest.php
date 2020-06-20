@@ -23,7 +23,12 @@ class DefaultViewRecentCommentsTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'comment', 'block'];
+  protected static $modules = ['node', 'comment', 'block'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Number of results for the Master display.
@@ -60,7 +65,7 @@ class DefaultViewRecentCommentsTest extends ViewTestBase {
    */
   public $node;
 
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     // Create a new content type

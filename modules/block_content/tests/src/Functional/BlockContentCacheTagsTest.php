@@ -20,7 +20,12 @@ class BlockContentCacheTagsTest extends EntityCacheTagsTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['block_content'];
+  protected static $modules = ['block_content'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

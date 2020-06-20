@@ -22,7 +22,7 @@ class ContactStorageTest extends ContactSitewideTest {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'block',
     'text',
     'contact',
@@ -30,6 +30,11 @@ class ContactStorageTest extends ContactSitewideTest {
     'contact_storage_test',
     'contact_test',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * Tests configuration options and the site-wide contact form.

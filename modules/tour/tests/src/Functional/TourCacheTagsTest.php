@@ -18,12 +18,17 @@ class TourCacheTagsTest extends PageCacheTagsTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['tour', 'tour_test'];
+  protected static $modules = ['tour', 'tour_test'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     // Give anonymous users permission to view nodes, so that we can verify the

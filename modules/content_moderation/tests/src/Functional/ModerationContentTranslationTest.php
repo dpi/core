@@ -26,7 +26,7 @@ class ModerationContentTranslationTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'node',
     'locale',
     'content_translation',
@@ -35,7 +35,12 @@ class ModerationContentTranslationTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $this->drupalLogin($this->rootUser);
     // Create an Article content type.

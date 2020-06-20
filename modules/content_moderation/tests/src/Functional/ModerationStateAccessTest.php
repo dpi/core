@@ -19,7 +19,7 @@ class ModerationStateAccessTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'content_moderation',
     'node',
   ];
@@ -27,7 +27,12 @@ class ModerationStateAccessTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $node_type = NodeType::create([

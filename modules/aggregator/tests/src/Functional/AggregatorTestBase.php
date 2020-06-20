@@ -27,7 +27,13 @@ abstract class AggregatorTestBase extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['block', 'node', 'aggregator', 'aggregator_test', 'views'];
+  protected static $modules = [
+    'block',
+    'node',
+    'aggregator',
+    'aggregator_test',
+    'views',
+  ];
 
   /**
    * {@inheritdoc}
@@ -175,11 +181,11 @@ abstract class AggregatorTestBase extends BrowserTestBase {
   public function updateFeedItems(FeedInterface $feed, $expected_count = NULL) {
     // First, let's ensure we can get to the rss xml.
     $this->drupalGet($feed->getUrl());
-    $this->assertResponse(200, new FormattableMarkup(':url is reachable.', [':url' => $feed->getUrl()]));
+    $this->assertSession()->statusCodeEquals(200);
 
     // Attempt to access the update link directly without an access token.
     $this->drupalGet('admin/config/services/aggregator/update/' . $feed->id());
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
 
     // Refresh the feed (simulated link click).
     $this->drupalGet('admin/config/services/aggregator');
@@ -221,10 +227,10 @@ abstract class AggregatorTestBase extends BrowserTestBase {
     $count_query = \Drupal::entityQuery('aggregator_item')->condition('fid', $feed->id())->count();
     $this->updateFeedItems($feed, $expected_count);
     $count = $count_query->execute();
-    $this->assertTrue($count);
+    $this->assertGreaterThan(0, $count);
     $this->deleteFeedItems($feed);
     $count = $count_query->execute();
-    $this->assertTrue($count == 0);
+    $this->assertEquals(0, $count);
   }
 
   /**

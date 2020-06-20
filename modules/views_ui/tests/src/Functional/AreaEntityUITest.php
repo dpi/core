@@ -17,7 +17,12 @@ class AreaEntityUITest extends UITestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['entity_test'];
+  protected static $modules = ['entity_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   public function testUI() {
     // Set up a block and a entity_test entity.

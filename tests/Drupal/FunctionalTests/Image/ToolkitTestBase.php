@@ -19,7 +19,7 @@ abstract class ToolkitTestBase extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['image_test'];
+  protected static $modules = ['image_test'];
 
   /**
    * The URI for the file.
@@ -152,7 +152,7 @@ abstract class ToolkitTestBase extends BrowserTestBase {
    *   parameters passed to each call.
    */
   protected function imageTestGetAllCalls() {
-    return \Drupal::state()->get('image_test.results') ?: [];
+    return \Drupal::state()->get('image_test.results', []);
   }
 
 }

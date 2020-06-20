@@ -9,7 +9,12 @@ namespace Drupal\Tests\views_ui\Functional;
  */
 class DuplicateTest extends UITestBase {
 
-  protected function setUp($import_test_views = TRUE) {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->placeBlock('page_title_block');

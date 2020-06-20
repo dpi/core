@@ -291,22 +291,6 @@ class FileSystem implements FileSystemInterface {
   /**
    * {@inheritdoc}
    */
-  public function uriScheme($uri) {
-    @trigger_error('FileSystem::uriScheme() is deprecated in drupal:8.8.0. It will be removed from drupal:9.0.0. Use \Drupal\Core\StreamWrapper\StreamWrapperManagerInterface::getScheme() instead. See https://www.drupal.org/node/3035273', E_USER_DEPRECATED);
-    return StreamWrapperManager::getScheme($uri);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function validScheme($scheme) {
-    @trigger_error('FileSystem::validScheme() is deprecated in drupal:8.8.0 and will be removed before drupal:9.0.0. Use \Drupal\Core\StreamWrapper\StreamWrapperManagerInterface::isValidScheme() instead. See https://www.drupal.org/node/3035273', E_USER_DEPRECATED);
-    return $this->streamWrapperManager->isValidScheme($scheme);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function copy($source, $destination, $replace = self::EXISTS_RENAME) {
     $this->prepareDestination($source, $destination, $replace);
 
@@ -446,10 +430,10 @@ class FileSystem implements FileSystemInterface {
    *   default scheme (file://) will be used.
    * @param int $replace
    *   Replace behavior when the destination file already exists:
-   *   - FILE_EXISTS_REPLACE - Replace the existing file.
-   *   - FILE_EXISTS_RENAME - Append _{incrementing number} until the filename
-   *     is unique.
-   *   - FILE_EXISTS_ERROR - Do nothing and return FALSE.
+   *   - FileSystemInterface::EXISTS_REPLACE - Replace the existing file.
+   *   - FileSystemInterface::EXISTS_RENAME - Append _{incrementing number}
+   *     until the filename is unique.
+   *   - FileSystemInterface::EXISTS_ERROR - Do nothing and return FALSE.
    *
    * @see \Drupal\Core\File\FileSystemInterface::copy()
    * @see \Drupal\Core\File\FileSystemInterface::move()
@@ -508,9 +492,6 @@ class FileSystem implements FileSystemInterface {
       ]);
       throw new FileException("File '$source' could not be copied because it would overwrite itself.");
     }
-    // Make sure the .htaccess files are present.
-    // @todo Replace with a service in https://www.drupal.org/project/drupal/issues/2620304.
-    file_ensure_htaccess();
   }
 
   /**
@@ -636,18 +617,6 @@ class FileSystem implements FileSystemInterface {
     $temporary_directory = $this->settings->get('file_temp_path');
     if (!empty($temporary_directory)) {
       return $temporary_directory;
-    }
-
-    // Fallback to config for Backwards compatibility.
-    // This service is lazy-loaded and not injected, as the file_system service
-    // is used in the install phase before config_factory service exists. It
-    // will be removed before Drupal 9.0.0.
-    if (\Drupal::hasContainer()) {
-      $temporary_directory = \Drupal::config('system.file')->get('path.temporary');
-      if (!empty($temporary_directory)) {
-        @trigger_error("The 'system.file' config 'path.temporary' is deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Set 'file_temp_path' in settings.php instead. See https://www.drupal.org/node/3039255", E_USER_DEPRECATED);
-        return $temporary_directory;
-      }
     }
 
     // Fallback to OS default.

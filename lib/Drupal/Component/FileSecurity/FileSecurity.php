@@ -4,6 +4,10 @@ namespace Drupal\Component\FileSecurity;
 
 /**
  * Provides file security functions.
+ *
+ * IMPORTANT: This file is duplicated at /composer/Plugin/VendorHardening.
+ * If any change is made here, the same change should be made in the duplicate.
+ * See https://www.drupal.org/project/drupal/issues/3079481
  */
 class FileSecurity {
 
@@ -37,7 +41,7 @@ class FileSecurity {
    * @return string
    *   The desired contents of the .htaccess file.
    *
-   * @see file_save_htaccess()
+   * @see \Drupal\Component\FileSecurity\FileSecurity::writeHtaccess()
    */
   public static function htaccessLines($deny_public_access = TRUE) {
     $lines = static::htaccessPreventExecution();
@@ -68,9 +72,6 @@ SetHandler Drupal_Security_Do_Not_Remove_See_SA_2006_006
 </Files>
 
 # If we know how to do it safely, disable the PHP engine entirely.
-<IfModule mod_php5.c>
-  php_flag engine off
-</IfModule>
 <IfModule mod_php7.c>
   php_flag engine off
 </IfModule>

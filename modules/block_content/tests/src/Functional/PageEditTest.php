@@ -12,7 +12,12 @@ use Drupal\block_content\Entity\BlockContent;
  */
 class PageEditTest extends BlockContentTestBase {
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalPlaceBlock('page_title_block');
@@ -35,7 +40,7 @@ class PageEditTest extends BlockContentTestBase {
     // Check that the block exists in the database.
     $blocks = \Drupal::entityQuery('block_content')->condition('info', $edit['info[0][value]'])->execute();
     $block = BlockContent::load(reset($blocks));
-    $this->assertTrue($block, 'Custom block found in database.');
+    $this->assertNotEmpty($block, 'Custom block found in database.');
 
     // Load the edit page.
     $this->drupalGet('block/' . $block->id());

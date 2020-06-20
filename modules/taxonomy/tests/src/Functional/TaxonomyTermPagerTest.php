@@ -14,7 +14,12 @@ class TaxonomyTermPagerTest extends TaxonomyTestBase {
    *
    * @var array
    */
-  public static $modules = ['taxonomy'];
+  protected static $modules = ['taxonomy'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Vocabulary for testing.
@@ -26,7 +31,7 @@ class TaxonomyTermPagerTest extends TaxonomyTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->drupalLogin($this->drupalCreateUser(['administer taxonomy', 'bypass node access']));
     $this->vocabulary = $this->createVocabulary();

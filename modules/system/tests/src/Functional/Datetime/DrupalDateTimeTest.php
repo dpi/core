@@ -16,12 +16,17 @@ class DrupalDateTimeTest extends BrowserTestBase {
   /**
    * Set up required modules.
    */
-  public static $modules = [];
+  protected static $modules = [];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Test setup.
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
   }

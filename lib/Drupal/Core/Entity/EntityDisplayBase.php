@@ -183,12 +183,6 @@ abstract class EntityDisplayBase extends ConfigEntityBase implements EntityDispl
         if (!$definition->isDisplayConfigurable($this->displayContext) || (!isset($this->content[$name]) && !isset($this->hidden[$name]))) {
           $options = $definition->getDisplayOptions($this->displayContext);
 
-          // @todo Remove handling of 'type' in https://www.drupal.org/node/2799641.
-          if (!isset($options['region']) && !empty($options['type']) && $options['type'] === 'hidden') {
-            $options['region'] = 'hidden';
-            @trigger_error("Specifying 'type' => 'hidden' is deprecated, use 'region' => 'hidden' instead.", E_USER_DEPRECATED);
-          }
-
           if (!empty($options['region']) && $options['region'] === 'hidden') {
             $this->removeComponent($name);
           }
@@ -253,7 +247,6 @@ abstract class EntityDisplayBase extends ConfigEntityBase implements EntityDispl
   public function preSave(EntityStorageInterface $storage) {
     // Ensure that a region is set on each component.
     foreach ($this->getComponents() as $name => $component) {
-      $this->handleHiddenType($name, $component);
       // Ensure that a region is set.
       if (isset($this->content[$name]) && !isset($component['region'])) {
         // Directly set the component to bypass other changes in setComponent().
@@ -264,24 +257,6 @@ abstract class EntityDisplayBase extends ConfigEntityBase implements EntityDispl
     ksort($this->content);
     ksort($this->hidden);
     parent::preSave($storage);
-  }
-
-  /**
-   * Handles a component type of 'hidden'.
-   *
-   * @deprecated This method exists only for backwards compatibility.
-   *
-   * @todo Remove this in https://www.drupal.org/node/2799641.
-   *
-   * @param string $name
-   *   The name of the component.
-   * @param array $component
-   *   The component array.
-   */
-  protected function handleHiddenType($name, array $component) {
-    if (!isset($component['region']) && isset($component['type']) && $component['type'] === 'hidden') {
-      $this->removeComponent($name);
-    }
   }
 
   /**
@@ -441,6 +416,7 @@ abstract class EntityDisplayBase extends ConfigEntityBase implements EntityDispl
    *
    * @param \Drupal\Core\Field\FieldDefinitionInterface $definition
    *   A field definition.
+   *
    * @return array|null
    */
   private function fieldHasDisplayOptions(FieldDefinitionInterface $definition) {

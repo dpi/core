@@ -19,7 +19,18 @@ class OptionsFieldUITest extends FieldTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'options', 'field_test', 'taxonomy', 'field_ui'];
+  protected static $modules = [
+    'node',
+    'options',
+    'field_test',
+    'taxonomy',
+    'field_ui',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * The name of the created content type.
@@ -49,7 +60,7 @@ class OptionsFieldUITest extends FieldTestBase {
    */
   protected $adminPath;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create test user.
@@ -352,7 +363,7 @@ class OptionsFieldUITest extends FieldTestBase {
       }
 
       $elements = $this->xpath('//div[text()="' . $output . '"]');
-      $this->assertEqual(count($elements), 1, 'Correct options found.');
+      $this->assertCount(1, $elements, 'Correct options found.');
     }
   }
 

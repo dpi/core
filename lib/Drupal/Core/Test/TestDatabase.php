@@ -7,7 +7,7 @@ use Drupal\Core\Database\ConnectionNotDefinedException;
 use Drupal\Core\Database\Database;
 
 /**
- * Provides helper methods for interacting with the Simpletest database.
+ * Provides helper methods for interacting with the fixture database.
  */
 class TestDatabase {
 
@@ -404,6 +404,29 @@ class TestDatabase {
       'primary key' => ['test_id'],
     ];
     return $schema;
+  }
+
+  /**
+   * Inserts the parsed PHPUnit results into {simpletest}.
+   *
+   * @param array[] $phpunit_results
+   *   An array of test results, as returned from
+   *   \Drupal\Core\Test\JUnitConverter::xmlToRows(). These results are in a
+   *   form suitable for inserting into the {simpletest} table of the test
+   *   results database.
+   *
+   * @internal
+   */
+  public static function processPhpUnitResults($phpunit_results) {
+    if ($phpunit_results) {
+      $query = static::getConnection()
+        ->insert('simpletest')
+        ->fields(array_keys($phpunit_results[0]));
+      foreach ($phpunit_results as $result) {
+        $query->values($result);
+      }
+      $query->execute();
+    }
   }
 
 }

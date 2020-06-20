@@ -23,7 +23,7 @@ abstract class MultilingualReviewPageTestBase extends MigrateUpgradeTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['migrate_drupal_ui'];
+  protected static $modules = ['migrate_drupal_ui'];
 
   /**
    * Tests the migrate upgrade review form.
@@ -69,9 +69,10 @@ abstract class MultilingualReviewPageTestBase extends MigrateUpgradeTestBase {
     $this->assertUpgradePaths($session, $available_paths, $missing_paths);
 
     // Check there are no errors when a module does not have any migrations and
-    // does not need any. Test with a module that is was in both Drupal 6 and
+    // does not need any. Test with a module that is in both Drupal 6 and
     // Drupal 7 core.
     $module = 'help';
+    $module_name = 'Help';
     $query = $this->sourceDatabase->delete('system');
     $query->condition('type', 'module');
     $query->condition('name', $module);
@@ -86,7 +87,7 @@ abstract class MultilingualReviewPageTestBase extends MigrateUpgradeTestBase {
     // Test the upgrade paths. First remove the module from the available paths
     // list.
     $available_paths = $this->getAvailablePaths();
-    $available_paths = array_diff($available_paths, [$module]);
+    $available_paths = array_diff($available_paths, [$module_name]);
     $missing_paths = $this->getMissingPaths();
     $this->assertUpgradePaths($session, $available_paths, $missing_paths);
   }

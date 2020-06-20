@@ -17,7 +17,12 @@ class NodeAccessGrantsCacheContextTest extends NodeTestBase {
    *
    * @var array
    */
-  public static $modules = ['node_access_test'];
+  protected static $modules = ['node_access_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * User with permission to view content.
@@ -32,7 +37,7 @@ class NodeAccessGrantsCacheContextTest extends NodeTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     node_access_rebuild();

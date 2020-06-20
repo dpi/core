@@ -17,7 +17,12 @@ class UserTimeZoneTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'system_test'];
+  protected static $modules = ['node', 'system_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests the display of dates and time when user-configurable time zones are set.

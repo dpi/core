@@ -19,7 +19,7 @@ class ConfigurableLanguageTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['language'];
+  protected static $modules = ['language'];
 
   /**
    * {@inheritdoc}
@@ -37,6 +37,11 @@ class ConfigurableLanguageTest extends ResourceTestBase {
    * @var \Drupal\Core\Field\Entity\BaseFieldOverride
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

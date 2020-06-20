@@ -40,7 +40,6 @@ use Drupal\user\EntityOwnerTrait;
  *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
  *       "delete-multiple-confirm" = "Drupal\Core\Entity\Form\DeleteMultipleForm",
  *     },
- *     "translation" = "Drupal\content_translation\ContentTranslationHandler",
  *     "views_data" = "Drupal\media\MediaViewsData",
  *     "route_provider" = {
  *       "html" = "Drupal\media\Routing\MediaRouteProvider",
@@ -506,22 +505,6 @@ class Media extends EditorialContentEntityBase implements MediaInterface {
       ->setRevisionable(TRUE);
 
     return $fields;
-  }
-
-  /**
-   * Default value callback for 'uid' base field definition.
-   *
-   * @see ::baseFieldDefinitions()
-   *
-   * @deprecated The ::getCurrentUserId method is deprecated in 8.6.x and will
-   *   be removed before 9.0.0.
-   *
-   * @return int[]
-   *   An array of default values.
-   */
-  public static function getCurrentUserId() {
-    @trigger_error('The ::getCurrentUserId method is deprecated in 8.6.x and will be removed before 9.0.0.', E_USER_DEPRECATED);
-    return [\Drupal::currentUser()->id()];
   }
 
   /**

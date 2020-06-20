@@ -21,9 +21,14 @@ class OffCanvasTest extends OffCanvasTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'off_canvas_test',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests that non-contextual links will work with the off-canvas dialog.

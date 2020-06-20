@@ -28,7 +28,12 @@ class UserPermissionsTest extends BrowserTestBase {
    */
   protected $rid;
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     $this->adminUser = $this->drupalCreateUser(['administer permissions', 'access user profiles', 'administer site configuration', 'administer modules', 'administer account settings']);

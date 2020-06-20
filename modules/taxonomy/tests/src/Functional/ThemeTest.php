@@ -9,7 +9,12 @@ namespace Drupal\Tests\taxonomy\Functional;
  */
 class ThemeTest extends TaxonomyTestBase {
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     // Make sure we are using distinct default and administrative themes for

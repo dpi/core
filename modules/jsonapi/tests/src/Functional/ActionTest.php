@@ -16,7 +16,7 @@ class ActionTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['user'];
+  protected static $modules = ['user'];
 
   /**
    * {@inheritdoc}
@@ -34,6 +34,11 @@ class ActionTest extends ResourceTestBase {
    * @var \Drupal\system\ActionConfigEntityInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

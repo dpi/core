@@ -23,12 +23,17 @@ class LanguageTourTest extends TourTestBase {
    *
    * @var array
    */
-  public static $modules = ['block', 'language', 'tour'];
+  protected static $modules = ['block', 'language', 'tour'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $this->adminUser = $this->drupalCreateUser(['administer languages', 'access tour']);
     $this->drupalLogin($this->adminUser);

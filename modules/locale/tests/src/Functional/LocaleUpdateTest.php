@@ -15,7 +15,12 @@ class LocaleUpdateTest extends LocaleUpdateBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     module_load_include('compare.inc', 'locale');
     module_load_include('fetch.inc', 'locale');
@@ -349,7 +354,7 @@ class LocaleUpdateTest extends LocaleUpdateBase {
     // Check if the language data is added to the database.
     $connection = Database::getConnection();
     $result = $connection->query("SELECT project FROM {locale_file} WHERE langcode='nl'")->fetchField();
-    $this->assertTrue($result, 'Files added to file history');
+    $this->assertNotEmpty($result, 'Files added to file history');
 
     // Remove a language.
     $this->drupalPostForm('admin/config/regional/language/delete/nl', [], t('Delete'));

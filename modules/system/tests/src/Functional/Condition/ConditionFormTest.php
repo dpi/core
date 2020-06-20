@@ -16,7 +16,12 @@ use Drupal\Tests\BrowserTestBase;
  */
 class ConditionFormTest extends BrowserTestBase {
 
-  public static $modules = ['node', 'condition_test'];
+  protected static $modules = ['node', 'condition_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Submit the condition_node_type_test_form to test condition forms.

@@ -12,6 +12,11 @@ use Drupal\Component\Render\FormattableMarkup;
 class SelectTableSortDefaultTest extends DatabaseTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Confirms that a tablesort query returns the correct results.
    *
    * Note that we have to make an HTTP request to a test page handler
@@ -85,7 +90,7 @@ class SelectTableSortDefaultTest extends DatabaseTestBase {
 
     // Verify that the header links are built properly.
     $assert->linkByHrefExists('database_test/tablesort_default_sort');
-    $assert->responseMatches('/\<a.*title\=\"' . t('sort by Username') . '\".*\>/');
+    $assert->responseMatches('/\<a.*title\=\"sort by Username\".*\>/');
   }
 
 }

@@ -16,10 +16,24 @@ use Drupal\Core\File\FileSystemInterface;
 class DirectoryTest extends FileTestBase {
 
   /**
+   * Modules to enable.
+   *
+   * @var array
+   */
+  protected static $modules = ['system'];
+
+  protected function setUp(): void {
+    parent::setUp();
+
+    // These additional tables are necessary due to the call to system_cron().
+    $this->installSchema('system', ['key_value_expire']);
+  }
+
+  /**
    * Test local directory handling functions.
    */
   public function testFileCheckLocalDirectoryHandling() {
-    $site_path = $this->container->get('site.path');
+    $site_path = $this->container->getParameter('site.path');
     $directory = $site_path . '/files';
 
     // Check a new recursively created local directory for correct file system
@@ -28,7 +42,7 @@ class DirectoryTest extends FileTestBase {
     $child = $this->randomMachineName();
 
     // Files directory already exists.
-    $this->assertTrue(is_dir($directory), t('Files directory already exists.'), 'File');
+    $this->assertDirectoryExists($directory);
     // Make files directory writable only.
     $old_mode = fileperms($directory);
 
@@ -40,8 +54,8 @@ class DirectoryTest extends FileTestBase {
     $this->assertTrue($file_system->mkdir($child_path, 0775, TRUE), t('No error reported when creating new local directories.'), 'File');
 
     // Ensure new directories also exist.
-    $this->assertTrue(is_dir($parent_path), t('New parent directory actually exists.'), 'File');
-    $this->assertTrue(is_dir($child_path), t('New child directory actually exists.'), 'File');
+    $this->assertDirectoryExists($parent_path);
+    $this->assertDirectoryExists($child_path);
 
     // Check that new directory permissions were set properly.
     $this->assertDirectoryPermissions($parent_path, 0775);
@@ -63,7 +77,7 @@ class DirectoryTest extends FileTestBase {
     // A directory to operate on.
     $default_scheme = 'public';
     $directory = $default_scheme . '://' . $this->randomMachineName() . '/' . $this->randomMachineName();
-    $this->assertFalse(is_dir($directory), 'Directory does not exist prior to testing.');
+    $this->assertDirectoryNotExists($directory);
 
     // Non-existent directory.
     /** @var \Drupal\Core\File\FileSystemInterface $file_system */
@@ -74,7 +88,7 @@ class DirectoryTest extends FileTestBase {
     $this->assertTrue($file_system->prepareDirectory($directory, FileSystemInterface::CREATE_DIRECTORY), 'No error reported when creating a new directory.', 'File');
 
     // Make sure directory actually exists.
-    $this->assertTrue(is_dir($directory), 'Directory actually exists.', 'File');
+    $this->assertDirectoryExists($directory);
     $file_system = \Drupal::service('file_system');
     if (substr(PHP_OS, 0, 3) != 'WIN') {
       // PHP on Windows doesn't support any kind of useful read-only mode for
@@ -96,9 +110,16 @@ class DirectoryTest extends FileTestBase {
 
     // Remove .htaccess file to then test that it gets re-created.
     @$file_system->unlink($default_scheme . '://.htaccess');
-    $this->assertFalse(is_file($default_scheme . '://.htaccess'), 'Successfully removed the .htaccess file in the files directory.', 'File');
-    file_ensure_htaccess();
-    $this->assertTrue(is_file($default_scheme . '://.htaccess'), 'Successfully re-created the .htaccess file in the files directory.', 'File');
+    $this->assertFileNotExists($default_scheme . '://.htaccess');
+    $this->container->get('file.htaccess_writer')->ensure();
+    $this->assertFileExists($default_scheme . '://.htaccess');
+
+    // Remove .htaccess file again to test that it is re-created by a cron run.
+    @$file_system->unlink($default_scheme . '://.htaccess');
+    $this->assertFileNotExists($default_scheme . '://.htaccess');
+    system_cron();
+    $this->assertFileExists($default_scheme . '://.htaccess');
+
     // Verify contents of .htaccess file.
     $file = file_get_contents($default_scheme . '://.htaccess');
     $this->assertEqual($file, FileSecurity::htaccessLines(FALSE), 'The .htaccess file contains the proper content.', 'File');
@@ -135,9 +156,9 @@ class DirectoryTest extends FileTestBase {
    *
    * If a file exists, ::getDestinationFilename($destination, $replace) will
    * either return:
-   * - the existing filepath, if $replace is FILE_EXISTS_REPLACE
-   * - a new filepath if FILE_EXISTS_RENAME
-   * - an error (returning FALSE) if FILE_EXISTS_ERROR.
+   * - the existing filepath, if $replace is FileSystemInterface::EXISTS_REPLACE
+   * - a new filepath if FileSystemInterface::EXISTS_RENAME
+   * - an error (returning FALSE) if FileSystemInterface::EXISTS_ERROR.
    * If the file doesn't currently exist, then it will simply return the
    * filepath.
    */

@@ -1,4 +1,9 @@
 parameters:
+  # The app.root and site.path parameters are dynamically set by
+  # \Drupal\Core\DrupalKernel::initializeContainer(). They are listed here to
+  # allow IDEs to autocomplete them when writing new service YAML files.
+  app.root: ''
+  site.path: ''
   session.storage.options:
     gc_probability: 1
     gc_divisor: 100
@@ -46,6 +51,11 @@ services:
   # Simple cache contexts, directly derived from the request context.
   cache_context.ip:
     class: Drupal\Core\Cache\Context\IpCacheContext
+    arguments: ['@request_stack']
+    tags:
+      - { name: cache.context }
+  cache_context.protocol_version:
+    class: Drupal\Core\Cache\Context\ProtocolVersionCacheContext
     arguments: ['@request_stack']
     tags:
       - { name: cache.context }
@@ -106,7 +116,7 @@ services:
       - { name: cache.context }
   cache_context.url.query_args.pagers:
     class: Drupal\Core\Cache\Context\PagersCacheContext
-    arguments: ['@request_stack']
+    arguments: ['@pager.parameters']
     tags:
       - { name: cache.context }
 
@@ -196,7 +206,7 @@ services:
     arguments: ['@database', '@cache_tags.invalidator.checksum', '@settings']
   cache.backend.apcu:
     class: Drupal\Core\Cache\ApcuBackendFactory
-    arguments: ['@app.root', '@site.path', '@cache_tags.invalidator.checksum']
+    arguments: ['%app.root%', '%site.path%', '@cache_tags.invalidator.checksum']
   cache.backend.php:
     class: Drupal\Core\Cache\PhpBackendFactory
     arguments: ['@cache_tags.invalidator.checksum']
@@ -207,55 +217,55 @@ services:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin, default_backend: cache.backend.memory }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [static]
   cache.bootstrap:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin, default_backend: cache.backend.chainedfast }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [bootstrap]
   cache.config:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin, default_backend: cache.backend.chainedfast }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [config]
   cache.default:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [default]
   cache.entity:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [entity]
   cache.menu:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [menu]
   cache.render:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [render]
   cache.data:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [data]
   cache.discovery:
     class: Drupal\Core\Cache\CacheBackendInterface
     tags:
       - { name: cache.bin, default_backend: cache.backend.chainedfast }
-    factory: cache_factory:get
+    factory: ['@cache_factory', 'get']
     arguments: [discovery]
   cache_router_rebuild_subscriber:
     class: Drupal\Core\EventSubscriber\CacheRouterRebuildSubscriber
@@ -315,17 +325,22 @@ services:
     public: false
     tags:
       - { name: backend_overridable }
+  config.import_transformer:
+    class: Drupal\Core\Config\ImportStorageTransformer
+    arguments: ['@event_dispatcher', '@database', '@lock', '@lock.persistent']
   config.storage.export:
-    class: Drupal\Core\Config\ReadOnlyStorage
-    arguments: ['@config.storage']
-  # @deprecated in Drupal 8.0.x and will be removed before 9.0.0. Use
-  #   config.storage.sync instead.
-  # @see https://www.drupal.org/node/2574957
-  config.storage.staging:
+    class: Drupal\Core\Config\ManagedStorage
+    arguments: ['@config.storage.export.manager']
+  config.storage.export.manager:
+    class: Drupal\Core\Config\ExportStorageManager
+    arguments: ['@config.storage', '@database', '@event_dispatcher', '@lock']
+    public: false
+  config.storage.sync:
     class: Drupal\Core\Config\FileStorage
     factory: Drupal\Core\Config\FileStorageFactory::getSync
-  config.storage.sync:
-    alias: config.storage.staging
+  config.storage.staging:
+    alias: config.storage.sync
+    deprecated: The "%alias_id%" service is deprecated in drupal:8.0.0 and is removed from drupal:10.0.0. Use the "config.storage.sync" service instead. See https://www.drupal.org/node/2574957
   config.storage.snapshot:
     class: Drupal\Core\Config\DatabaseStorage
     arguments: ['@database', config_snapshot]
@@ -385,7 +400,7 @@ services:
     class: Drupal\Core\Form\FormErrorHandler
   form_cache:
     class: Drupal\Core\Form\FormCache
-    arguments: ['@app.root', '@keyvalue.expirable', '@module_handler', '@current_user', '@csrf_token', '@logger.channel.form', '@request_stack', '@page_cache_request_policy']
+    arguments: ['%app.root%', '@keyvalue.expirable', '@module_handler', '@current_user', '@csrf_token', '@logger.channel.form', '@request_stack', '@page_cache_request_policy']
     public: false  # Private to form_builder
   keyvalue:
     class: Drupal\Core\KeyValueStore\KeyValueFactory
@@ -407,7 +422,7 @@ services:
   logger.channel_base:
     abstract: true
     class: Drupal\Core\Logger\LoggerChannel
-    factory: logger.factory:get
+    factory: ['@logger.factory', 'get']
   logger.channel.default:
     parent: logger.channel_base
     arguments: ['system']
@@ -422,11 +437,14 @@ services:
     arguments: ['cron']
   logger.channel.file:
     class: Drupal\Core\Logger\LoggerChannel
-    factory: logger.factory:get
+    factory: ['@logger.factory', 'get']
     arguments: ['file']
   logger.channel.form:
     parent: logger.channel_base
     arguments: ['form']
+  logger.channel.security:
+    parent: logger.channel_base
+    arguments: ['security']
   logger.log_message_parser:
     class: Drupal\Core\Logger\LogMessageParser
 
@@ -451,14 +469,6 @@ services:
   queue.database:
     class: Drupal\Core\Queue\QueueDatabaseFactory
     arguments: ['@database']
-  path.alias_whitelist:
-    class: Drupal\Core\Path\AliasWhitelist
-    tags:
-      - { name: needs_destruction }
-    arguments: [path_alias_whitelist, '@cache.bootstrap', '@lock', '@state', '@path.alias_storage']
-  path.alias_manager:
-    class: Drupal\Core\Path\AliasManager
-    arguments: ['@path.alias_storage', '@path.alias_whitelist', '@language_manager', '@cache.data']
   path.current:
     class: Drupal\Core\Path\CurrentPathStack
     arguments: ['@request_stack']
@@ -473,13 +483,13 @@ services:
     arguments: ['@service_container']
   http_client:
     class: GuzzleHttp\Client
-    factory: http_client_factory:fromOptions
+    factory: ['@http_client_factory', 'fromOptions']
   http_client_factory:
     class: Drupal\Core\Http\ClientFactory
     arguments: ['@http_handler_stack']
   plugin.manager.link_relation_type:
     class: \Drupal\Core\Http\LinkRelationTypeManager
-    arguments: ['@app.root', '@module_handler', '@cache.discovery']
+    arguments: ['%app.root%', '@module_handler', '@cache.discovery']
   theme.negotiator:
     class: Drupal\Core\Theme\ThemeNegotiator
     arguments: ['@access_check.theme', '@class_resolver']
@@ -507,25 +517,25 @@ services:
     arguments: ['@container.namespaces', '@cache.discovery', '@module_handler']
   module_handler:
     class: Drupal\Core\Extension\ModuleHandler
-    arguments: ['@app.root', '%container.modules%', '@cache.bootstrap']
+    arguments: ['%app.root%', '%container.modules%', '@cache.bootstrap']
   module_installer:
     class: Drupal\Core\Extension\ModuleInstaller
     tags:
       - { name: service_collector, tag: 'module_install.uninstall_validator', call: addUninstallValidator }
-    arguments: ['@app.root', '@module_handler', '@kernel']
+    arguments: ['%app.root%', '@module_handler', '@kernel']
     lazy: true
   extension.list.module:
     class: Drupal\Core\Extension\ModuleExtensionList
-    arguments: ['@app.root', 'module', '@cache.default', '@info_parser', '@module_handler', '@state', '@config.factory', '@extension.list.profile', '%install_profile%', '%container.modules%']
+    arguments: ['%app.root%', 'module', '@cache.default', '@info_parser', '@module_handler', '@state', '@config.factory', '@extension.list.profile', '%install_profile%', '%container.modules%']
   extension.list.profile:
     class: Drupal\Core\Extension\ProfileExtensionList
-    arguments: ['@app.root', 'profile', '@cache.default', '@info_parser', '@module_handler', '@state', '%install_profile%']
+    arguments: ['%app.root%', 'profile', '@cache.default', '@info_parser', '@module_handler', '@state', '%install_profile%']
   extension.list.theme:
     class: Drupal\Core\Extension\ThemeExtensionList
-    arguments: ['@app.root', 'theme', '@cache.default', '@info_parser', '@module_handler', '@state', '@config.factory', '@extension.list.theme_engine', '%install_profile%']
+    arguments: ['%app.root%', 'theme', '@cache.default', '@info_parser', '@module_handler', '@state', '@config.factory', '@extension.list.theme_engine', '%install_profile%']
   extension.list.theme_engine:
     class: Drupal\Core\Extension\ThemeEngineExtensionList
-    arguments: ['@app.root', 'theme_engine', '@cache.default', '@info_parser', '@module_handler', '@state', '%install_profile%']
+    arguments: ['%app.root%', 'theme_engine', '@cache.default', '@info_parser', '@module_handler', '@state', '%install_profile%']
   content_uninstall_validator:
     class: Drupal\Core\Entity\ContentUninstallValidator
     tags:
@@ -538,19 +548,18 @@ services:
       - { name: module_install.uninstall_validator }
     arguments: ['@string_translation', '@extension.list.module']
     lazy: true
+  module_required_by_themes_uninstall_validator:
+    class: Drupal\Core\Extension\ModuleRequiredByThemesUninstallValidator
+    tags:
+      - { name: module_install.uninstall_validator }
+    arguments: ['@string_translation', '@extension.list.module', '@extension.list.theme']
+    lazy: true
   theme_handler:
     class: Drupal\Core\Extension\ThemeHandler
-    arguments: ['@app.root', '@config.factory', '@extension.list.theme']
+    arguments: ['%app.root%', '@config.factory', '@extension.list.theme']
   theme_installer:
     class: Drupal\Core\Extension\ThemeInstaller
-    arguments: ['@theme_handler', '@config.factory', '@config.installer', '@module_handler', '@config.manager', '@asset.css.collection_optimizer', '@router.builder', '@logger.channel.default', '@state']
-  # @deprecated in Drupal 8.0.x and will be removed before 9.0.0. Use the other
-  #   entity* services instead.
-  entity.manager:
-    # We cannot set the deprecated property here because many test cases still
-    # rely on this service and they would fail with deprecation warnings.
-    class: Drupal\Core\Entity\EntityManager
-    parent: container.trait
+    arguments: ['@theme_handler', '@config.factory', '@config.installer', '@module_handler', '@config.manager', '@asset.css.collection_optimizer', '@router.builder', '@logger.channel.default', '@state', '@extension.list.module']
   entity.memory_cache:
     class: Drupal\Core\Cache\MemoryCache\MemoryCache
   entity_type.manager:
@@ -633,6 +642,7 @@ services:
   plugin.manager.archiver:
     class: Drupal\Core\Archiver\ArchiverManager
     parent: default_plugin_manager
+    arguments: ['@file_system']
   plugin.manager.action:
     class: Drupal\Core\Action\ActionManager
     arguments: ['@container.namespaces', '@cache.discovery', '@module_handler']
@@ -697,23 +707,27 @@ services:
     class: Drupal\Component\EventDispatcher\ContainerAwareEventDispatcher
     arguments: ['@service_container']
   app.root:
-    class: SplString
-    factory: app.root.factory:get
+    class: \SplString
+    factory: ['@app.root.factory', 'get']
+    deprecated: The "%service_id%" service is deprecated in drupal:9.0.0 and is removed from drupal:10.0.0. Use the app.root parameter instead. See https://www.drupal.org/node/3080612
     tags:
       - { name: parameter_service }
   app.root.factory:
     class: Drupal\Core\AppRootFactory
     arguments: ['@kernel']
     public: false
+    deprecated: The "%service_id%" service is deprecated in drupal:9.0.0 and is removed from drupal:10.0.0. Use the app.root parameter instead. See https://www.drupal.org/node/3080612
   site.path:
-    class: SplString
-    factory: site.path.factory:get
+    class: \SplString
+    factory: ['@site.path.factory', 'get']
+    deprecated: The "%service_id%" service is deprecated in drupal:9.0.0 and is removed from drupal:10.0.0. Use the site.path parameter instead. See https://www.drupal.org/node/3080612
     tags:
       - { name: parameter_service }
   site.path.factory:
     class: Drupal\Core\SitePathFactory
     arguments: ['@kernel']
     public: false
+    deprecated: The "%service_id%" service is deprecated in drupal:9.0.0 and is removed from drupal:10.0.0. Use the site.path parameter instead. See https://www.drupal.org/node/3080612
   controller_resolver:
     class: Drupal\Core\Controller\ControllerResolver
     arguments: ['@psr7.http_message_factory', '@class_resolver']
@@ -731,15 +745,12 @@ services:
     arguments: ['@event_dispatcher', '@controller_resolver', '@request_stack', '@http_kernel.controller.argument_resolver']
   http_kernel.controller.argument_resolver:
     class: Symfony\Component\HttpKernel\Controller\ArgumentResolver
-    arguments: ['@http_kernel.controller.argument_metadata_factory', ['@argument_resolver.request_attribute', '@argument_resolver.raw_parameter', '@argument_resolver.request', '@argument_resolver.psr7_request', '@argument_resolver.route_match', '@argument_resolver.default']]
+    arguments: ['@http_kernel.controller.argument_metadata_factory', ['@argument_resolver.request_attribute', '@argument_resolver.request', '@argument_resolver.psr7_request', '@argument_resolver.route_match', '@argument_resolver.default']]
   http_kernel.controller.argument_metadata_factory:
     class: Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadataFactory
     public: false
   argument_resolver.request_attribute:
     class: Symfony\Component\HttpKernel\Controller\ArgumentResolver\RequestAttributeValueResolver
-    public: false
-  argument_resolver.raw_parameter:
-    class: Drupal\Core\Controller\ArgumentResolver\RawParameterValueResolver
     public: false
   argument_resolver.request:
     class: Symfony\Component\HttpKernel\Controller\ArgumentResolver\RequestValueResolver
@@ -781,8 +792,21 @@ services:
        - { name: http_middleware, priority: 250 }
   psr7.http_foundation_factory:
     class: Symfony\Bridge\PsrHttpMessage\Factory\HttpFoundationFactory
+  psr17.server_request_factory:
+    class: Laminas\Diactoros\ServerRequestFactory
+    public: false
+  psr17.stream_factory:
+    class: Laminas\Diactoros\StreamFactory
+    public: false
+  psr17.uploaded_file_factory:
+    class: Laminas\Diactoros\UploadedFileFactory
+    public: false
+  psr17.response_factory:
+    class: Laminas\Diactoros\ResponseFactory
+    public: false
   psr7.http_message_factory:
-    class: Symfony\Bridge\PsrHttpMessage\Factory\DiactorosFactory
+    class: Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory
+    arguments: ['@psr17.server_request_factory', '@psr17.stream_factory', '@psr17.uploaded_file_factory', '@psr17.response_factory']
   language_manager:
     class: Drupal\Core\Language\LanguageManager
     arguments: ['@language.default']
@@ -853,18 +877,6 @@ services:
     arguments: ['@router.route_provider', '@state', '@cache.bootstrap']
     tags:
       - { name: 'event_subscriber' }
-  router.matcher.final_matcher:
-    class: Drupal\Core\Routing\UrlMatcher
-    arguments: ['@path.current']
-    deprecated: The "%service_id%" service is deprecated. You should use the 'router.no_access_checks' service instead.
-  router.matcher:
-    class: Symfony\Cmf\Component\Routing\NestedMatcher\NestedMatcher
-    arguments: ['@router.route_provider']
-    calls:
-      - [setFinalMatcher, ['@router.matcher.final_matcher']]
-    tags:
-      - { name: service_collector, tag: non_lazy_route_filter, call: addRouteFilter }
-    deprecated: The "%service_id%" service is deprecated. You should use the 'router.no_access_checks' service instead.
   url_generator.non_bubbling:
     class: Drupal\Core\Routing\UrlGenerator
     arguments: ['@router.route_provider', '@path_processor_manager', '@route_processor_manager', '@request_stack', '%filter_protocols%']
@@ -888,12 +900,6 @@ services:
   router:
     class: Drupal\Core\Routing\AccessAwareRouter
     arguments: ['@router.no_access_checks', '@access_manager', '@current_user']
-  router.dynamic:
-    class: Symfony\Cmf\Component\Routing\DynamicRouter
-    arguments: ['@router.request_context', '@router.matcher', '@url_generator']
-    tags:
-      - { name: service_collector, tag: non_lazy_route_enhancer, call: addRouteEnhancer }
-    deprecated: The "%service_id%" service is deprecated. You should use the 'router.no_access_checks' service instead.
   router.no_access_checks:
     class: \Drupal\Core\Routing\Router
     arguments: ['@router.route_provider', '@path.current', '@url_generator']
@@ -910,12 +916,6 @@ services:
     arguments: ['@state']
     tags:
       - { name: event_subscriber }
-  entity.query:
-    class: Drupal\Core\Entity\Query\QueryFactory
-    arguments: ['@entity_type.manager']
-    calls:
-      - [setContainer, ['@service_container']]
-    deprecated: The "%service_id%" service is deprecated. Use the 'entity_type.manager' service to get an entity type's storage object and then call \Drupal\Core\Entity\EntityStorageInterface::getQuery() or \Drupal\Core\Entity\EntityStorageInterface::getAggregateQuery() instead. See https://www.drupal.org/node/2849874
   entity.query.config:
     class: Drupal\Core\Config\Entity\Query\QueryFactory
     arguments: ['@config.factory', '@keyvalue', '@config.manager']
@@ -951,11 +951,6 @@ services:
     arguments: ['@lock', '@plugin.manager.menu.link', '@database', '@database.replica_kill_switch']
     tags:
       - { name: event_subscriber }
-  path.alias_storage:
-    class: Drupal\Core\Path\AliasStorage
-    arguments: ['@database', '@module_handler']
-    tags:
-      - { name: backend_overridable }
   path.matcher:
     class: Drupal\Core\Path\PathMatcher
     arguments: ['@config.factory', '@current_route_match']
@@ -1164,6 +1159,10 @@ services:
     class: Drupal\Core\Entity\EntityAccessCheck
     tags:
       - { name: access_check, applies_to: _entity_access }
+  access_check.entity_bundles:
+    class: Drupal\Core\Entity\EntityBundleAccessCheck
+    tags:
+      - { name: access_check, applies_to: _entity_bundles }
   access_check.entity_create:
     class: Drupal\Core\Entity\EntityCreateAccessCheck
     arguments: ['@entity_type.manager']
@@ -1207,11 +1206,6 @@ services:
     arguments: ['@maintenance_mode', '@config.factory', '@string_translation', '@url_generator', '@current_user', '@bare_html_page_renderer', '@messenger']
     tags:
       - { name: event_subscriber }
-  path_subscriber:
-    class: Drupal\Core\EventSubscriber\PathSubscriber
-    tags:
-      - { name: event_subscriber }
-    arguments: ['@path.alias_manager', '@path.current']
   route_access_response_subscriber:
     class: Drupal\Core\EventSubscriber\RouteAccessResponseSubscriber
     tags:
@@ -1271,6 +1265,11 @@ services:
     tags:
       - { name: event_subscriber }
     arguments: ['@config.manager', '@config.storage', '@config.storage.snapshot']
+  config_exclude_modules_subscriber:
+    class: Drupal\Core\EventSubscriber\ExcludedModulesEventSubscriber
+    arguments: ['@config.storage', '@settings', '@config.manager']
+    tags:
+      - { name: event_subscriber }
   exception.needs_installer:
     class: Drupal\Core\EventSubscriber\ExceptionDetectNeedsInstallSubscriber
     arguments: ['@database']
@@ -1337,12 +1336,6 @@ services:
     arguments: ['@current_route_match']
     tags:
       - { name: route_processor_outbound, priority: 200 }
-  path_processor_alias:
-    class: Drupal\Core\PathProcessor\PathProcessorAlias
-    tags:
-      - { name: path_processor_inbound, priority: 100 }
-      - { name: path_processor_outbound, priority: 300 }
-    arguments: ['@path.alias_manager']
   route_processor_csrf:
     class: Drupal\Core\Access\RouteProcessorCsrf
     tags:
@@ -1422,90 +1415,90 @@ services:
     class: Drupal\Component\Bridge\ZfExtensionManagerSfContainer
     calls:
       - [setContainer, ['@service_container']]
-      - [setStandalone, ['\Zend\Feed\Reader\StandaloneExtensionManager']]
+      - [setStandalone, ['\Laminas\Feed\Reader\StandaloneExtensionManager']]
     arguments: ['feed.reader.']
   feed.bridge.writer:
     class: Drupal\Component\Bridge\ZfExtensionManagerSfContainer
     calls:
       - [setContainer, ['@service_container']]
-      - [setStandalone, ['\Zend\Feed\Writer\StandaloneExtensionManager']]
+      - [setStandalone, ['\Laminas\Feed\Writer\StandaloneExtensionManager']]
     arguments: ['feed.writer.']
-# Zend Feed reader plugins. Plugin instances should not be shared.
+# Laminas Feed reader plugins. Plugin instances should not be shared.
   feed.reader.dublincoreentry:
-    class: Zend\Feed\Reader\Extension\DublinCore\Entry
+    class: Laminas\Feed\Reader\Extension\DublinCore\Entry
     shared: false
   feed.reader.dublincorefeed:
-    class: Zend\Feed\Reader\Extension\DublinCore\Feed
+    class: Laminas\Feed\Reader\Extension\DublinCore\Feed
     shared: false
   feed.reader.contententry:
-    class: Zend\Feed\Reader\Extension\Content\Entry
+    class: Laminas\Feed\Reader\Extension\Content\Entry
     shared: false
   feed.reader.atomentry:
-    class: Zend\Feed\Reader\Extension\Atom\Entry
+    class: Laminas\Feed\Reader\Extension\Atom\Entry
     shared: false
   feed.reader.atomfeed:
-    class: Zend\Feed\Reader\Extension\Atom\Feed
+    class: Laminas\Feed\Reader\Extension\Atom\Feed
     shared: false
   feed.reader.slashentry:
-    class: Zend\Feed\Reader\Extension\Slash\Entry
+    class: Laminas\Feed\Reader\Extension\Slash\Entry
     shared: false
   feed.reader.wellformedwebentry:
-    class: Zend\Feed\Reader\Extension\WellFormedWeb\Entry
+    class: Laminas\Feed\Reader\Extension\WellFormedWeb\Entry
     shared: false
   feed.reader.threadentry:
-    class: Zend\Feed\Reader\Extension\Thread\Entry
+    class: Laminas\Feed\Reader\Extension\Thread\Entry
     shared: false
   feed.reader.podcastentry:
-    class: Zend\Feed\Reader\Extension\Podcast\Entry
+    class: Laminas\Feed\Reader\Extension\Podcast\Entry
     shared: false
   feed.reader.podcastfeed:
-    class: Zend\Feed\Reader\Extension\Podcast\Feed
+    class: Laminas\Feed\Reader\Extension\Podcast\Feed
     shared: false
-# Zend Feed writer plugins. Plugins should be set as prototype scope.
+# Laminas Feed writer plugins. Plugins should be set as prototype scope.
   feed.writer.atomrendererfeed:
-    class: Zend\Feed\Writer\Extension\Atom\Renderer\Feed
+    class: Laminas\Feed\Writer\Extension\Atom\Renderer\Feed
     shared: false
   feed.writer.contentrendererentry:
-    class: Zend\Feed\Writer\Extension\Content\Renderer\Entry
+    class: Laminas\Feed\Writer\Extension\Content\Renderer\Entry
     shared: false
   feed.writer.dublincorerendererentry:
-    class: Zend\Feed\Writer\Extension\DublinCore\Renderer\Entry
+    class: Laminas\Feed\Writer\Extension\DublinCore\Renderer\Entry
     shared: false
   feed.writer.dublincorerendererfeed:
-    class: Zend\Feed\Writer\Extension\DublinCore\Renderer\Feed
+    class: Laminas\Feed\Writer\Extension\DublinCore\Renderer\Feed
     shared: false
   feed.writer.itunesentry:
-    class: Zend\Feed\Writer\Extension\ITunes\Entry
+    class: Laminas\Feed\Writer\Extension\ITunes\Entry
     shared: false
   feed.writer.itunesfeed:
-    class: Zend\Feed\Writer\Extension\ITunes\Feed
+    class: Laminas\Feed\Writer\Extension\ITunes\Feed
     shared: false
   feed.writer.itunesrendererentry:
-    class: Zend\Feed\Writer\Extension\ITunes\Renderer\Entry
+    class: Laminas\Feed\Writer\Extension\ITunes\Renderer\Entry
     shared: false
   feed.writer.itunesrendererfeed:
-    class: Zend\Feed\Writer\Extension\ITunes\Renderer\Feed
+    class: Laminas\Feed\Writer\Extension\ITunes\Renderer\Feed
     shared: false
   feed.writer.slashrendererentry:
-    class: Zend\Feed\Writer\Extension\Slash\Renderer\Entry
+    class: Laminas\Feed\Writer\Extension\Slash\Renderer\Entry
     shared: false
   feed.writer.threadingrendererentry:
-    class: Zend\Feed\Writer\Extension\Threading\Renderer\Entry
+    class: Laminas\Feed\Writer\Extension\Threading\Renderer\Entry
     shared: false
   feed.writer.wellformedwebrendererentry:
-    class: Zend\Feed\Writer\Extension\WellFormedWeb\Renderer\Entry
+    class: Laminas\Feed\Writer\Extension\WellFormedWeb\Renderer\Entry
     shared: false
   theme.manager:
     class: Drupal\Core\Theme\ThemeManager
-    arguments: ['@app.root', '@theme.negotiator', '@theme.initialization', '@module_handler']
+    arguments: ['%app.root%', '@theme.negotiator', '@theme.initialization', '@module_handler']
     calls:
       - [setThemeRegistry, ['@theme.registry']]
   theme.initialization:
     class: Drupal\Core\Theme\ThemeInitialization
-    arguments: ['@app.root', '@theme_handler', '@cache.bootstrap', '@module_handler']
+    arguments: ['%app.root%', '@theme_handler', '@cache.bootstrap', '@module_handler']
   theme.registry:
     class: Drupal\Core\Theme\Registry
-    arguments: ['@app.root', '@cache.default', '@lock', '@module_handler', '@theme_handler', '@theme.initialization', null, '@cache.bootstrap']
+    arguments: ['%app.root%', '@cache.default', '@lock', '@module_handler', '@theme_handler', '@theme.initialization', null, '@cache.bootstrap']
     tags:
       - { name: needs_destruction }
     calls:
@@ -1537,6 +1530,8 @@ services:
   session:
     class: Symfony\Component\HttpFoundation\Session\Session
     arguments: ['@session_manager', '@session.attribute_bag', '@session.flash_bag']
+    tags:
+      - { name: service_collector, tag: session_bag, call: registerBag }
   session.flash_bag:
     class: Symfony\Component\HttpFoundation\Session\Flash\FlashBag
     public: false
@@ -1600,7 +1595,10 @@ services:
       - { name: needs_destruction }
   library.discovery.parser:
     class: Drupal\Core\Asset\LibraryDiscoveryParser
-    arguments: ['@app.root', '@module_handler', '@theme.manager', '@stream_wrapper_manager']
+    arguments: ['%app.root%', '@module_handler', '@theme.manager', '@stream_wrapper_manager', '@library.libraries_directory_file_finder']
+  library.libraries_directory_file_finder:
+    class: Drupal\Core\Asset\LibrariesDirectoryFileFinder
+    arguments: ['%app.root%', '%site.path%', '@extension.list.profile', '%install_profile%']
   library.dependency_resolver:
     class: Drupal\Core\Asset\LibraryDependencyResolver
     arguments: ['@library.discovery']
@@ -1609,9 +1607,10 @@ services:
     arguments: ['@library.discovery', '@library.dependency_resolver', '@module_handler', '@theme.manager', '@language_manager', '@cache.data']
   info_parser:
     class: Drupal\Core\Extension\InfoParser
+    arguments: ['%app.root%']
   twig:
     class: Drupal\Core\Template\TwigEnvironment
-    arguments: ['@app.root', '@cache.default', '%twig_extension_hash%', '@state', '@twig.loader', '%twig.config%']
+    arguments: ['%app.root%', '@cache.default', '%twig_extension_hash%', '@state', '@twig.loader', '%twig.config%']
     tags:
       - { name: service_collector, tag: 'twig.extension', call: addExtension }
   twig.extension:
@@ -1622,17 +1621,17 @@ services:
   # @todo Figure out what to do about debugging functions.
   # @see https://www.drupal.org/node/1804998
   twig.extension.debug:
-    class: Twig_Extension_Debug
+    class: Twig\Extension\DebugExtension
     tags:
       - { name: twig.extension }
   twig.loader:
-    class: Twig_Loader_Chain
+    class: Twig\Loader\ChainLoader
     public: false
     tags:
       - { name: service_collector, tag: twig.loader, call: addLoader, required: TRUE }
   twig.loader.filesystem:
     class: Drupal\Core\Template\Loader\FilesystemLoader
-    # We use '.' instead of '@app.root' as the path for non-namespaced template
+    # We use '.' instead of '%app.root%' as the path for non-namespaced template
     # files so that they match the relative paths of templates loaded via the
     # theme registry or via Twig namespaces.
     arguments: ['.', '@module_handler', '@theme_handler']
@@ -1649,6 +1648,9 @@ services:
       - { name: twig.loader, priority: -100 }
   element_info:
     alias: plugin.manager.element_info
+  file.htaccess_writer:
+    class: Drupal\Core\File\HtaccessWriter
+    arguments: ['@logger.channel.security', '@stream_wrapper_manager']
   file.mime_type.guesser:
     class: Drupal\Core\File\MimeType\MimeTypeGuesser
     arguments: ['@stream_wrapper_manager']
@@ -1725,3 +1727,9 @@ services:
     arguments: ['@keyvalue.expirable', '@lock', '@request_stack', '%tempstore.expire%']
     tags:
       - { name: backend_overridable }
+  pager.manager:
+    class: Drupal\Core\Pager\PagerManager
+    arguments: ['@pager.parameters']
+  pager.parameters:
+    class: Drupal\Core\Pager\PagerParameters
+    arguments: ['@request_stack']

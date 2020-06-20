@@ -25,7 +25,18 @@ class FormTest extends FieldTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'field_test', 'options', 'entity_test', 'locale'];
+  protected static $modules = [
+    'node',
+    'field_test',
+    'options',
+    'entity_test',
+    'locale',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * An array of values defining a field single.
@@ -55,7 +66,7 @@ class FormTest extends FieldTestBase {
    */
   protected $field;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $web_user = $this->drupalCreateUser(['view test entity', 'administer entity_test content']);
@@ -655,7 +666,7 @@ class FormTest extends FieldTestBase {
     $entity->save();
 
     $this->drupalGet('entity_test_base_field_display/manage/' . $entity->id());
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertText('A field with multiple values');
     // Test if labels were XSS filtered.
     $this->assertEscaped("<script>alert('a configurable field');</script>");
@@ -712,6 +723,10 @@ class FormTest extends FieldTestBase {
         'type' => $widget,
       ])
       ->save();
+
+    // We need to rebuild hook information after setting the component through
+    // the API.
+    $this->rebuildAll();
 
     $this->drupalGet('entity_test/add');
     $this->assertUniqueText("From $hook(): prefix on $field_name parent element.");

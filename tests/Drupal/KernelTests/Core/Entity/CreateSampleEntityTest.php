@@ -25,12 +25,23 @@ class CreateSampleEntityTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['system', 'field', 'filter', 'text', 'file', 'user', 'node', 'comment', 'taxonomy'];
+  protected static $modules = [
+    'path_alias',
+    'system',
+    'field',
+    'filter',
+    'text',
+    'file',
+    'user',
+    'node',
+    'comment',
+    'taxonomy',
+  ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setup();
 
     $this->installEntitySchema('file');
@@ -40,6 +51,7 @@ class CreateSampleEntityTest extends KernelTestBase {
     $this->installEntitySchema('file');
     $this->installEntitySchema('comment');
     $this->installEntitySchema('comment_type');
+    $this->installEntitySchema('path_alias');
     $this->installEntitySchema('taxonomy_vocabulary');
     $this->installEntitySchema('taxonomy_term');
     $this->entityTypeManager = $this->container->get('entity_type.manager');

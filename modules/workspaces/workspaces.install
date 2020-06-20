@@ -5,6 +5,7 @@
  * Contains install, update and uninstall functions for the Workspaces module.
  */
 
+use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\workspaces\Entity\Workspace;
 
 /**
@@ -13,12 +14,6 @@ use Drupal\workspaces\Entity\Workspace;
 function workspaces_requirements($phase) {
   $requirements = [];
   if ($phase === 'install') {
-    if (\Drupal::moduleHandler()->moduleExists('content_moderation')) {
-      $requirements['content_moderation_incompatibility'] = [
-        'severity' => REQUIREMENT_ERROR,
-        'description' => t('Workspaces can not be installed when Content Moderation is also installed.'),
-      ];
-    }
     if (\Drupal::moduleHandler()->moduleExists('workspace')) {
       $requirements['workspace_incompatibility'] = [
         'severity' => REQUIREMENT_ERROR,
@@ -30,6 +25,26 @@ function workspaces_requirements($phase) {
   }
 
   return $requirements;
+}
+
+/**
+ * Implements hook_module_preinstall().
+ */
+function workspaces_module_preinstall($module) {
+  if ($module !== 'workspaces') {
+    return;
+  }
+
+  /** @var \Drupal\workspaces\WorkspaceManagerInterface $workspace_manager */
+  $workspace_manager = \Drupal::service('workspaces.manager');
+  $entity_definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  foreach ($entity_definition_update_manager->getEntityTypes() as $entity_type) {
+    $revision_metadata_keys = $entity_type->get('revision_metadata_keys');
+    if ($workspace_manager->isEntityTypeSupported($entity_type)) {
+      $entity_type->setRevisionMetadataKey('workspace', 'workspace');
+      $entity_definition_update_manager->updateEntityType($entity_type);
+    }
+  }
 }
 
 /**
@@ -60,4 +75,54 @@ function workspaces_install() {
     'label' => 'Stage',
     'uid' => $owner_id,
   ])->save();
+}
+
+/**
+ * Implements hook_schema().
+ */
+function workspaces_schema() {
+  $schema['workspace_association'] = [
+    'description' => 'Stores the association between entity revisions and their workspace.',
+    'fields' => [
+      'workspace' => [
+        'type' => 'varchar_ascii',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'The workspace ID.',
+      ],
+      'target_entity_type_id' => [
+        'type' => 'varchar_ascii',
+        'length' => EntityTypeInterface::ID_MAX_LENGTH,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'The ID of the associated entity type.',
+      ],
+      'target_entity_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The ID of the associated entity.',
+      ],
+      'target_entity_revision_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The revision ID of the associated entity.',
+      ],
+    ],
+    'indexes' => [
+      'target_entity_revision_id' => ['target_entity_revision_id'],
+    ],
+    'primary key' => ['workspace', 'target_entity_type_id', 'target_entity_id'],
+  ];
+
+  return $schema;
+}
+
+/**
+ * Implements hook_update_last_removed().
+ */
+function workspaces_update_last_removed() {
+  return 8803;
 }

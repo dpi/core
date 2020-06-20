@@ -14,9 +14,14 @@ class NodeSyndicateBlockTest extends NodeTestBase {
    *
    * @var array
    */
-  public static $modules = ['block'];
+  protected static $modules = ['block'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     // Create a user and log in.

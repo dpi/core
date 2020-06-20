@@ -30,7 +30,12 @@ class MenuUiLanguageTest extends BrowserTestBase {
     'menu_ui',
   ];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalLogin($this->drupalCreateUser(['access administration pages', 'administer menu']));

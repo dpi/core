@@ -1249,6 +1249,24 @@ class Sql extends QueryPluginBase {
   }
 
   /**
+   * Gets the database connection to use for the view.
+   *
+   * The returned database connection does not have to be the default database
+   * connection. It can also be to another database connection when the view is
+   * to an external database or a replica database.
+   *
+   * @return \Drupal\Core\Database\Connection
+   *   The database connection to be used for the query.
+   */
+  public function getConnection() {
+    // Set the replica target if the replica option is set for the view.
+    $target = empty($this->options['replica']) ? 'default' : 'replica';
+    // Use an external database when the view configured to.
+    $key = $this->view->base_database ?? 'default';
+    return Database::getConnection($target, $key);
+  }
+
+  /**
    * Generate a query and a countquery from all of the information supplied
    * to the object.
    *
@@ -1282,23 +1300,9 @@ class Sql extends QueryPluginBase {
       $this->getCountOptimized = TRUE;
     }
 
-    $options = [];
-    $target = 'default';
-    $key = 'default';
-    // Detect an external database and set the
-    if (isset($this->view->base_database)) {
-      $key = $this->view->base_database;
-    }
-
-    // Set the replica target if the replica option is set
-    if (!empty($this->options['replica'])) {
-      $target = 'replica';
-    }
-
     // Go ahead and build the query.
-    // db_select doesn't support to specify the key, so use getConnection directly.
-    $query = Database::getConnection($target, $key)
-      ->select($this->view->storage->get('base_table'), $this->view->storage->get('base_table'), $options)
+    $query = $this->getConnection()
+      ->select($this->view->storage->get('base_table'), $this->view->storage->get('base_table'))
       ->addTag('views')
       ->addTag('views_' . $this->view->storage->id());
 
@@ -1485,8 +1489,7 @@ class Sql extends QueryPluginBase {
       // If not, then hook_query_node_access_alter() may munge the count by
       // adding a distinct against an empty query string
       // (e.g. COUNT DISTINCT(1) ...) and no pager will return.
-      // See pager.inc > PagerDefault::execute()
-      // http://api.drupal.org/api/drupal/includes--pager.inc/function/PagerDefault::execute/7
+      // See \Drupal\Core\Database\Query\PagerSelectExtender::execute()
       // See https://www.drupal.org/node/1046170.
       $count_query->preExecute();
 

@@ -19,9 +19,14 @@ class CommentNodeAccessTest extends CommentTestBase {
    *
    * @var array
    */
-  public static $modules = ['node_access_test'];
+  protected static $modules = ['node_access_test'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
+
+  protected function setUp(): void {
     parent::setUp();
 
     node_access_rebuild();

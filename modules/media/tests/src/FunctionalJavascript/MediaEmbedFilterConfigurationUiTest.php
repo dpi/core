@@ -13,7 +13,12 @@ class MediaEmbedFilterConfigurationUiTest extends MediaJavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  public static function setUpBeforeClass() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function setUpBeforeClass(): void {
     parent::setUpBeforeClass();
     // Necessary for @covers to work.
     require_once __DIR__ . '/../../../media.module';
@@ -22,7 +27,7 @@ class MediaEmbedFilterConfigurationUiTest extends MediaJavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $format = FilterFormat::create([

@@ -16,7 +16,7 @@ class MigrateLanguageContentTaxonomyVocabularySettingsTest extends MigrateDrupal
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'language',
     'content_translation',
     'taxonomy',
@@ -26,7 +26,7 @@ class MigrateLanguageContentTaxonomyVocabularySettingsTest extends MigrateDrupal
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('taxonomy_term');
     $this->executeMigrations([
@@ -44,7 +44,7 @@ class MigrateLanguageContentTaxonomyVocabularySettingsTest extends MigrateDrupal
     // No multilingual options for terms, i18n_mode = 0.
     $this->assertLanguageContentSettings($target_entity, 'tags', LanguageInterface::LANGCODE_NOT_SPECIFIED, FALSE, ['enabled' => FALSE]);
     $this->assertLanguageContentSettings($target_entity, 'forums', LanguageInterface::LANGCODE_NOT_SPECIFIED, FALSE, ['enabled' => FALSE]);
-    $this->assertLanguageContentSettings($target_entity, 'vocabulary_name_much_longer_than', LanguageInterface::LANGCODE_NOT_SPECIFIED, FALSE, ['enabled' => FALSE]);
+    $this->assertLanguageContentSettings($target_entity, 'vocabulary_name_much_longer_th', LanguageInterface::LANGCODE_NOT_SPECIFIED, FALSE, ['enabled' => FALSE]);
     $this->assertLanguageContentSettings($target_entity, 'test_vocabulary', LanguageInterface::LANGCODE_NOT_SPECIFIED, FALSE, ['enabled' => FALSE]);
     // Localize, i18n_mode = 1.
     $this->assertLanguageContentSettings($target_entity, 'vocablocalized', LanguageInterface::LANGCODE_NOT_SPECIFIED, TRUE, ['enabled' => TRUE]);

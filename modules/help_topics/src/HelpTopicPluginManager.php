@@ -17,18 +17,20 @@ use Drupal\Core\Plugin\Discovery\ContainerDerivativeDiscoveryDecorator;
  * help_topics. The provider is validated to be the extension that provides the
  * help topic.
  *
- * The Twig file must contain a meta tag named 'help_topic:label'. It can also
- * contain meta tags named 'help_topic:top_level' and 'help_topic:related'. For
- * example:
+ * The Twig file must contain YAML front matter with a key named 'label'. It can
+ * also contain keys named 'top_level' and 'related'. For example:
  * @code
- * <!–– The label/title of the topic. -->
- * <meta name="help_topic:label" content="Configuring error responses, including 403/404 pages"/>
+ * ---
+ * label: 'Configuring error responses, including 403/404 pages'
  *
- * <!–– Related help topics in a comma separated help topic ID list. -->
- * <meta name="help_topic:related" content="core.config_basic,core.maintenance"/>
+ * # Related help topics in an array.
+ * related:
+ *   - core.config_basic
+ *   - core.maintenance
  *
- * <!–– If present then the help topic will appear on admin/help. -->
- * <meta name="help_topic:top_level"/>
+ * # If the value is true then the help topic will appear on admin/help.
+ * top_level: true
+ * ---
  * @endcode
  *
  * In addition, modules wishing to add plugins can define them in a
@@ -60,7 +62,7 @@ use Drupal\Core\Plugin\Discovery\ContainerDerivativeDiscoveryDecorator;
  * @see \Drupal\Component\Plugin\Derivative\DeriverInterface
  *
  * @internal
- *   Help Topic is currently experimental and should only be leveraged by
+ *   Help Topics is currently experimental and should only be leveraged by
  *   experimental modules and development releases of contributed modules.
  *   See https://www.drupal.org/core/experimental for more information.
  */
@@ -92,6 +94,13 @@ class HelpTopicPluginManager extends DefaultPluginManager implements HelpTopicPl
   protected $themeHandler;
 
   /**
+   * The app root.
+   *
+   * @var string
+   */
+  protected $root;
+
+  /**
    * Constructs a new HelpTopicManager object.
    *
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
@@ -100,8 +109,10 @@ class HelpTopicPluginManager extends DefaultPluginManager implements HelpTopicPl
    *   The theme handler.
    * @param \Drupal\Core\Cache\CacheBackendInterface $cache_backend
    *   Cache backend instance to use.
+   * @param string $root
+   *   The app root.
    */
-  public function __construct(ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, CacheBackendInterface $cache_backend) {
+  public function __construct(ModuleHandlerInterface $module_handler, ThemeHandlerInterface $theme_handler, CacheBackendInterface $cache_backend, $root) {
     // Note that the parent construct is not called because this not use
     // annotated class discovery.
     $this->moduleHandler = $module_handler;
@@ -110,6 +121,7 @@ class HelpTopicPluginManager extends DefaultPluginManager implements HelpTopicPl
     // Use the 'config:core.extension' cache tag so the plugin cache is
     // invalidated on theme install and uninstall.
     $this->setCacheBackend($cache_backend, 'help_topics', ['config:core.extension']);
+    $this->root = (string) $root;
   }
 
   /**
@@ -119,7 +131,7 @@ class HelpTopicPluginManager extends DefaultPluginManager implements HelpTopicPl
     if (!isset($this->discovery)) {
       $module_directories = $this->moduleHandler->getModuleDirectories();
       $all_directories = array_merge(
-        ['core'],
+        ['core' => $this->root . '/core'],
         $module_directories,
         $this->themeHandler->getThemeDirectories()
       );

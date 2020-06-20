@@ -16,7 +16,7 @@ class ModerationLocaleTest extends ModerationStateTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'node',
     'content_moderation',
     'locale',
@@ -26,7 +26,12 @@ class ModerationLocaleTest extends ModerationStateTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalLogin($this->rootUser);

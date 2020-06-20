@@ -110,7 +110,7 @@ class ViewEditForm extends ViewFormBase {
 
     $form['#tree'] = TRUE;
 
-    $form['#attached']['library'][] = 'core/jquery.ui.dialog';
+    $form['#attached']['library'][] = 'core/drupal.dialog.ajax';
     $form['#attached']['library'][] = 'core/drupal.states';
     $form['#attached']['library'][] = 'core/drupal.tabledrag';
     $form['#attached']['library'][] = 'views_ui/views_ui.admin';
@@ -315,8 +315,6 @@ class ViewEditForm extends ViewFormBase {
           $query->remove('destination');
         }
       }
-      // @todo Use Url::fromPath() once https://www.drupal.org/node/2351379 is
-      //   resolved.
       $form_state->setRedirectUrl(Url::fromUri("base:$destination"));
     }
 
@@ -361,8 +359,16 @@ class ViewEditForm extends ViewFormBase {
       $build['details'] = $this->getDisplayDetails($view, $display->display);
     }
     // In AJAX context, ViewUI::rebuildCurrentTab() returns this outside of form
-    // context, so hook_form_views_ui_edit_form_alter() is insufficient.
+    // context, so hook_form_view_edit_form_alter() is insufficient.
+    // @todo remove this after
+    //   https://www.drupal.org/project/drupal/issues/3087455 has been resolved.
     \Drupal::moduleHandler()->alter('views_ui_display_tab', $build, $view, $display_id);
+    // Because themes can implement hook_form_FORM_ID_alter() and because this
+    // is a workaround for hook_form_view_edit_form_alter() being insufficient,
+    // also invoke this on themes.
+    // @todo remove this after
+    //   https://www.drupal.org/project/drupal/issues/3087455 has been resolved.
+    \Drupal::theme()->alter('views_ui_display_tab', $build, $view, $display_id);
     return $build;
   }
 
@@ -776,6 +782,18 @@ class ViewEditForm extends ViewFormBase {
       ];
     }
 
+    // In AJAX context, ViewUI::rebuildCurrentTab() returns this outside of form
+    // context, so hook_form_view_edit_form_alter() is insufficient.
+    // @todo remove this after
+    //   https://www.drupal.org/project/drupal/issues/3087455 has been resolved.
+    \Drupal::moduleHandler()->alter('views_ui_display_top', $element, $view, $display_id);
+    // Because themes can implement hook_form_FORM_ID_alter() and because this
+    // is a workaround for hook_form_view_edit_form_alter() being insufficient,
+    // also invoke this on themes.
+    // @todo remove this after
+    //   https://www.drupal.org/project/drupal/issues/3087455 has been resolved.
+    \Drupal::theme()->alter('views_ui_display_top', $element, $view, $display_id);
+
     return $element;
   }
 
@@ -960,6 +978,7 @@ class ViewEditForm extends ViewFormBase {
         // TODO: Add another class to have another symbol for filter rearrange.
         $class = 'icon compact rearrange';
         break;
+
       case 'field':
         // Fetch the style plugin info so we know whether to list fields or not.
         $style_plugin = $executable->style_plugin;
@@ -973,6 +992,7 @@ class ViewEditForm extends ViewFormBase {
           return $build;
         }
         break;
+
       case 'header':
       case 'footer':
       case 'empty':

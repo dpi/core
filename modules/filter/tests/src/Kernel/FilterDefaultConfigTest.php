@@ -13,9 +13,9 @@ use Drupal\user\RoleInterface;
  */
 class FilterDefaultConfigTest extends KernelTestBase {
 
-  public static $modules = ['system', 'user', 'filter', 'filter_test'];
+  protected static $modules = ['system', 'user', 'filter', 'filter_test'];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Drupal\filter\FilterPermissions::permissions() builds a URL to output
@@ -39,7 +39,7 @@ class FilterDefaultConfigTest extends KernelTestBase {
     $this->assertEqual($format->get('weight'), 2);
 
     // Verify that format default property values have been added/injected.
-    $this->assertTrue($format->uuid());
+    $this->assertNotEmpty($format->uuid());
 
     // Verify that the loaded format does not contain any roles.
     $this->assertEqual($format->get('roles'), NULL);

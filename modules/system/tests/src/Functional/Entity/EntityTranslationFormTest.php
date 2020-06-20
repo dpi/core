@@ -5,6 +5,7 @@ namespace Drupal\Tests\system\Functional\Entity;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\language\Entity\ConfigurableLanguage;
+use Drupal\node\Entity\Node;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -19,11 +20,16 @@ class EntityTranslationFormTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['entity_test', 'language', 'node'];
+  protected static $modules = ['entity_test', 'language', 'node'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   protected $langcodes;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     // Enable translations for the test entity type.
     \Drupal::state()->set('entity_test.translation', TRUE);
@@ -94,7 +100,7 @@ class EntityTranslationFormTest extends BrowserTestBase {
 
     // Check to make sure the node was created.
     $node = $this->drupalGetNodeByTitle($edit['title[0][value]']);
-    $this->assertTrue($node, 'Node found in database.');
+    $this->assertInstanceOf(Node::class, $node);
 
     // Make body translatable.
     $field_storage = FieldStorageConfig::loadByName('node', 'body');

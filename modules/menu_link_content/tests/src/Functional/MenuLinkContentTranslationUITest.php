@@ -22,7 +22,7 @@ class MenuLinkContentTranslationUITest extends ContentTranslationUITestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'language',
     'content_translation',
     'menu_link_content',
@@ -32,7 +32,12 @@ class MenuLinkContentTranslationUITest extends ContentTranslationUITestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     $this->entityTypeId = 'menu_link_content';
     $this->bundle = 'menu_link_content';
     parent::setUp();
@@ -68,7 +73,7 @@ class MenuLinkContentTranslationUITest extends ContentTranslationUITestBase {
    */
   public function testTranslationLinkOnMenuEditForm() {
     $this->drupalGet('admin/structure/menu/manage/tools');
-    $this->assertNoLink(t('Translate'));
+    $this->assertSession()->linkNotExists(t('Translate'));
 
     $menu_link_content = MenuLinkContent::create([
       'menu_name' => 'tools',
@@ -77,7 +82,7 @@ class MenuLinkContentTranslationUITest extends ContentTranslationUITestBase {
     ]);
     $menu_link_content->save();
     $this->drupalGet('admin/structure/menu/manage/tools');
-    $this->assertLink(t('Translate'));
+    $this->assertSession()->linkExists(t('Translate'));
   }
 
   /**

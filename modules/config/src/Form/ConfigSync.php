@@ -5,6 +5,7 @@ namespace Drupal\config\Form;
 use Drupal\Core\Config\ConfigImporterException;
 use Drupal\Core\Config\ConfigImporter;
 use Drupal\Core\Config\Importer\ConfigImporterBatch;
+use Drupal\Core\Config\ImportStorageTransformer;
 use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\Extension\ModuleHandlerInterface;
@@ -113,6 +114,13 @@ class ConfigSync extends FormBase {
   protected $moduleExtensionList;
 
   /**
+   * The import transformer service.
+   *
+   * @var \Drupal\Core\Config\ImportStorageTransformer
+   */
+  protected $importTransformer;
+
+  /**
    * Constructs the object.
    *
    * @param \Drupal\Core\Config\StorageInterface $sync_storage
@@ -139,8 +147,10 @@ class ConfigSync extends FormBase {
    *   The renderer.
    * @param \Drupal\Core\Extension\ModuleExtensionList $extension_list_module
    *   The module extension list
+   * @param \Drupal\Core\Config\ImportStorageTransformer $import_transformer
+   *   The import transformer service.
    */
-  public function __construct(StorageInterface $sync_storage, StorageInterface $active_storage, StorageInterface $snapshot_storage, LockBackendInterface $lock, EventDispatcherInterface $event_dispatcher, ConfigManagerInterface $config_manager, TypedConfigManagerInterface $typed_config, ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, ThemeHandlerInterface $theme_handler, RendererInterface $renderer, ModuleExtensionList $extension_list_module) {
+  public function __construct(StorageInterface $sync_storage, StorageInterface $active_storage, StorageInterface $snapshot_storage, LockBackendInterface $lock, EventDispatcherInterface $event_dispatcher, ConfigManagerInterface $config_manager, TypedConfigManagerInterface $typed_config, ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, ThemeHandlerInterface $theme_handler, RendererInterface $renderer, ModuleExtensionList $extension_list_module, ImportStorageTransformer $import_transformer) {
     $this->syncStorage = $sync_storage;
     $this->activeStorage = $active_storage;
     $this->snapshotStorage = $snapshot_storage;
@@ -153,6 +163,7 @@ class ConfigSync extends FormBase {
     $this->themeHandler = $theme_handler;
     $this->renderer = $renderer;
     $this->moduleExtensionList = $extension_list_module;
+    $this->importTransformer = $import_transformer;
   }
 
   /**
@@ -171,7 +182,8 @@ class ConfigSync extends FormBase {
       $container->get('module_installer'),
       $container->get('theme_handler'),
       $container->get('renderer'),
-      $container->get('extension.list.module')
+      $container->get('extension.list.module'),
+      $container->get('config.import_transformer')
     );
   }
 
@@ -191,9 +203,11 @@ class ConfigSync extends FormBase {
       '#type' => 'submit',
       '#value' => $this->t('Import all'),
     ];
-    $source_list = $this->syncStorage->listAll();
-    $storage_comparer = new StorageComparer($this->syncStorage, $this->activeStorage);
-    if (empty($source_list) || !$storage_comparer->createChangelist()->hasChanges()) {
+    $syncStorage = $this->importTransformer->transform($this->syncStorage);
+    $source_list = $syncStorage->listAll();
+    $storage_comparer = new StorageComparer($syncStorage, $this->activeStorage);
+    $storage_comparer->createChangelist();
+    if (empty($source_list) || !$storage_comparer->hasChanges()) {
       $form['no_changes'] = [
         '#type' => 'table',
         '#header' => [$this->t('Name'), $this->t('Operations')],
@@ -212,7 +226,8 @@ class ConfigSync extends FormBase {
     // warned of potential losses to configuration.
     if ($this->snapshotStorage->exists('core.extension')) {
       $snapshot_comparer = new StorageComparer($this->activeStorage, $this->snapshotStorage);
-      if (!$form_state->getUserInput() && $snapshot_comparer->createChangelist()->hasChanges()) {
+      $snapshot_comparer->createChangelist();
+      if (!$form_state->getUserInput() && $snapshot_comparer->hasChanges()) {
         $change_list = [];
         foreach ($snapshot_comparer->getAllCollectionNames() as $collection) {
           foreach ($snapshot_comparer->getChangelist(NULL, $collection) as $config_names) {
@@ -371,42 +386,6 @@ class ConfigSync extends FormBase {
         }
       }
     }
-  }
-
-  /**
-   * Processes the config import batch and persists the importer.
-   *
-   * @param \Drupal\Core\Config\ConfigImporter $config_importer
-   *   The batch config importer object to persist.
-   * @param string $sync_step
-   *   The synchronization step to do.
-   * @param array $context
-   *   The batch context.
-   *
-   * @deprecated in Drupal 8.6.0 and will be removed before 9.0.0. Use
-   *   \Drupal\Core\Config\Importer\ConfigImporterBatch::process() instead.
-   *
-   * @see https://www.drupal.org/node/2897299
-   */
-  public static function processBatch(ConfigImporter $config_importer, $sync_step, &$context) {
-    @trigger_error('\Drupal\config\Form\ConfigSync::processBatch() deprecated in Drupal 8.6.0 and will be removed before 9.0.0. Use \Drupal\Core\Config\Importer\ConfigImporterBatch::process() instead. See https://www.drupal.org/node/2897299');
-    ConfigImporterBatch::process($config_importer, $sync_step, $context);
-  }
-
-  /**
-   * Finish batch.
-   *
-   * This function is a static function to avoid serializing the ConfigSync
-   * object unnecessarily.
-   *
-   * @deprecated in Drupal 8.6.0 and will be removed before 9.0.0. Use
-   *   \Drupal\Core\Config\Importer\ConfigImporterBatch::finish() instead.
-   *
-   * @see https://www.drupal.org/node/2897299
-   */
-  public static function finishBatch($success, $results, $operations) {
-    @trigger_error('\Drupal\config\Form\ConfigSync::finishBatch() deprecated in Drupal 8.6.0 and will be removed before 9.0.0. Use \Drupal\Core\Config\Importer\ConfigImporterBatch::finish() instead. See https://www.drupal.org/node/2897299');
-    ConfigImporterBatch::finish($success, $results, $operations);
   }
 
 }

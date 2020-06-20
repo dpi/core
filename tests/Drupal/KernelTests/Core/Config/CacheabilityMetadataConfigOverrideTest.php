@@ -15,11 +15,12 @@ class CacheabilityMetadataConfigOverrideTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'block',
     'block_content',
     'config',
     'config_override_test',
+    'path_alias',
     'system',
     'user',
   ];
@@ -27,7 +28,7 @@ class CacheabilityMetadataConfigOverrideTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('block_content');
     $this->installConfig(['config_override_test']);

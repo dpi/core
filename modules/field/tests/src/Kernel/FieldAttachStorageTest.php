@@ -14,7 +14,7 @@ use Drupal\field\Entity\FieldStorageConfig;
  */
 class FieldAttachStorageTest extends FieldKernelTestBase {
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('entity_test_rev');
   }
@@ -278,9 +278,9 @@ class FieldAttachStorageTest extends FieldKernelTestBase {
     $controller->resetCache();
     foreach ([0, 1, 2] as $vid) {
       $revision = $controller->loadRevision($vid);
-      $this->assertFalse($revision);
+      $this->assertNull($revision);
     }
-    $this->assertFalse($controller->load($entity->id()));
+    $this->assertNull($controller->load($entity->id()));
   }
 
   /**
@@ -355,8 +355,8 @@ class FieldAttachStorageTest extends FieldKernelTestBase {
     $entity = $this->entitySaveReload($entity);
 
     // Verify the fields are present on load
-    $this->assertEqual(count($entity->{$this->fieldTestData->field_name}), 4, 'First field got loaded');
-    $this->assertEqual(count($entity->{$field_name}), 1, 'Second field got loaded');
+    $this->assertCount(4, $entity->{$this->fieldTestData->field_name}, 'First field got loaded');
+    $this->assertCount(1, $entity->{$field_name}, 'Second field got loaded');
 
     // Delete the bundle.
     entity_test_delete_bundle($this->fieldTestData->field->getTargetBundle(), $entity_type);
@@ -370,8 +370,8 @@ class FieldAttachStorageTest extends FieldKernelTestBase {
     $this->assertTrue(empty($entity->{$field_name}), 'No data for second field');
 
     // Verify that the fields are gone.
-    $this->assertFalse(FieldConfig::load('entity_test.' . $this->fieldTestData->field->getTargetBundle() . '.' . $this->fieldTestData->field_name), "First field is deleted");
-    $this->assertFalse(FieldConfig::load('entity_test.' . $field['bundle'] . '.' . $field_name), "Second field is deleted");
+    $this->assertNull(FieldConfig::load('entity_test.' . $this->fieldTestData->field->getTargetBundle() . '.' . $this->fieldTestData->field_name), "First field is deleted");
+    $this->assertNull(FieldConfig::load('entity_test.' . $field['bundle'] . '.' . $field_name), "Second field is deleted");
   }
 
 }

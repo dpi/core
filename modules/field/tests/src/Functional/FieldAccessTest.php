@@ -17,7 +17,12 @@ class FieldAccessTest extends FieldTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'field_test'];
+  protected static $modules = ['node', 'field_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Node entity to use in this test.
@@ -33,7 +38,7 @@ class FieldAccessTest extends FieldTestBase {
    */
   protected $testViewFieldValue;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $web_user = $this->drupalCreateUser(['view test_view_field content']);

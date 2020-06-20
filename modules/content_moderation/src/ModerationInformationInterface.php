@@ -59,34 +59,6 @@ interface ModerationInformationInterface {
   public function isModeratedEntityType(EntityTypeInterface $entity_type);
 
   /**
-   * Loads the latest revision of a specific entity.
-   *
-   * @param string $entity_type_id
-   *   The entity type ID.
-   * @param int $entity_id
-   *   The entity ID.
-   *
-   * @return \Drupal\Core\Entity\ContentEntityInterface|null
-   *   The latest entity revision or NULL, if the entity type / entity doesn't
-   *   exist.
-   */
-  public function getLatestRevision($entity_type_id, $entity_id);
-
-  /**
-   * Returns the revision ID of the latest revision of the given entity.
-   *
-   * @param string $entity_type_id
-   *   The entity type ID.
-   * @param int $entity_id
-   *   The entity ID.
-   *
-   * @return int
-   *   The revision ID of the latest revision for the specified entity, or
-   *   NULL if there is no such entity.
-   */
-  public function getLatestRevisionId($entity_type_id, $entity_id);
-
-  /**
    * Returns the revision ID of the default revision for the specified entity.
    *
    * @param string $entity_type_id
@@ -110,18 +82,6 @@ interface ModerationInformationInterface {
    *   The revision translation affected translation.
    */
   public function getAffectedRevisionTranslation(ContentEntityInterface $entity);
-
-  /**
-   * Determines if an entity is a latest revision.
-   *
-   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
-   *   A revisionable content entity.
-   *
-   * @return bool
-   *   TRUE if the specified object is the latest revision of its entity,
-   *   FALSE otherwise.
-   */
-  public function isLatestRevision(ContentEntityInterface $entity);
 
   /**
    * Determines if a pending revision exists for the specified entity.

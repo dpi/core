@@ -34,7 +34,12 @@ class MoveBlockFormTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $page = $this->getSession()->getPage();
     $assert_session = $this->assertSession();

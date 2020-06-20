@@ -24,7 +24,7 @@ class MigrateEntityContentBaseTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['migrate', 'user', 'language', 'entity_test'];
+  protected static $modules = ['migrate', 'user', 'language', 'entity_test'];
 
   /**
    * The storage for entity_test_mul.
@@ -43,7 +43,7 @@ class MigrateEntityContentBaseTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Enable two required fields with default values: a single-value field and
@@ -70,7 +70,7 @@ class MigrateEntityContentBaseTest extends KernelTestBase {
    */
   protected function assertTranslations($id, $default, $others = []) {
     $entity = $this->storage->load($id);
-    $this->assertTrue($entity, "Entity exists");
+    $this->assertNotEmpty($entity, "Entity exists");
     $this->assertEquals($default, $entity->language()->getId(), "Entity default translation");
     $translations = array_keys($entity->getTranslationLanguages(FALSE));
     sort($others);
@@ -115,7 +115,7 @@ class MigrateEntityContentBaseTest extends KernelTestBase {
     $this->assertTranslations(1, 'en');
     $this->assertTranslations(2, 'fr');
     $this->assertTranslations(3, 'en', ['fr']);
-    $this->assertFalse($this->storage->load(4));
+    $this->assertNull($this->storage->load(4));
 
     $destination_rows = [
       // Existing default translation.

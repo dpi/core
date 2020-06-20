@@ -19,7 +19,17 @@ class SearchKeywordsConditionsTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected static $modules = ['comment', 'search', 'search_extra_type', 'test_page_test'];
+  protected static $modules = [
+    'comment',
+    'search',
+    'search_extra_type',
+    'test_page_test',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * A user with permission to search and post comments.
@@ -28,7 +38,7 @@ class SearchKeywordsConditionsTest extends BrowserTestBase {
    */
   protected $searchingUser;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create searching user.

@@ -3,7 +3,7 @@
 namespace Drupal\FunctionalJavascriptTests;
 
 /**
- * Tests Drupal settings retrieval in JavascriptTestBase tests.
+ * Tests Drupal settings retrieval in WebDriverTestBase tests.
  *
  * @group javascript
  */
@@ -13,6 +13,11 @@ class JavascriptGetDrupalSettingsTest extends WebDriverTestBase {
    * {@inheritdoc}
    */
   protected static $modules = ['test_page_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests retrieval of Drupal settings.

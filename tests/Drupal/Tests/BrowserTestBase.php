@@ -16,7 +16,9 @@ use Drupal\FunctionalTests\AssertLegacyTrait;
 use Drupal\Tests\block\Traits\BlockCreationTrait;
 use Drupal\Tests\node\Traits\ContentTypeCreationTrait;
 use Drupal\Tests\node\Traits\NodeCreationTrait;
+use Drupal\Tests\Traits\PHPUnit8Warnings;
 use Drupal\Tests\user\Traits\UserCreationTrait;
+use Drupal\TestTools\Comparator\MarkupInterfaceComparator;
 use GuzzleHttp\Cookie\CookieJar;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
@@ -62,7 +64,7 @@ abstract class BrowserTestBase extends TestCase {
     createUser as drupalCreateUser;
   }
   use XdebugRequestTrait;
-  use PhpunitCompatibilityTrait;
+  use PHPUnit8Warnings;
 
   /**
    * The database prefix of this test run.
@@ -113,6 +115,15 @@ abstract class BrowserTestBase extends TestCase {
    * @var string
    */
   protected $profile = 'testing';
+
+  /**
+   * The theme to install as the default for testing.
+   *
+   * Defaults to the install profile's default theme, if it specifies any.
+   *
+   * @var string
+   */
+  protected $defaultTheme;
 
   /**
    * An array of custom translations suitable for drupal_rewrite_settings().
@@ -200,15 +211,6 @@ abstract class BrowserTestBase extends TestCase {
    * @var \Symfony\Component\DependencyInjection\ContainerInterface
    */
   protected $originalContainer;
-
-  /**
-   * {@inheritdoc}
-   */
-  public function __construct($name = NULL, array $data = [], $dataName = '') {
-    parent::__construct($name, $data, $dataName);
-
-    $this->root = dirname(dirname(substr(__DIR__, 0, -strlen(__NAMESPACE__))));
-  }
 
   /**
    * Initializes Mink sessions.
@@ -341,11 +343,15 @@ abstract class BrowserTestBase extends TestCase {
               $html_output = 'Called from ' . $caller['function'] . ' line ' . $caller['line'];
               $html_output .= '<hr />' . $request->getMethod() . ' request to: ' . $request->getUri();
 
+              // Get the response body as a string. Any errors are silenced as
+              // tests should not fail if there is a problem. On PHP 7.4
+              // \Drupal\Tests\migrate\Functional\process\DownloadFunctionalTest
+              // fails without the usage of a silence operator.
+              $body = @(string) $response->getBody();
               // On redirect responses (status code starting with '3') we need
               // to remove the meta tag that would do a browser refresh. We
               // don't want to redirect developers away when they look at the
               // debug output file in their browser.
-              $body = $response->getBody();
               $status_code = (string) $response->getStatusCode();
               if ($status_code[0] === '3') {
                 $body = preg_replace('#<meta http-equiv="refresh" content=.+/>#', '', $body, 1);
@@ -382,6 +388,11 @@ abstract class BrowserTestBase extends TestCase {
   protected function setUp() {
     parent::setUp();
 
+    $this->setUpAppRoot();
+
+    // Allow tests to compare MarkupInterface objects via assertEquals().
+    $this->registerComparator(new MarkupInterfaceComparator());
+
     $this->setupBaseUrl();
 
     // Install Drupal test site.
@@ -398,6 +409,15 @@ abstract class BrowserTestBase extends TestCase {
     // PHPUnit 6 tests that only make assertions using $this->assertSession()
     // can be marked as risky.
     $this->addToAssertionCount(1);
+  }
+
+  /**
+   * Sets up the root application path.
+   */
+  protected function setUpAppRoot(): void {
+    if ($this->root === NULL) {
+      $this->root = dirname(substr(__DIR__, 0, -strlen(__NAMESPACE__)), 2);
+    }
   }
 
   /**
@@ -557,6 +577,7 @@ abstract class BrowserTestBase extends TestCase {
     $this->initSettings();
     $container = $this->initKernel(\Drupal::request());
     $this->initConfig($container);
+    $this->installDefaultThemeFromClassProperty($container);
     $this->installModulesFromClassProperty($container);
     $this->rebuildAll();
   }
@@ -632,22 +653,6 @@ abstract class BrowserTestBase extends TestCase {
   }
 
   /**
-   * Returns all response headers.
-   *
-   * @return array
-   *   The HTTP headers values.
-   *
-   * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0.
-   *   Use $this->getSession()->getResponseHeaders() instead.
-   *
-   * @see https://www.drupal.org/node/3067207
-   */
-  protected function drupalGetHeaders() {
-    @trigger_error('Drupal\Tests\BrowserTestBase::drupalGetHeaders() is deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use $this->getSession()->getResponseHeaders() instead. See https://www.drupal.org/node/3067207', E_USER_DEPRECATED);
-    return $this->getSession()->getResponseHeaders();
-  }
-
-  /**
    * Gets the value of an HTTP response header.
    *
    * If multiple requests were required to retrieve the page, only the headers
@@ -679,18 +684,6 @@ abstract class BrowserTestBase extends TestCase {
   }
 
   /**
-   * {@inheritdoc}
-   */
-  public static function assertEquals($expected, $actual, $message = '', $delta = 0.0, $maxDepth = 10, $canonicalize = FALSE, $ignoreCase = FALSE) {
-    // Cast objects implementing MarkupInterface to string instead of
-    // relying on PHP casting them to string depending on what they are being
-    // comparing with.
-    $expected = static::castSafeStrings($expected);
-    $actual = static::castSafeStrings($actual);
-    parent::assertEquals($expected, $actual, $message, $delta, $maxDepth, $canonicalize, $ignoreCase);
-  }
-
-  /**
    * Retrieves the current calling line in the class under test.
    *
    * @return array
@@ -700,9 +693,14 @@ abstract class BrowserTestBase extends TestCase {
     $backtrace = debug_backtrace();
     // Find the test class that has the test method.
     while ($caller = Error::getLastCaller($backtrace)) {
-      if (isset($caller['class']) && $caller['class'] === get_class($this)) {
+      // If we match PHPUnit's TestCase::runTest, then the previously processed
+      // caller entry is where our test method sits.
+      if (isset($last_caller) && isset($caller['function']) && $caller['function'] === 'PHPUnit\Framework\TestCase->runTest()') {
+        // Return the last caller since that has to be the test class.
+        $caller = $last_caller;
         break;
       }
+
       // If the test method is implemented by a test class's parent then the
       // class name of $this will not be part of the backtrace.
       // In that case we process the backtrace until the caller is not a
@@ -712,6 +710,11 @@ abstract class BrowserTestBase extends TestCase {
         $caller = $last_caller;
         break;
       }
+
+      if (isset($caller['class']) && $caller['class'] === get_class($this)) {
+        break;
+      }
+
       // Otherwise we have not reached our test class yet: save the last caller
       // and remove an element from to backtrace to process the next call.
       $last_caller = $caller;

@@ -15,12 +15,12 @@ class MigrateBookTest extends MigrateDrupal6TestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['book', 'node', 'menu_ui'];
+  protected static $modules = ['book', 'node', 'menu_ui'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installSchema('book', ['book']);
     $this->installSchema('node', ['node_access']);
@@ -55,6 +55,11 @@ class MigrateBookTest extends MigrateDrupal6TestBase {
     $this->assertIdentical('7', $tree['49990 Node 4 4']['below']['50000 Node 5 5']['below']['50000 Node 7 7']['link']['nid']);
     $this->assertIdentical([], $tree['49990 Node 4 4']['below']['50000 Node 5 5']['below']['50000 Node 6 6']['below']);
     $this->assertIdentical([], $tree['49990 Node 4 4']['below']['50000 Node 5 5']['below']['50000 Node 7 7']['below']);
+
+    // Set the d6_book migration to update and re run the migration.
+    $id_map = $this->migration->getIdMap();
+    $id_map->prepareUpdate();
+    $this->executeMigration('d6_book');
   }
 
 }

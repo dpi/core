@@ -4,6 +4,7 @@ namespace Drupal\Tests\image\Functional;
 
 use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Entity\Entity\EntityViewDisplay;
+use Drupal\Core\File\FileSystemInterface;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\file\Entity\File;
 use Drupal\field\Entity\FieldStorageConfig;
@@ -30,7 +31,12 @@ class ImageFieldDefaultImagesTest extends ImageFieldTestBase {
    *
    * @var array
    */
-  public static $modules = ['field_ui'];
+  protected static $modules = ['field_ui'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests CRUD for fields and field storages with default images.
@@ -43,7 +49,7 @@ class ImageFieldDefaultImagesTest extends ImageFieldTestBase {
     for ($i = 1; $i <= 10; $i++) {
       $filename = $this->randomMachineName() . "$i";
       $desired_filepath = 'public://' . $filename;
-      \Drupal::service('file_system')->copy($files[0]->uri, $desired_filepath, FILE_EXISTS_ERROR);
+      \Drupal::service('file_system')->copy($files[0]->uri, $desired_filepath, FileSystemInterface::EXISTS_ERROR);
       $file = File::create(['uri' => $desired_filepath, 'filename' => $filename, 'name' => $filename]);
       $file->save();
     }

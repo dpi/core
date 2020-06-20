@@ -15,7 +15,12 @@ class ShortcutSetTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['shortcut'];
+  protected static $modules = ['shortcut'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

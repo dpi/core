@@ -28,9 +28,18 @@ class EntityDisplayTest extends KernelTestBase {
    *
    * @var string[]
    */
-  public static $modules = ['field_ui', 'field', 'entity_test', 'user', 'text', 'field_test', 'node', 'system'];
+  protected static $modules = [
+    'field_ui',
+    'field',
+    'entity_test',
+    'user',
+    'text',
+    'field_test',
+    'node',
+    'system',
+  ];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('entity_test');
     $this->installEntitySchema('node');
@@ -399,18 +408,18 @@ class EntityDisplayTest extends KernelTestBase {
 
     // Check the component exists.
     $display = $display_repository->getViewDisplay('entity_test', 'entity_test');
-    $this->assertTrue($display->getComponent($field_name));
+    $this->assertNotEmpty($display->getComponent($field_name));
     $display = $display_repository->getViewDisplay('entity_test', 'entity_test', 'teaser');
-    $this->assertTrue($display->getComponent($field_name));
+    $this->assertNotEmpty($display->getComponent($field_name));
 
     // Delete the field.
     $field->delete();
 
     // Check that the component has been removed from the entity displays.
     $display = $display_repository->getViewDisplay('entity_test', 'entity_test');
-    $this->assertFalse($display->getComponent($field_name));
+    $this->assertNull($display->getComponent($field_name));
     $display = $display_repository->getViewDisplay('entity_test', 'entity_test', 'teaser');
-    $this->assertFalse($display->getComponent($field_name));
+    $this->assertNull($display->getComponent($field_name));
   }
 
   /**
@@ -455,7 +464,7 @@ class EntityDisplayTest extends KernelTestBase {
     // Removing the text module should remove the field from the view display.
     \Drupal::service('config.manager')->uninstall('module', 'text');
     $display = $display_repository->getViewDisplay('entity_test', 'entity_test');
-    $this->assertFalse($display->getComponent($field_name));
+    $this->assertNull($display->getComponent($field_name));
   }
 
   /**

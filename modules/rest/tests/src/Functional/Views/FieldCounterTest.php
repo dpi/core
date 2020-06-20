@@ -29,11 +29,16 @@ class FieldCounterTest extends ViewTestBase {
   public static $testViews = ['test_field_counter_display'];
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * The modules that need to be installed for this test.
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'entity_test',
     'rest_test_views',
     'node',
@@ -43,7 +48,7 @@ class FieldCounterTest extends ViewTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     ViewTestData::createTestViews(get_class($this), ['rest_test_views']);
@@ -67,7 +72,7 @@ class FieldCounterTest extends ViewTestBase {
    */
   public function testExcludedTitleTokenDisplay() {
     $actual_json = $this->drupalGet($this->view->getPath(), ['query' => ['_format' => 'json']]);
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
 
     $expected = [
       ['counter' => '1'],

@@ -9,6 +9,7 @@ use Drupal\filter\Entity\FilterFormat;
 use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
 use Drupal\media\Entity\Media;
 use Drupal\Tests\ckeditor\Traits\CKEditorTestTrait;
+use Drupal\Tests\ckeditor\Traits\CKEditorAdminSortTrait;
 use Drupal\Tests\media\Traits\MediaTypeCreationTrait;
 use Drupal\Tests\TestFileCreationTrait;
 
@@ -19,8 +20,14 @@ use Drupal\Tests\TestFileCreationTrait;
 class CKEditorIntegrationTest extends WebDriverTestBase {
 
   use CKEditorTestTrait;
+  use CKEditorAdminSortTrait;
   use MediaTypeCreationTrait;
   use TestFileCreationTrait;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * The user to use during testing.
@@ -49,7 +56,7 @@ class CKEditorIntegrationTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     FilterFormat::create([
@@ -98,7 +105,7 @@ class CKEditorIntegrationTest extends WebDriverTestBase {
     ]);
 
     // Create a media type that starts with the letter a, to test tab order.
-    $this->createMediaType('image', ['id' => 'Arrakis', 'label' => 'Arrakis']);
+    $this->createMediaType('image', ['id' => 'arrakis', 'label' => 'Arrakis']);
 
     // Create a sample media entity to be embedded.
     $this->createMediaType('image', ['id' => 'image', 'label' => 'Image']);
@@ -117,6 +124,19 @@ class CKEditorIntegrationTest extends WebDriverTestBase {
       ],
     ]);
     $this->media->save();
+
+    $arrakis_media = Media::create([
+      'bundle' => 'arrakis',
+      'name' => 'Le baron Vladimir Harkonnen',
+      'field_media_image' => [
+        [
+          'target_id' => 1,
+          'alt' => 'Il complote pour détruire le duc Leto',
+          'title' => 'Il complote pour détruire le duc Leto',
+        ],
+      ],
+    ]);
+    $arrakis_media->save();
 
     $this->drupalLogin($this->user);
   }
@@ -148,9 +168,12 @@ class CKEditorIntegrationTest extends WebDriverTestBase {
     $this->assertNotEmpty($assert_session->waitForText('sulaco'));
     $page->checkField('roles[authenticated]');
     $page->selectFieldOption('editor[editor]', 'ckeditor');
-    $this->assertNotEmpty($target = $assert_session->waitForElementVisible('css', 'ul.ckeditor-toolbar-group-buttons'));
-    $this->assertNotEmpty($button = $assert_session->elementExists('css', 'li[data-drupal-ckeditor-button-name="DrupalMediaLibrary"]'));
-    $button->dragTo($target);
+
+    $targetSelector = 'ul.ckeditor-toolbar-group-buttons';
+    $buttonSelector = 'li[data-drupal-ckeditor-button-name="DrupalMediaLibrary"]';
+    $this->assertNotEmpty($target = $assert_session->waitForElementVisible('css', $targetSelector));
+    $this->assertNotEmpty($button = $assert_session->elementExists('css', $buttonSelector));
+    $this->sortableTo($buttonSelector, 'ul.ckeditor-available-buttons', $targetSelector);
     $page->pressButton('Save configuration');
     $assert_session->pageTextContains('The Embed media filter must be enabled to use the Insert from Media Library button.');
     $page->checkField('filters[media_embed][status]');
@@ -162,9 +185,9 @@ class CKEditorIntegrationTest extends WebDriverTestBase {
     // HTML tags.
     $this->drupalGet('/admin/config/content/formats/manage/sulaco');
     $page->checkField('filters[filter_html][status]');
-    $expected = 'drupal-media data-entity-type data-entity-uuid data-align data-caption alt title';
+    $expected = 'drupal-media data-entity-type data-entity-uuid data-view-mode data-align data-caption alt title';
     $allowed_html = $assert_session->fieldExists('filters[filter_html][settings][allowed_html]')->getValue();
-    $this->assertContains($expected, $allowed_html);
+    $this->assertStringContainsString($expected, $allowed_html);
     $page->pressButton('Save configuration');
     $assert_session->pageTextContains('The text format Sulaco has been updated.');
 
@@ -173,7 +196,7 @@ class CKEditorIntegrationTest extends WebDriverTestBase {
     $this->drupalGet('/admin/config/content/formats/manage/sulaco');
     $allowed_html_field = $assert_session->fieldExists('filters[filter_html][settings][allowed_html]');
     $allowed_html = $allowed_html_field->getValue();
-    $search = 'drupal-media data-entity-type data-entity-uuid data-align data-caption alt title';
+    $search = 'drupal-media data-entity-type data-entity-uuid data-view-mode data-align data-caption alt title';
     $replace = 'drupal-media data-entity-type data-entity-uuid';
     $allowed_html = str_replace($search, $replace, $allowed_html);
     $page->clickLink('Limit allowed HTML tags and correct faulty HTML');
@@ -207,9 +230,9 @@ class CKEditorIntegrationTest extends WebDriverTestBase {
     }
 
     $assert_session->pageTextContains('0 of 1 item selected');
-    $assert_session->elementExists('css', '.media-library-item')->click();
+    $assert_session->elementExists('css', '.js-media-library-item')->click();
     $assert_session->pageTextContains('1 of 1 item selected');
-    $assert_session->elementExists('css', 'button.media-library-select.button.button--primary')->click();
+    $assert_session->elementExists('css', '.ui-dialog-buttonpane')->pressButton('Insert selected');
     $this->assignNameToCkeditorIframe();
     $this->getSession()->switchToIFrame('ckeditor');
     $this->assertNotEmpty($assert_session->waitForElementVisible('css', '.cke_widget_drupalmedia drupal-media .media', 2000));
@@ -245,6 +268,63 @@ class CKEditorIntegrationTest extends WebDriverTestBase {
     $this->getSession()->switchToIFrame('ckeditor');
     $this->assertNotEmpty($assert_session->waitForElementVisible('css', '.cke_widget_drupalmedia drupal-media .media', 1000));
     $this->assertEditorButtonEnabled('undo');
+  }
+
+  /**
+   * Tests the allowed media types setting on the MediaEmbed filter.
+   */
+  public function testAllowedMediaTypes() {
+    $test_cases = [
+      'all_media_types' => [],
+      'only_image' => ['image' => 'image'],
+      'only_arrakis' => ['arrakis' => 'arrakis'],
+      'both_items_chedked' => [
+        'image' => 'image',
+        'arrakis' => 'arrakis',
+      ],
+    ];
+
+    foreach ($test_cases as $allowed_media_types) {
+      // Update the filter format to set the allowed media types.
+      FilterFormat::load('test_format')
+        ->setFilterConfig('media_embed', [
+        'status' => TRUE,
+        'settings' => [
+          'default_view_mode' => 'view_mode_1',
+          'allowed_media_types' => $allowed_media_types,
+          'allowed_view_modes' => [
+            'view_mode_1' => 'view_mode_1',
+            'view_mode_2' => 'view_mode_2',
+          ],
+        ],
+      ])->save();
+
+      // Now test opening the media library from the CKEditor plugin, and
+      // verify the expected behavior.
+      $this->drupalGet('/node/add/blog');
+      $this->waitForEditor();
+      $this->pressEditorButton('drupalmedialibrary');
+      $assert_session = $this->assertSession();
+      $this->assertNotEmpty($assert_session->waitForId('media-library-wrapper'));
+
+      if (empty($allowed_media_types) || count($allowed_media_types) === 2) {
+        $assert_session->elementExists('css', 'li.media-library-menu-image');
+        $assert_session->elementExists('css', 'li.media-library-menu-arrakis');
+        $assert_session->elementTextContains('css', '.media-library-item__name', 'Fear is the mind-killer');
+      }
+      elseif (count($allowed_media_types) === 1 && !empty($allowed_media_types['image'])) {
+        // No tabs should appear if there's only one media type available.
+        $assert_session->elementNotExists('css', 'li.media-library-menu-image');
+        $assert_session->elementNotExists('css', 'li.media-library-menu-arrakis');
+        $assert_session->elementTextContains('css', '.media-library-item__name', 'Fear is the mind-killer');
+      }
+      elseif (count($allowed_media_types) === 1 && !empty($allowed_media_types['arrakis'])) {
+        // No tabs should appear if there's only one media type available.
+        $assert_session->elementNotExists('css', 'li.media-library-menu-image');
+        $assert_session->elementNotExists('css', 'li.media-library-menu-arrakis');
+        $assert_session->elementTextContains('css', '.media-library-item__name', 'Le baron Vladimir Harkonnen');
+      }
+    }
   }
 
 }

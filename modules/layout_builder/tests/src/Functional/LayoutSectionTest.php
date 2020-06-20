@@ -18,12 +18,22 @@ class LayoutSectionTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['field_ui', 'layout_builder', 'node', 'block_test'];
+  protected static $modules = [
+    'field_ui',
+    'layout_builder',
+    'node',
+    'block_test',
+  ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $this->createContentType([

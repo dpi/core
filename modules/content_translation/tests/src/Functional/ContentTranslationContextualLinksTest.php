@@ -22,6 +22,11 @@ class ContentTranslationContextualLinksTest extends BrowserTestBase {
   protected $bundle;
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * The content type being tested.
    *
    * @var \Drupal\node\Entity\NodeType
@@ -47,7 +52,7 @@ class ContentTranslationContextualLinksTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['content_translation', 'contextual', 'node'];
+  protected static $modules = ['content_translation', 'contextual', 'node'];
 
   /**
    * The profile to install as a basis for testing.
@@ -56,7 +61,7 @@ class ContentTranslationContextualLinksTest extends BrowserTestBase {
    */
   protected $profile = 'testing';
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     // Set up an additional language.
     $this->langcodes = [\Drupal::languageManager()->getDefaultLanguage()->getId(), 'es'];

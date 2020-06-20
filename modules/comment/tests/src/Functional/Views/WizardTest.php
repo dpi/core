@@ -21,12 +21,17 @@ class WizardTest extends WizardTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'comment'];
+  protected static $modules = ['node', 'comment'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
     $this->drupalCreateContentType(['type' => 'page', 'name' => t('Basic page')]);
     // Add comment field to page node type.
@@ -83,10 +88,10 @@ class WizardTest extends WizardTestBase {
     // Check for the default filters.
     $this->assertEqual($view->filter['status']->table, 'comment_field_data');
     $this->assertEqual($view->filter['status']->field, 'status');
-    $this->assertTrue($view->filter['status']->value);
+    $this->assertEquals('1', $view->filter['status']->value);
     $this->assertEqual($view->filter['status_node']->table, 'node_field_data');
     $this->assertEqual($view->filter['status_node']->field, 'status');
-    $this->assertTrue($view->filter['status_node']->value);
+    $this->assertEquals('1', $view->filter['status_node']->value);
 
     // Check for the default fields.
     $this->assertEqual($view->field['subject']->table, 'comment_field_data');

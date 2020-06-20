@@ -17,7 +17,7 @@ class CacheabilityMetadataConfigOverrideIntegrationTest extends BrowserTestBase 
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'block_test',
     'config_override_integration_test',
   ];
@@ -25,7 +25,12 @@ class CacheabilityMetadataConfigOverrideIntegrationTest extends BrowserTestBase 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     // @todo If our block does not contain any content then the cache context

@@ -17,9 +17,14 @@ class UrlTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['form_test'];
+  protected static $modules = ['form_test'];
 
   protected $profile = 'testing';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests that #type 'url' fields are properly validated and trimmed.

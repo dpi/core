@@ -19,14 +19,19 @@ class MediaSourceOEmbedVideoTest extends MediaSourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['media_test_oembed'];
+  protected static $modules = ['media_test_oembed'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   use OEmbedTestTrait;
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->lockHttpClientToFixtures();
   }
@@ -96,7 +101,7 @@ class MediaSourceOEmbedVideoTest extends MediaSourceTestBase {
     $display = \Drupal::service('entity_display.repository')->getViewDisplay('media', $media_type_id);
     $this->assertFalse($display->isNew());
     $component = $display->getComponent('field_media_oembed_video');
-    $this->assertInternalType('array', $component);
+    $this->assertIsArray($component);
     $component['settings']['max_width'] = 240;
     $display->setComponent('field_media_oembed_video', $component);
     $this->assertSame(SAVED_UPDATED, $display->save());
@@ -141,8 +146,10 @@ class MediaSourceOEmbedVideoTest extends MediaSourceTestBase {
     $this->assertSame('480', $session->evaluateScript("$inner_frame.getAttribute('width')"));
     $this->assertLessThanOrEqual(240, $session->evaluateScript("$inner_frame.clientWidth"));
 
-    // Make sure the thumbnail is displayed from uploaded image.
-    $assert_session->elementAttributeContains('css', '.image-style-thumbnail', 'src', '/oembed_thumbnails/' . basename($thumbnail));
+    // The oEmbed content iFrame should be visible.
+    $assert_session->elementExists('css', 'iframe.media-oembed-content');
+    // The thumbnail should not be displayed.
+    $assert_session->elementNotExists('css', '.image-style-thumbnail');
 
     // Load the media and check that all fields are properly populated.
     $media = Media::load(1);

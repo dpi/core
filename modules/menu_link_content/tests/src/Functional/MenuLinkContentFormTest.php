@@ -17,9 +17,14 @@ class MenuLinkContentFormTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'menu_link_content',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * User with 'administer menu' and 'link to any page' permission.
@@ -40,7 +45,7 @@ class MenuLinkContentFormTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->adminUser = $this->drupalCreateUser(['administer menu', 'link to any page']);
     $this->basicUser = $this->drupalCreateUser(['administer menu']);
@@ -62,12 +67,12 @@ class MenuLinkContentFormTest extends BrowserTestBase {
     // The user should be able to edit a menu link to the page, even though
     // the user cannot access the page itself.
     $this->drupalGet('/admin/structure/menu/item/' . $menu_link->id() . '/edit');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
 
     $this->drupalLogin($this->basicUser);
 
     $this->drupalGet('/admin/structure/menu/item/' . $menu_link->id() . '/edit');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
   }
 
   /**
@@ -76,7 +81,7 @@ class MenuLinkContentFormTest extends BrowserTestBase {
   public function testMenuLinkContentForm() {
     $this->drupalGet('admin/structure/menu/manage/admin/add');
     $element = $this->xpath('//select[@id = :id]/option[@selected]', [':id' => 'edit-menu-parent']);
-    $this->assertTrue($element, 'A default menu parent was found.');
+    $this->assertNotEmpty($element, 'A default menu parent was found.');
     $this->assertEqual('admin:', $element[0]->getValue(), '<Administration> menu is the parent.');
     // Test that the field description is present.
     $this->assertRaw('The location this menu link points to.');

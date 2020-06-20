@@ -17,7 +17,12 @@ class MenuCacheTagsTest extends PageCacheTagsTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['menu_ui', 'block', 'test_page_test'];
+  protected static $modules = ['menu_ui', 'block', 'test_page_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests cache tags presence and invalidation of the Menu entity.

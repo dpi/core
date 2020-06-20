@@ -16,51 +16,6 @@ use Drupal\file\FileInterface;
 use Drupal\image\Entity\ImageStyle;
 
 /**
- * Image style constant for user presets in the database.
- *
- * @deprecated in Drupal 8.1.x, will be removed before Drupal 9.0.0.
- *
- * @see https://www.drupal.org/node/1820974
- */
-const IMAGE_STORAGE_NORMAL = 1;
-
-/**
- * Image style constant for user presets that override module-defined presets.
- *
- * @deprecated in Drupal 8.1.x, will be removed before Drupal 9.0.0.
- *
- * @see https://www.drupal.org/node/1820974
- */
-const IMAGE_STORAGE_OVERRIDE = 2;
-
-/**
- * Image style constant for module-defined presets in code.
- *
- * @deprecated in Drupal 8.1.x, will be removed before Drupal 9.0.0.
- *
- * @see https://www.drupal.org/node/1820974
- */
-const IMAGE_STORAGE_DEFAULT = 4;
-
-/**
- * Image style constant to represent an editable preset.
- *
- * @deprecated in Drupal 8.1.x, will be removed before Drupal 9.0.0.
- *
- * @see https://www.drupal.org/node/1820974
- */
-define('IMAGE_STORAGE_EDITABLE', IMAGE_STORAGE_NORMAL | IMAGE_STORAGE_OVERRIDE);
-
-/**
- * Image style constant to represent any module-based preset.
- *
- * @deprecated in Drupal 8.1.x, will be removed before Drupal 9.0.0.
- *
- * @see https://www.drupal.org/node/1820974
- */
-define('IMAGE_STORAGE_MODULE', IMAGE_STORAGE_OVERRIDE | IMAGE_STORAGE_DEFAULT);
-
-/**
  * The name of the query parameter for image derivative tokens.
  */
 define('IMAGE_DERIVATIVE_TOKEN', 'itok');
@@ -248,6 +203,7 @@ function image_path_flush($path) {
  *
  * @param $include_empty
  *   If TRUE a '- None -' option will be inserted in the options array.
+ *
  * @return
  *   Array of image styles both key and value are set to style name.
  */
@@ -277,7 +233,6 @@ function image_style_options($include_empty = TRUE) {
  *   - width: The width of the image.
  *   - height: The height of the image.
  *   - style_name: The name of the image style to be applied.
- *   - attributes: Additional attributes to apply to the image.
  *   - uri: URI of the source image before styling.
  *   - alt: The alternative text for text-based browsers. HTML 4 and XHTML 1.0
  *     always require an alt attribute. The HTML 5 draft allows the alt
@@ -291,7 +246,8 @@ function image_style_options($include_empty = TRUE) {
  *     - http://dev.w3.org/html5/spec/Overview.html#alt
  *   - title: The title text is displayed when the image is hovered in some
  *     popular browsers.
- *   - attributes: Associative array of attributes to be placed in the img tag.
+ *   - attributes: Associative array of additional attributes to be placed in
+ *     the img tag.
  */
 function template_preprocess_image_style(&$variables) {
   $style = ImageStyle::load($variables['style_name']);

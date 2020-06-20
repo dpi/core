@@ -18,7 +18,7 @@ class EditorTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['filter', 'editor', 'ckeditor'];
+  protected static $modules = ['filter', 'editor', 'ckeditor'];
 
   /**
    * {@inheritdoc}
@@ -36,6 +36,11 @@ class EditorTest extends ResourceTestBase {
    * @var \Drupal\editor\EditorInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

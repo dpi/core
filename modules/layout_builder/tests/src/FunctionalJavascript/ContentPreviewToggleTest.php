@@ -4,7 +4,6 @@ namespace Drupal\Tests\layout_builder\FunctionalJavascript;
 
 use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
 use Drupal\Tests\contextual\FunctionalJavascript\ContextualLinkClickTrait;
-use Zend\Stdlib\ArrayUtils;
 
 /**
  * Tests toggling of content preview.
@@ -14,6 +13,7 @@ use Zend\Stdlib\ArrayUtils;
 class ContentPreviewToggleTest extends WebDriverTestBase {
 
   use ContextualLinkClickTrait;
+  use LayoutBuilderSortTrait;
 
   /**
    * {@inheritdoc}
@@ -28,7 +28,12 @@ class ContentPreviewToggleTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $this->createContentType(['type' => 'bundle_for_this_particular_test']);
@@ -91,9 +96,14 @@ class ContentPreviewToggleTest extends WebDriverTestBase {
     // Confirm repositioning blocks works with content preview disabled.
     $this->assertOrderInPage([$links_field_placeholder_label, $body_field_placeholder_label]);
 
-    $links_block_placeholder_child = $assert_session->elementExists('css', "[data-layout-content-preview-placeholder-label='$links_field_placeholder_label'] div");
-    $body_block_placeholder_child = $assert_session->elementExists('css', "[data-layout-content-preview-placeholder-label='$body_field_placeholder_label'] div");
-    $body_block_placeholder_child->dragTo($links_block_placeholder_child);
+    $region_content = '.layout__region--content';
+    $links_block = "[data-layout-content-preview-placeholder-label='$links_field_placeholder_label']";
+    $body_block = "[data-layout-content-preview-placeholder-label='$body_field_placeholder_label']";
+
+    $assert_session->elementExists('css', $links_block . " div");
+    $assert_session->elementExists('css', $body_block . " div");
+
+    $this->sortableAfter($links_block, $body_block, $region_content);
     $assert_session->assertWaitOnAjaxRequest();
 
     // Check that the drag-triggered rebuild did not trigger content preview.
@@ -138,10 +148,10 @@ class ContentPreviewToggleTest extends WebDriverTestBase {
     $blocks = $page->findAll('css', '[data-layout-content-preview-placeholder-label]');
 
     // Filter will only return value if block contains expected text.
-    $blocks_with_expected_text = ArrayUtils::filter($blocks, function ($block, $key) use ($items) {
+    $blocks_with_expected_text = array_filter($blocks, function ($block, $key) use ($items) {
       $block_text = $block->getText();
       return strpos($block_text, $items[$key]) !== FALSE;
-    }, ArrayUtils::ARRAY_FILTER_USE_BOTH);
+    }, ARRAY_FILTER_USE_BOTH);
 
     $this->assertCount(count($items), $blocks_with_expected_text);
   }

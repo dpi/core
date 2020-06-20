@@ -16,7 +16,7 @@ class BlockTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['block'];
+  protected static $modules = ['block'];
 
   /**
    * {@inheritdoc}
@@ -34,6 +34,11 @@ class BlockTest extends ResourceTestBase {
    * @var \Drupal\block\BlockInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * {@inheritdoc}

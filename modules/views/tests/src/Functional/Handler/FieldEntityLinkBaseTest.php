@@ -23,18 +23,23 @@ class FieldEntityLinkBaseTest extends ViewTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['node', 'language'];
+  protected static $modules = ['node', 'language'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->drupalCreateContentType(['type' => 'article', 'name' => 'Article']);
 
-    // Add languages and refresh the container so the entity manager will have
-    // fresh data.
+    // Add languages and refresh the container so the entity type manager will
+    // have fresh data.
     ConfigurableLanguage::createFromLangcode('hu')->save();
     ConfigurableLanguage::createFromLangcode('es')->save();
     $this->rebuildContainer();

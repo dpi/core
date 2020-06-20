@@ -16,13 +16,18 @@ class LayoutBuilderTranslationTest extends ContentTranslationTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'content_translation',
     'contextual',
     'entity_test',
     'layout_builder',
     'block',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * The entity used for testing.
@@ -34,7 +39,7 @@ class LayoutBuilderTranslationTest extends ContentTranslationTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->setUpViewDisplay();
     $this->setUpEntities();

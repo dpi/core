@@ -37,12 +37,17 @@ class EntityTestDateRangeTest extends EntityTestResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['datetime_range', 'entity_test'];
+  protected static $modules = ['datetime_range', 'entity_test'];
 
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp(): void {
     parent::setUp();
 
     // Add datetime_range field.
@@ -154,7 +159,7 @@ class EntityTestDateRangeTest extends EntityTestResourceTestBase {
 
       $request_options[RequestOptions::BODY] = $this->serializer->encode($normalization, static::$format);
       $response = $this->request($method, $url, $request_options);
-      $message = "The specified date \"$value\" is not in an accepted format: \"Y-m-d\\TH:i:sP\" (RFC 3339), \"Y-m-d\\TH:i:sO\" (ISO 8601), \"Y-m-d\\TH:i:s\" (backward compatibility — deprecated).";
+      $message = "The specified date \"$value\" is not in an accepted format: \"Y-m-d\\TH:i:sP\" (RFC 3339), \"Y-m-d\\TH:i:sO\" (ISO 8601).";
       $this->assertResourceErrorResponse(422, $message, $response);
 
       // @todo Expand in https://www.drupal.org/project/drupal/issues/2847041.

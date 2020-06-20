@@ -18,9 +18,14 @@ class NumberFieldTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'entity_test', 'field_ui'];
+  protected static $modules = ['node', 'entity_test', 'field_ui'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
     $this->drupalLogin($this->drupalCreateUser([
       'view test entity',

@@ -26,7 +26,12 @@ class BookRelationshipTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = ['book_test_views', 'book', 'views'];
+  protected static $modules = ['book_test_views', 'book', 'views'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * A book node.
@@ -45,7 +50,7 @@ class BookRelationshipTest extends ViewTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     // Create users.
@@ -148,7 +153,7 @@ class BookRelationshipTest extends ViewTestBase {
       $this->drupalGet('test-book/' . $nodes[$i]->id());
 
       for ($j = 0; $j < $i; $j++) {
-        $this->assertLink($nodes[$j]->label());
+        $this->assertSession()->linkExists($nodes[$j]->label());
       }
     }
   }

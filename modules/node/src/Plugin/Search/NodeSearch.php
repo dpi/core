@@ -2,27 +2,27 @@
 
 namespace Drupal\node\Plugin\Search;
 
+use Drupal\Core\Access\AccessibleInterface;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Config\Config;
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\Query\Condition;
 use Drupal\Core\Database\Query\SelectExtender;
 use Drupal\Core\Database\StatementInterface;
-use Drupal\Core\DependencyInjection\DeprecatedServicePropertyTrait;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\Access\AccessibleInterface;
-use Drupal\Core\Database\Query\Condition;
-use Drupal\Core\Render\RendererInterface;
 use Drupal\node\NodeInterface;
 use Drupal\search\Plugin\ConfigurableSearchPluginBase;
 use Drupal\search\Plugin\SearchIndexingInterface;
+use Drupal\search\SearchIndexInterface;
 use Drupal\Search\SearchQuery;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -35,12 +35,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * )
  */
 class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInterface, SearchIndexingInterface, TrustedCallbackInterface {
-  use DeprecatedServicePropertyTrait;
-
-  /**
-   * {@inheritdoc}
-   */
-  protected $deprecatedProperties = ['entityManager' => 'entity.manager'];
 
   /**
    * The current database connection.
@@ -99,6 +93,13 @@ class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInter
   protected $renderer;
 
   /**
+   * The search index.
+   *
+   * @var \Drupal\search\SearchIndexInterface
+   */
+  protected $searchIndex;
+
+  /**
    * An array of additional rankings from hook_ranking().
    *
    * @var array
@@ -153,7 +154,8 @@ class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInter
       $container->get('renderer'),
       $container->get('messenger'),
       $container->get('current_user'),
-      $container->get('database.replica')
+      $container->get('database.replica'),
+      $container->get('search.index')
     );
   }
 
@@ -183,11 +185,13 @@ class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInter
    * @param \Drupal\Core\Session\AccountInterface $account
    *   The $account object to use for checking for access to advanced search.
    * @param \Drupal\Core\Database\Connection|null $database_replica
-   *   (Optional) the replica database connection.
+   *   The replica database connection.
+   * @param \Drupal\search\SearchIndexInterface $search_index
+   *   The search index.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, Connection $database, EntityTypeManagerInterface $entity_type_manager, ModuleHandlerInterface $module_handler, Config $search_settings, LanguageManagerInterface $language_manager, RendererInterface $renderer, MessengerInterface $messenger, AccountInterface $account = NULL, Connection $database_replica = NULL) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, Connection $database, EntityTypeManagerInterface $entity_type_manager, ModuleHandlerInterface $module_handler, Config $search_settings, LanguageManagerInterface $language_manager, RendererInterface $renderer, MessengerInterface $messenger, AccountInterface $account, Connection $database_replica, SearchIndexInterface $search_index) {
     $this->database = $database;
-    $this->databaseReplica = $database_replica ?: $database;
+    $this->databaseReplica = $database_replica;
     $this->entityTypeManager = $entity_type_manager;
     $this->moduleHandler = $module_handler;
     $this->searchSettings = $search_settings;
@@ -198,6 +202,7 @@ class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInter
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     $this->addCacheTags(['node_list']);
+    $this->searchIndex = $search_index;
   }
 
   /**
@@ -478,8 +483,14 @@ class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInter
     }
 
     $node_storage = $this->entityTypeManager->getStorage('node');
-    foreach ($node_storage->loadMultiple($nids) as $node) {
-      $this->indexNode($node);
+    $words = [];
+    try {
+      foreach ($node_storage->loadMultiple($nids) as $node) {
+        $words += $this->indexNode($node);
+      }
+    }
+    finally {
+      $this->searchIndex->updateWordWeights($words);
     }
   }
 
@@ -488,8 +499,12 @@ class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInter
    *
    * @param \Drupal\node\NodeInterface $node
    *   The node to index.
+   *
+   * @return array
+   *   An array of words to update after indexing.
    */
   protected function indexNode(NodeInterface $node) {
+    $words = [];
     $languages = $node->getTranslationLanguages();
     $node_render = $this->entityTypeManager->getViewBuilder('node');
 
@@ -516,8 +531,9 @@ class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInter
       }
 
       // Update index, using search index "type" equal to the plugin ID.
-      search_index($this->getPluginId(), $node->id(), $language->getId(), $text);
+      $words += $this->searchIndex->index($this->getPluginId(), $node->id(), $language->getId(), $text, FALSE);
     }
+    return $words;
   }
 
   /**
@@ -526,7 +542,7 @@ class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInter
   public function indexClear() {
     // All NodeSearch pages share a common search index "type" equal to
     // the plugin ID.
-    search_index_clear($this->getPluginId());
+    $this->searchIndex->clear($this->getPluginId());
   }
 
   /**
@@ -535,7 +551,7 @@ class NodeSearch extends ConfigurableSearchPluginBase implements AccessibleInter
   public function markForReindex() {
     // All NodeSearch pages share a common search index "type" equal to
     // the plugin ID.
-    search_mark_for_reindex($this->getPluginId());
+    $this->searchIndex->markForReindex($this->getPluginId());
   }
 
   /**

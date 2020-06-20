@@ -22,12 +22,17 @@ class FilterUITest extends UITestBase {
    *
    * @var array
    */
-  public static $modules = ['views_ui', 'node'];
+  protected static $modules = ['views_ui', 'node'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
     $this->drupalCreateContentType(['type' => 'page']);
   }
@@ -64,7 +69,7 @@ class FilterUITest extends UITestBase {
 
     $this->drupalGet('admin/structure/views/view/test_filter_groups');
 
-    $this->assertLink('Content: ID (= 1)', 0, 'Content: ID (= 1) link appears correctly.');
+    $this->assertSession()->linkExists('Content: ID (= 1)', 0, 'Content: ID (= 1) link appears correctly.');
 
     // Tests that we can create a new filter group from UI.
     $this->drupalGet('admin/structure/views/nojs/rearrange-filter/test_filter_groups/page');

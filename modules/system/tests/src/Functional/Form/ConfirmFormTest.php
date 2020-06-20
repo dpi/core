@@ -18,13 +18,18 @@ class ConfirmFormTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['form_test'];
+  protected static $modules = ['form_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   public function testConfirmForm() {
     // Test the building of the form.
     $this->drupalGet('form-test/confirm-form');
     $site_name = $this->config('system.site')->get('name');
-    $this->assertTitle(t('ConfirmFormTestForm::getQuestion(). | @site-name', ['@site-name' => $site_name]), 'The question was found as the page title.');
+    $this->assertSession()->titleEquals("ConfirmFormTestForm::getQuestion(). | $site_name");
     $this->assertText(t('ConfirmFormTestForm::getDescription().'), 'The description was used.');
     $this->assertFieldByXPath('//input[@id="edit-submit"]', t('ConfirmFormTestForm::getConfirmText().'), 'The confirm text was used.');
 

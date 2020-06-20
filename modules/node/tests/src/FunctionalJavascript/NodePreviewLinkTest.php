@@ -15,12 +15,17 @@ class NodePreviewLinkTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['node', 'filter'];
+  protected static $modules = ['node', 'filter'];
 
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp(): void {
     parent::setUp();
 
     $filtered_html_format = FilterFormat::create([

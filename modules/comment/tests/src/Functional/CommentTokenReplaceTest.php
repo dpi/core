@@ -24,7 +24,12 @@ class CommentTokenReplaceTest extends CommentTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['taxonomy'];
+  protected static $modules = ['taxonomy'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Creates a comment, then tests the tokens generated from it.
@@ -129,7 +134,7 @@ class CommentTokenReplaceTest extends CommentTestBase {
     $metadata_tests['[comment:author:name]'] = $bubbleable_metadata;
 
     // Test to make sure that we generated something for each token.
-    $this->assertFalse(in_array(0, array_map('strlen', $tests)), 'No empty tokens generated.');
+    $this->assertNotContains(0, array_map('strlen', $tests), 'No empty tokens generated.');
 
     foreach ($tests as $input => $expected) {
       $bubbleable_metadata = new BubbleableMetadata();

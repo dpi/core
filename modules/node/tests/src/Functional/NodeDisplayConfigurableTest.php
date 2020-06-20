@@ -16,7 +16,12 @@ class NodeDisplayConfigurableTest extends NodeTestBase {
    *
    * @var array
    */
-  public static $modules = ['quickedit', 'rdf'];
+  protected static $modules = ['quickedit', 'rdf'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * Sets base fields to configurable display and check settings are respected.

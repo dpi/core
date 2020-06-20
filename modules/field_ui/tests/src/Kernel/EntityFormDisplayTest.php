@@ -20,9 +20,16 @@ class EntityFormDisplayTest extends KernelTestBase {
    *
    * @var string[]
    */
-  public static $modules = ['field_ui', 'field', 'entity_test', 'field_test', 'user', 'text'];
+  protected static $modules = [
+    'field_ui',
+    'field',
+    'entity_test',
+    'field_test',
+    'user',
+    'text',
+  ];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('entity_test');
   }
@@ -217,18 +224,18 @@ class EntityFormDisplayTest extends KernelTestBase {
 
     // Check the component exists.
     $display = $display_repository->getFormDisplay('entity_test', 'entity_test');
-    $this->assertTrue($display->getComponent($field_name));
+    $this->assertNotEmpty($display->getComponent($field_name));
     $display = $display_repository->getFormDisplay('entity_test', 'entity_test', 'compact');
-    $this->assertTrue($display->getComponent($field_name));
+    $this->assertNotEmpty($display->getComponent($field_name));
 
     // Delete the field.
     $field->delete();
 
     // Check that the component has been removed from the entity displays.
     $display = $display_repository->getFormDisplay('entity_test', 'entity_test');
-    $this->assertFalse($display->getComponent($field_name));
+    $this->assertNull($display->getComponent($field_name));
     $display = $display_repository->getFormDisplay('entity_test', 'entity_test', 'compact');
-    $this->assertFalse($display->getComponent($field_name));
+    $this->assertNull($display->getComponent($field_name));
   }
 
   /**
@@ -273,7 +280,7 @@ class EntityFormDisplayTest extends KernelTestBase {
     // Removing the text module should remove the field from the form display.
     \Drupal::service('config.manager')->uninstall('module', 'text');
     $display = $display_repository->getFormDisplay('entity_test', 'entity_test');
-    $this->assertFalse($display->getComponent($field_name));
+    $this->assertNull($display->getComponent($field_name));
   }
 
 }

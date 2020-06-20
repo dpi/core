@@ -24,12 +24,10 @@ class StateFileExists extends MigrateDrupalTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     // Test migrations states.
     'migrate_state_finished_test',
     'migrate_state_not_finished_test',
-    // Test missing migrate_drupal.yml.
-    'migrate_state_no_file_test',
   ];
 
   /**
@@ -70,7 +68,6 @@ class StateFileExists extends MigrateDrupalTestBase {
     'rdf',
     'search',
     'shortcut',
-    'simpletest',
     'statistics',
     'syslog',
     'system',

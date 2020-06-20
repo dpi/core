@@ -17,7 +17,7 @@ class EntityFormModeTest extends ResourceTestBase {
    *
    * @todo: Remove 'field_ui' when https://www.drupal.org/node/2867266.
    */
-  public static $modules = ['user', 'field_ui'];
+  protected static $modules = ['user', 'field_ui'];
 
   /**
    * {@inheritdoc}
@@ -35,6 +35,11 @@ class EntityFormModeTest extends ResourceTestBase {
    * @var \Drupal\Core\Entity\EntityFormModeInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

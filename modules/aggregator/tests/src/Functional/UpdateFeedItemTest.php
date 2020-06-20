@@ -14,6 +14,11 @@ use Drupal\aggregator\Entity\Item;
 class UpdateFeedItemTest extends AggregatorTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Tests running "update items" from 'admin/config/services/aggregator' page.
    */
   public function testUpdateFeedItem() {
@@ -36,7 +41,7 @@ class UpdateFeedItemTest extends AggregatorTestBase {
     ];
 
     $this->drupalGet($edit['url[0][value]']);
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
 
     $this->drupalPostForm('aggregator/sources/add', $edit, t('Save'));
     $this->assertText(t('The feed @name has been added.', ['@name' => $edit['title[0][value]']]), new FormattableMarkup('The feed @name has been added.', ['@name' => $edit['title[0][value]']]));
@@ -70,7 +75,7 @@ class UpdateFeedItemTest extends AggregatorTestBase {
     $this->enableTestPlugins();
     $this->container->get('module_installer')->uninstall(['aggregator_test']);
     $this->updateFeedItems($feed);
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
   }
 
 }

@@ -10,18 +10,6 @@ use Drupal\Component\Gettext\PoItem;
 class PluralTranslatableMarkup extends TranslatableMarkup {
 
   /**
-   * The delimiter used to split plural strings.
-   *
-   * This is the ETX (End of text) character and is used as a minimal means to
-   * separate singular and plural variants in source and translation text. It
-   * was found to be the most compatible delimiter for the supported databases.
-   *
-   * @deprecated in Drupal 8.7.x, will be removed before Drupal 9.0.0.
-   *   Use Drupal\Component\Gettext\PoItem::DELIMITER instead.
-   */
-  const DELIMITER = PoItem::DELIMITER;
-
-  /**
    * The item count to display.
    *
    * @var int

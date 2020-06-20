@@ -15,7 +15,12 @@ class ImageStyleDeleteTest extends ImageFieldTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     // Create an image field 'foo' having the image style 'medium' as widget
     // preview and as formatter.
@@ -40,15 +45,14 @@ class ImageStyleDeleteTest extends ImageFieldTestBase {
     /** @var \Drupal\Core\Entity\Display\EntityViewDisplayInterface $view_display */
     $view_display = EntityViewDisplay::load('node.page.default');
     // Checks that the formatter setting is replaced.
-    if ($this->assertNotNull($component = $view_display->getComponent('foo'))) {
-      $this->assertIdentical($component['settings']['image_style'], 'thumbnail');
-    }
+    $this->assertNotNull($component = $view_display->getComponent('foo'));
+    $this->assertSame('thumbnail', $component['settings']['image_style']);
+
     /** @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface $form_display */
     $form_display = EntityFormDisplay::load('node.page.default');
     // Check that the widget setting is replaced.
-    if ($this->assertNotNull($component = $form_display->getComponent('foo'))) {
-      $this->assertIdentical($component['settings']['preview_image_style'], 'thumbnail');
-    }
+    $this->assertNotNull($component = $form_display->getComponent('foo'));
+    $this->assertSame('thumbnail', $component['settings']['preview_image_style']);
 
     $this->drupalGet('admin/config/media/image-styles/manage/thumbnail/delete');
     // Checks that the 'replacement' select element is displayed.

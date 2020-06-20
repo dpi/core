@@ -32,7 +32,12 @@ class ImageFieldDisplayTest extends ImageFieldTestBase {
    *
    * @var array
    */
-  public static $modules = ['field_ui'];
+  protected static $modules = ['field_ui'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * Test image formatters on node display for public files.
@@ -147,10 +152,10 @@ class ImageFieldDisplayTest extends ImageFieldTestBase {
       $this->assertEqual($this->drupalGetHeader('Content-Type'), 'image/png', 'Content-Type header was sent.');
       $this->assertTrue(strstr($this->drupalGetHeader('Cache-Control'), 'private') !== FALSE, 'Cache-Control header was sent.');
 
-      // Log out and try to access the file.
+      // Log out and ensure the file cannot be accessed.
       $this->drupalLogout();
       $this->drupalGet(file_create_url($image_uri));
-      $this->assertResponse('403', 'Access denied to original image as anonymous user.');
+      $this->assertSession()->statusCodeEquals(403);
 
       // Log in again.
       $this->drupalLogin($this->adminUser);
@@ -180,7 +185,7 @@ class ImageFieldDisplayTest extends ImageFieldTestBase {
         ':alt' => $alt,
       ]
     );
-    $this->assertEqual(count($elements), 1, 'Image linked to content formatter displaying correctly on full node view.');
+    $this->assertCount(1, $elements, 'Image linked to content formatter displaying correctly on full node view.');
 
     // Test the image style 'thumbnail' formatter.
     $display_options['settings']['image_link'] = '';
@@ -206,10 +211,10 @@ class ImageFieldDisplayTest extends ImageFieldTestBase {
     $this->assertRaw($default_output, 'Image style thumbnail formatter displaying correctly on full node view.');
 
     if ($scheme == 'private') {
-      // Log out and try to access the file.
+      // Log out and ensure the file cannot be accessed.
       $this->drupalLogout();
       $this->drupalGet(ImageStyle::load('thumbnail')->buildUrl($image_uri));
-      $this->assertResponse('403', 'Access denied to image style thumbnail as anonymous user.');
+      $this->assertSession()->statusCodeEquals(403);
     }
 
     // Test the image URL formatter without an image style.
@@ -282,7 +287,7 @@ class ImageFieldDisplayTest extends ImageFieldTestBase {
     $file = $node->{$field_name}->entity;
 
     $url = file_url_transform_relative(ImageStyle::load('medium')->buildUrl($file->getFileUri()));
-    $this->assertTrue($this->cssSelect('img[width=40][height=20][class=image-style-medium][src="' . $url . '"]'));
+    $this->assertSession()->elementExists('css', 'img[width=40][height=20][class=image-style-medium][src="' . $url . '"]');
 
     // Add alt/title fields to the image and verify that they are displayed.
     $image = [
@@ -434,7 +439,7 @@ class ImageFieldDisplayTest extends ImageFieldTestBase {
     \Drupal::service('entity_field.manager')->clearCachedFieldDefinitions();
     $field_storage = FieldStorageConfig::loadByName('node', $field_name);
     $default_image = $field_storage->getSetting('default_image');
-    $this->assertFalse($default_image['uuid'], 'Default image removed from field.');
+    $this->assertEmpty($default_image['uuid'], 'Default image removed from field.');
     // Create an image field that uses the private:// scheme and test that the
     // default image works as expected.
     $private_field_name = strtolower($this->randomMachineName());

@@ -13,6 +13,11 @@ use Drupal\user\Entity\User;
 class NodeEditFormTest extends NodeTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * A normal logged in user.
    *
    * @var \Drupal\user\UserInterface
@@ -38,9 +43,9 @@ class NodeEditFormTest extends NodeTestBase {
    *
    * @var string[]
    */
-  public static $modules = ['block', 'node', 'datetime'];
+  protected static $modules = ['block', 'node', 'datetime'];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->webUser = $this->drupalCreateUser(['edit own page content', 'create page content']);
@@ -66,7 +71,7 @@ class NodeEditFormTest extends NodeTestBase {
 
     // Check that the node exists in the database.
     $node = $this->drupalGetNodeByTitle($edit[$title_key]);
-    $this->assertTrue($node, 'Node found in database.');
+    $this->assertNotEmpty($node, 'Node found in database.');
 
     // Check that "edit" link points to correct page.
     $this->clickLink(t('Edit'));

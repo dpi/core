@@ -12,7 +12,12 @@ class EntityTestRevisionTest extends WizardTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['entity_test'];
+  protected static $modules = ['entity_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests creating a view of revisions where the type is not on the base table.

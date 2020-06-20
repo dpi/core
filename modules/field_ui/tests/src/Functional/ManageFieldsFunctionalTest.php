@@ -27,7 +27,19 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'field_ui', 'field_test', 'taxonomy', 'image', 'block'];
+  protected static $modules = [
+    'node',
+    'field_ui',
+    'field_test',
+    'taxonomy',
+    'image',
+    'block',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * The ID of the custom content type created for testing.
@@ -60,7 +72,7 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalPlaceBlock('system_breadcrumb_block');
@@ -146,7 +158,7 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     }
 
     // Test the "Add field" action link.
-    $this->assertLink('Add field');
+    $this->assertSession()->linkExists('Add field');
 
     // Assert entity operations for all fields.
     $number_of_links = 3;
@@ -160,10 +172,12 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
           $this->assertIdentical($url, $link->getAttribute('href'));
           $number_of_links_found++;
           break;
+
         case 'Edit storage settings.':
           $this->assertIdentical("$url/storage", $link->getAttribute('href'));
           $number_of_links_found++;
           break;
+
         case 'Delete field.':
           $this->assertIdentical("$url/delete", $link->getAttribute('href'));
           $number_of_links_found++;
@@ -226,9 +240,9 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
 
     // Check that fields of other entity types (here, the 'comment_body' field)
     // do not show up in the "Re-use existing field" list.
-    $this->assertFalse($this->xpath('//select[@id="edit-existing-storage-name"]//option[@value="comment"]'), 'The list of options respects entity type restrictions.');
+    $this->assertEmpty($this->xpath('//select[@id="edit-existing-storage-name"]//option[@value="comment"]'), 'The list of options respects entity type restrictions.');
     // Validate the FALSE assertion above by also testing a valid one.
-    $this->assertTrue($this->xpath('//select[@id="edit-existing-storage-name"]//option[@value=:field_name]', [':field_name' => $this->fieldName]), 'The list of options shows a valid option.');
+    $this->assertNotEmpty($this->xpath('//select[@id="edit-existing-storage-name"]//option[@value=:field_name]', [':field_name' => $this->fieldName]), 'The list of options shows a valid option.');
 
     // Add a new field based on an existing field.
     $this->fieldUIAddExistingField("admin/structure/types/manage/page", $this->fieldName, $this->fieldLabel . '_2');
@@ -264,9 +278,9 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     $this->assertFieldByXPath("//input[@name='cardinality_number']", 6);
 
     // Check that tabs displayed.
-    $this->assertLink(t('Edit'));
+    $this->assertSession()->linkExists(t('Edit'));
     $this->assertLinkByHref('admin/structure/types/manage/article/fields/node.article.body');
-    $this->assertLink(t('Field settings'));
+    $this->assertSession()->linkExists(t('Field settings'));
     $this->assertLinkByHref($field_edit_path);
 
     // Add two entries in the body.
@@ -327,7 +341,7 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     $field_id = 'node.' . $this->contentType . '.' . $this->fieldName;
     $this->drupalGet('admin/structure/types/manage/' . $this->contentType . '/fields/' . $field_id);
     $this->clickLink(t('Delete'));
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
   }
 
   /**
@@ -573,7 +587,7 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     $locked = $this->xpath('//tr[@id=:field_name]/td[4]', [':field_name' => $field_name]);
     $this->assertSame('Locked', $locked[0]->getHtml(), 'Field is marked as Locked in the UI');
     $this->drupalGet('admin/structure/types/manage/' . $this->contentType . '/fields/node.' . $this->contentType . '.' . $field_name . '/delete');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
   }
 
   /**
@@ -582,8 +596,8 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
   public function testHiddenFields() {
     // Check that the field type is not available in the 'add new field' row.
     $this->drupalGet('admin/structure/types/manage/' . $this->contentType . '/fields/add-field');
-    $this->assertFalse($this->xpath('//select[@id="edit-new-storage-type"]//option[@value="hidden_test_field"]'), "The 'add new field' select respects field types 'no_ui' property.");
-    $this->assertTrue($this->xpath('//select[@id="edit-new-storage-type"]//option[@value="shape"]'), "The 'add new field' select shows a valid option.");
+    $this->assertEmpty($this->xpath('//select[@id="edit-new-storage-type"]//option[@value="hidden_test_field"]'), "The 'add new field' select respects field types 'no_ui' property.");
+    $this->assertNotEmpty($this->xpath('//select[@id="edit-new-storage-type"]//option[@value="shape"]'), "The 'add new field' select shows a valid option.");
 
     // Create a field storage and a field programmatically.
     $field_name = 'hidden_test_field';
@@ -603,7 +617,7 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
       ->getFormDisplay('node', $this->contentType)
       ->setComponent($field_name)
       ->save();
-    $this->assertTrue(FieldConfig::load('node.' . $this->contentType . '.' . $field_name), new FormattableMarkup('A field of the field storage %field was created programmatically.', ['%field' => $field_name]));
+    $this->assertInstanceOf(FieldConfig::class, FieldConfig::load('node.' . $this->contentType . '.' . $field_name));
 
     // Check that the newly added field appears on the 'Manage Fields'
     // screen.
@@ -613,17 +627,17 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     // Check that the field does not appear in the 're-use existing field' row
     // on other bundles.
     $this->drupalGet('admin/structure/types/manage/page/fields/add-field');
-    $this->assertFalse($this->xpath('//select[@id="edit-existing-storage-name"]//option[@value=:field_name]', [':field_name' => $field_name]), "The 're-use existing field' select respects field types 'no_ui' property.");
-    $this->assertTrue($this->xpath('//select[@id="edit-existing-storage-name"]//option[@value=:field_name]', [':field_name' => 'field_tags']), "The 're-use existing field' select shows a valid option.");
+    $this->assertEmpty($this->xpath('//select[@id="edit-existing-storage-name"]//option[@value=:field_name]', [':field_name' => $field_name]), "The 're-use existing field' select respects field types 'no_ui' property.");
+    $this->assertNotEmpty($this->xpath('//select[@id="edit-existing-storage-name"]//option[@value=:field_name]', [':field_name' => 'field_tags']), "The 're-use existing field' select shows a valid option.");
 
     // Check that non-configurable fields are not available.
     $field_types = \Drupal::service('plugin.manager.field.field_type')->getDefinitions();
     foreach ($field_types as $field_type => $definition) {
       if (empty($definition['no_ui'])) {
-        $this->assertTrue($this->xpath('//select[@id="edit-new-storage-type"]//option[@value=:field_type]', [':field_type' => $field_type]), new FormattableMarkup('Configurable field type @field_type is available.', ['@field_type' => $field_type]));
+        $this->assertNotEmpty($this->xpath('//select[@id="edit-new-storage-type"]//option[@value=:field_type]', [':field_type' => $field_type]), new FormattableMarkup('Configurable field type @field_type is available.', ['@field_type' => $field_type]));
       }
       else {
-        $this->assertFalse($this->xpath('//select[@id="edit-new-storage-type"]//option[@value=:field_type]', [':field_type' => $field_type]), new FormattableMarkup('Non-configurable field type @field_type is not available.', ['@field_type' => $field_type]));
+        $this->assertEmpty($this->xpath('//select[@id="edit-new-storage-type"]//option[@value=:field_type]', [':field_type' => $field_type]), new FormattableMarkup('Non-configurable field type @field_type is not available.', ['@field_type' => $field_type]));
       }
     }
   }
@@ -656,7 +670,7 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     $this->drupalPostForm('admin/structure/types/manage/article/fields/node.article.body/storage', [], 'Save field settings', $options);
     // The external redirect should not fire.
     $this->assertUrl('admin/structure/types/manage/article/fields/node.article.body/storage', $options);
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertRaw('Attempt to update field <em class="placeholder">Body</em> failed: <em class="placeholder">The internal path component &#039;http://example.com&#039; is external. You are not allowed to specify an external URL together with internal:/.</em>.');
   }
 
@@ -740,8 +754,8 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
 
     // Check that the preconfigured field option exist alongside the regular
     // field type option.
-    $this->assertOption('edit-new-storage-type', 'field_ui:test_field_with_preconfigured_options:custom_options');
-    $this->assertOption('edit-new-storage-type', 'test_field_with_preconfigured_options');
+    $this->assertSession()->optionExists('edit-new-storage-type', 'field_ui:test_field_with_preconfigured_options:custom_options');
+    $this->assertSession()->optionExists('edit-new-storage-type', 'test_field_with_preconfigured_options');
 
     // Add a field with every possible preconfigured value.
     $this->fieldUIAddNewField(NULL, 'test_custom_options', 'Test label', 'field_ui:test_field_with_preconfigured_options:custom_options');
@@ -770,10 +784,10 @@ class ManageFieldsFunctionalTest extends BrowserTestBase {
     $field_id = 'node.foo.bar';
 
     $this->drupalGet('admin/structure/types/manage/' . $this->contentType . '/fields/' . $field_id);
-    $this->assertResponse(404);
+    $this->assertSession()->statusCodeEquals(404);
 
     $this->drupalGet('admin/structure/types/manage/' . $this->contentType . '/fields/' . $field_id . '/storage');
-    $this->assertResponse(404);
+    $this->assertSession()->statusCodeEquals(404);
   }
 
 }

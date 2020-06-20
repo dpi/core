@@ -21,7 +21,12 @@ class ForumUninstallTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['forum'];
+  protected static $modules = ['forum'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests if forum module uninstallation properly deletes the field.
@@ -86,7 +91,7 @@ class ForumUninstallTest extends BrowserTestBase {
 
     // Ensure that the forum node type can not be deleted.
     $this->drupalGet('admin/structure/types/manage/forum');
-    $this->assertNoLink(t('Delete'));
+    $this->assertSession()->linkNotExists(t('Delete'));
 
     // Now attempt to uninstall forum.
     $this->drupalGet('admin/modules/uninstall');
@@ -113,7 +118,7 @@ class ForumUninstallTest extends BrowserTestBase {
     $this->drupalGet('admin/structure/types/manage/forum');
     $this->clickLink(t('Delete'));
     $this->drupalPostForm(NULL, [], t('Delete'));
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertFalse((bool) NodeType::load('forum'), 'Node type with machine forum deleted.');
 
     // Double check everything by reinstalling the forum module again.

@@ -17,12 +17,17 @@ class LocaleUpdateInterfaceTest extends LocaleUpdateBase {
    *
    * @var array
    */
-  public static $modules = ['locale_test_translate'];
+  protected static $modules = ['locale_test_translate'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $admin_user = $this->drupalCreateUser(['administer modules', 'administer site configuration', 'administer languages', 'access administration pages', 'translate interface']);
     $this->drupalLogin($admin_user);
@@ -117,7 +122,7 @@ class LocaleUpdateInterfaceTest extends LocaleUpdateBase {
       '@date' => $this->container->get('date.formatter')->format(REQUEST_TIME, 'html_date'),
     ]), 'Core translation update');
     $update_button = $this->xpath('//input[@type="submit"][@value="' . t('Update translations') . '"]');
-    $this->assertTrue($update_button, 'Update translations button');
+    $this->assertNotEmpty($update_button, 'Update translations button');
   }
 
 }

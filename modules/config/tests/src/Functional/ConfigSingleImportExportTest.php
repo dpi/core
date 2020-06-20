@@ -17,7 +17,7 @@ class ConfigSingleImportExportTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'block',
     'config',
     'config_test',
@@ -26,7 +26,12 @@ class ConfigSingleImportExportTest extends BrowserTestBase {
     'language',
   ];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalPlaceBlock('page_title_block');
@@ -182,8 +187,8 @@ EOD;
       $this->drupalPostForm(NULL, [], t('Confirm'));
       $entity = $storage->load('second');
       $this->assertRaw(t('The configuration was imported successfully.'));
-      $this->assertTrue(is_string($entity->label()), 'Entity label is a string');
-      $this->assertTrue(strpos($entity->label(), 'ObjectSerialization') > 0, 'Label contains serialized object');
+      $this->assertIsString($entity->label());
+      $this->assertStringContainsString('ObjectSerialization', $entity->label(), 'Label contains serialized object');
     }
     else {
       // If the Symfony parser is used there will be an error.

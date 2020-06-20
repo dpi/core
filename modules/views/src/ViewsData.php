@@ -111,8 +111,6 @@ class ViewsData {
   /**
    * Gets all table data.
    *
-   * @see https://www.drupal.org/node/2723553
-   *
    * @return array
    *   An array of table data.
    */
@@ -129,21 +127,17 @@ class ViewsData {
   }
 
   /**
-   * Gets data for a particular table, or all tables.
+   * Gets data for a particular table.
    *
-   * @param string|null $key
-   *   The key of the cache entry to retrieve. Defaults to NULL, this will
-   *   return all table data. NULL $key deprecated in Drupal 8.2.x and will be
-   *   removed in 9.0.0. Use getAll() instead.
-   *
-   * @see https://www.drupal.org/node/2723553
+   * @param string $key
+   *   The key of the cache entry to retrieve.
    *
    * @return array
    *   An array of table data.
    */
-  public function get($key = NULL) {
+  public function get($key) {
     if (!$key) {
-      return $this->getAll();
+      throw new \InvalidArgumentException('A valid cache entry key is required. Use getAll() to get all table data.');
     }
     if (!isset($this->storage[$key])) {
       // Prepare a cache ID for get and set.
@@ -297,7 +291,7 @@ class ViewsData {
   public function fetchBaseTables() {
     $tables = [];
 
-    foreach ($this->get() as $table => $info) {
+    foreach ($this->getAll() as $table => $info) {
       if (!empty($info['table']['base'])) {
         $tables[$table] = [
           'title' => $info['table']['base']['title'],

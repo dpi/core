@@ -17,13 +17,18 @@ class SearchPreprocessLangcodeTest extends BrowserTestBase {
   protected static $modules = ['node', 'search', 'search_langcode_test'];
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Test node for searching.
    *
    * @var \Drupal\node\NodeInterface
    */
   protected $node;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalCreateContentType(['type' => 'page', 'name' => 'Basic page']);
@@ -46,11 +51,6 @@ class SearchPreprocessLangcodeTest extends BrowserTestBase {
 
     // First update the index. This does the initial processing.
     $this->container->get('plugin.manager.search')->createInstance('node_search')->updateIndex();
-
-    // Then, run the shutdown function. Testing is a unique case where indexing
-    // and searching has to happen in the same request, so running the shutdown
-    // function manually is needed to finish the indexing process.
-    search_update_totals();
 
     // Search for the additional text that is added by the preprocess
     // function. If you search for text that is in the node, preprocess is
@@ -75,11 +75,6 @@ class SearchPreprocessLangcodeTest extends BrowserTestBase {
 
     // First update the index. This does the initial processing.
     $this->container->get('plugin.manager.search')->createInstance('node_search')->updateIndex();
-
-    // Then, run the shutdown function. Testing is a unique case where indexing
-    // and searching has to happen in the same request, so running the shutdown
-    // function manually is needed to finish the indexing process.
-    search_update_totals();
 
     // Search for the title of the node with a POST query.
     $edit = ['or' => 'testing'];

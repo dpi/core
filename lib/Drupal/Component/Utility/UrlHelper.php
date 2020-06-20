@@ -26,9 +26,6 @@ class UrlHelper {
    * RFC3986 and as a consequence non compliant to RFC3987 and as a consequence
    * not valid as a "URL" in HTML5.
    *
-   * @todo Remove this function once PHP 5.4 is required as we can use just
-   *   http_build_query() directly. https://www.drupal.org/node/2322059
-   *
    * @param array $query
    *   The query parameter array to be processed; for instance,
    *   \Drupal::request()->query->all().
@@ -154,7 +151,7 @@ class UrlHelper {
       }
 
       // Split off everything before the query string into 'path'.
-      $parts = explode('?', $url);
+      $parts = explode('?', $url, 2);
 
       // Don't support URLs without a path, like 'http://'.
       list(, $path) = explode('://', $parts[0], 2);
@@ -326,7 +323,7 @@ class UrlHelper {
    * - If the value is a well-formed (per RFC 3986) relative URL or
    *   absolute URL that does not use a dangerous protocol (like
    *   "javascript:"), then the URL remains unchanged. This includes all
-   *   URLs generated via Url::toString() and UrlGeneratorTrait::url().
+   *   URLs generated via Url::toString().
    * - If the value is a well-formed absolute URL with a dangerous protocol,
    *   the protocol is stripped. This process is repeated on the remaining URL
    *   until it is stripped down to a safe protocol.
@@ -350,7 +347,6 @@ class UrlHelper {
    *
    * @see \Drupal\Component\Utility\Html::escape()
    * @see \Drupal\Core\Url::toString()
-   * @see \Drupal\Core\Routing\UrlGeneratorTrait::url()
    * @see \Drupal\Core\Url::fromUri()
    */
   public static function stripDangerousProtocols($uri) {

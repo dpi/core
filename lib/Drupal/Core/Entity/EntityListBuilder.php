@@ -105,23 +105,6 @@ class EntityListBuilder extends EntityHandlerBase implements EntityListBuilderIn
   }
 
   /**
-   * Gets the label of an entity.
-   *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity being listed.
-   *
-   * @return string
-   *   The entity label.
-   *
-   * @deprecated in Drupal 8.0.x, will be removed before Drupal 9.0.0
-   *   Use $entity->label() instead. This method used to escape the entity
-   *   label. The render system's autoescape is now relied upon.
-   */
-  protected function getLabel(EntityInterface $entity) {
-    return $entity->label();
-  }
-
-  /**
    * {@inheritdoc}
    */
   public function getOperations(EntityInterface $entity) {

@@ -8,6 +8,7 @@
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
@@ -44,6 +45,15 @@ function workspaces_entity_type_build(array &$entity_types) {
 }
 
 /**
+ * Implements hook_entity_type_alter().
+ */
+function workspaces_entity_type_alter(array &$entity_types) {
+  \Drupal::service('class_resolver')
+    ->getInstanceFromDefinition(EntityTypeInfo::class)
+    ->entityTypeAlter($entity_types);
+}
+
+/**
  * Implements hook_form_alter().
  */
 function workspaces_form_alter(&$form, FormStateInterface $form_state, $form_id) {
@@ -64,6 +74,15 @@ function workspaces_field_info_alter(&$definitions) {
   \Drupal::service('class_resolver')
     ->getInstanceFromDefinition(EntityTypeInfo::class)
     ->fieldInfoAlter($definitions);
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function workspaces_entity_base_field_info(EntityTypeInterface $entity_type) {
+  return \Drupal::service('class_resolver')
+    ->getInstanceFromDefinition(EntityTypeInfo::class)
+    ->entityBaseFieldInfo($entity_type);
 }
 
 /**
@@ -88,6 +107,11 @@ function workspaces_entity_presave(EntityInterface $entity) {
  * Implements hook_entity_insert().
  */
 function workspaces_entity_insert(EntityInterface $entity) {
+  if ($entity->getEntityTypeId() === 'workspace') {
+    \Drupal::service('workspaces.association')->workspaceInsert($entity);
+    \Drupal::service('workspaces.repository')->resetCache();
+  }
+
   return \Drupal::service('class_resolver')
     ->getInstanceFromDefinition(EntityOperations::class)
     ->entityInsert($entity);
@@ -97,6 +121,10 @@ function workspaces_entity_insert(EntityInterface $entity) {
  * Implements hook_entity_update().
  */
 function workspaces_entity_update(EntityInterface $entity) {
+  if ($entity->getEntityTypeId() === 'workspace') {
+    \Drupal::service('workspaces.repository')->resetCache();
+  }
+
   return \Drupal::service('class_resolver')
     ->getInstanceFromDefinition(EntityOperations::class)
     ->entityUpdate($entity);
@@ -106,6 +134,10 @@ function workspaces_entity_update(EntityInterface $entity) {
  * Implements hook_entity_predelete().
  */
 function workspaces_entity_predelete(EntityInterface $entity) {
+  if ($entity->getEntityTypeId() === 'workspace') {
+    \Drupal::service('workspaces.repository')->resetCache();
+  }
+
   return \Drupal::service('class_resolver')
     ->getInstanceFromDefinition(EntityOperations::class)
     ->entityPredelete($entity);

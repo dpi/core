@@ -18,9 +18,14 @@ class NestedFormTest extends FieldTestBase {
    *
    * @var array
    */
-  public static $modules = ['field_test', 'entity_test'];
+  protected static $modules = ['field_test', 'entity_test'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     $web_user = $this->drupalCreateUser(['view test entity', 'administer entity_test content']);
@@ -122,14 +127,14 @@ class NestedFormTest extends FieldTestBase {
     $this->drupalPostForm('test-entity/nested/1/2', $edit, t('Save'));
     $this->assertRaw(t('%label does not accept the value -1', ['%label' => 'Unlimited field']), 'Entity 1: the field validation error was reported.');
     $error_field = $this->xpath('//input[@id=:id and contains(@class, "error")]', [':id' => 'edit-field-unlimited-1-value']);
-    $this->assertTrue($error_field, 'Entity 1: the error was flagged on the correct element.');
+    $this->assertCount(1, $error_field, 'Entity 1: the error was flagged on the correct element.');
     $edit = [
       'entity_2[field_unlimited][1][value]' => -1,
     ];
     $this->drupalPostForm('test-entity/nested/1/2', $edit, t('Save'));
     $this->assertRaw(t('%label does not accept the value -1', ['%label' => 'Unlimited field']), 'Entity 2: the field validation error was reported.');
     $error_field = $this->xpath('//input[@id=:id and contains(@class, "error")]', [':id' => 'edit-entity-2-field-unlimited-1-value']);
-    $this->assertTrue($error_field, 'Entity 2: the error was flagged on the correct element.');
+    $this->assertCount(1, $error_field, 'Entity 2: the error was flagged on the correct element.');
 
     // Test that reordering works on both entities.
     $edit = [
@@ -194,7 +199,7 @@ class NestedFormTest extends FieldTestBase {
     $page->pressButton(t('Save'));
 
     $elements = $this->cssSelect('.entity-2.error');
-    $this->assertEqual(1, count($elements), 'The whole nested entity form has been correctly flagged with an error class.');
+    $this->assertCount(1, $elements, 'The whole nested entity form has been correctly flagged with an error class.');
   }
 
 }

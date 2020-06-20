@@ -9,6 +9,7 @@ use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerResolverInterface;
+use Drupal\Core\Form\FormHelper;
 use Drupal\Core\Render\Element\RenderCallbackInterface;
 use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Core\Security\DoTrustedCallbackTrait;
@@ -394,7 +395,7 @@ class Renderer implements RendererInterface {
 
     // Add any JavaScript state information associated with the element.
     if (!empty($elements['#states'])) {
-      drupal_process_states($elements);
+      FormHelper::processStates($elements);
     }
 
     // Get the children of the element, sorted by weight.
@@ -738,7 +739,7 @@ class Renderer implements RendererInterface {
       $elements['#markup'] = Markup::create(Html::escape($elements['#plain_text']));
     }
     elseif (!($elements['#markup'] instanceof MarkupInterface)) {
-      // The default behaviour is to XSS filter using the admin tag list.
+      // The default behavior is to XSS filter using the admin tag list.
       $tags = isset($elements['#allowed_tags']) ? $elements['#allowed_tags'] : Xss::getAdminTagList();
       $elements['#markup'] = Markup::create(Xss::filter($elements['#markup'], $tags));
     }
@@ -771,13 +772,13 @@ class Renderer implements RendererInterface {
         $callback = explode('::', $callback, 2);
       }
     }
-    $message = sprintf('Render %s callbacks must be methods of a class that implements \Drupal\Core\Security\TrustedCallbackInterface or be an anonymous function. The callback was %s. Support for this callback implementation is deprecated in 8.8.0 and will be removed in Drupal 9.0.0. See https://www.drupal.org/node/2966725', $callback_type, '%s');
+    $message = sprintf('Render %s callbacks must be methods of a class that implements \Drupal\Core\Security\TrustedCallbackInterface or be an anonymous function. The callback was %s. See https://www.drupal.org/node/2966725', $callback_type, '%s');
     // Add \Drupal\Core\Render\Element\RenderCallbackInterface as an extra
     // trusted interface so that:
     // - All public methods on Render elements are considered trusted.
     // - Helper classes that contain only callback methods can implement this
     //   instead of TrustedCallbackInterface.
-    return $this->doTrustedCallback($callback, $args, $message, TrustedCallbackInterface::TRIGGER_SILENCED_DEPRECATION, RenderCallbackInterface::class);
+    return $this->doTrustedCallback($callback, $args, $message, TrustedCallbackInterface::THROW_EXCEPTION, RenderCallbackInterface::class);
   }
 
 }

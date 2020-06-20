@@ -17,12 +17,17 @@ class BlockFormInBlockTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['block', 'block_test', 'test_page_test'];
+  protected static $modules = ['block', 'block_test', 'test_page_test'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     // Enable our test block.
@@ -37,7 +42,7 @@ class BlockFormInBlockTest extends BrowserTestBase {
 
     // Go to "test-page" and test if the block is enabled.
     $this->drupalGet('test-page');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertText('Your .com email address.', 'form found');
 
     // Make sure that we're currently still on /test-page after submitting the
@@ -48,7 +53,7 @@ class BlockFormInBlockTest extends BrowserTestBase {
 
     // Go to a different page and see if the block is enabled there as well.
     $this->drupalGet('test-render-title');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertText('Your .com email address.', 'form found');
 
     // Make sure that submitting the form didn't redirect us to the first page

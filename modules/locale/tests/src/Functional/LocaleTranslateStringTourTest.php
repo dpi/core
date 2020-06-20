@@ -23,12 +23,17 @@ class LocaleTranslateStringTourTest extends TourTestBase {
    *
    * @var array
    */
-  public static $modules = ['locale', 'tour'];
+  protected static $modules = ['locale', 'tour'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $this->adminUser = $this->drupalCreateUser(['translate interface', 'access tour', 'administer languages']);
     $this->drupalLogin($this->adminUser);

@@ -18,7 +18,12 @@ class ValidationTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['form_test'];
+  protected static $modules = ['form_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests #element_validate and #validate.
@@ -69,7 +74,7 @@ class ValidationTest extends BrowserTestBase {
     $this->drupalPostForm(NULL, ['name' => 'validate'], 'Save');
     $this->assertNoFieldByName('name', '#value changed by #validate', 'Form element #value was not altered.');
     $this->assertNoText('Name value: value changed by setValueForElement() in #validate', 'Form element value in $form_state was not altered.');
-    $this->assertText('The form has become outdated. Copy any unsaved work in the form below');
+    $this->assertText('The form has become outdated.');
   }
 
   /**

@@ -5,59 +5,29 @@
  * Configuration system that lets administrators modify the workings of the site.
  */
 
+use Drupal\Component\FileSecurity\FileSecurity;
 use Drupal\Component\Gettext\PoItem;
-use Drupal\Core\Extension\Dependency;
 use Drupal\Component\Render\PlainTextOutput;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Asset\AttachedAssetsInterface;
+use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Cache\Cache;
-use Drupal\Core\File\Exception\FileException;
-use Drupal\Core\File\FileSystemInterface;
-use Drupal\Core\Queue\QueueGarbageCollectionInterface;
 use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Extension\Extension;
+use Drupal\Core\Entity\ContentEntityTypeInterface;
+use Drupal\Core\File\Exception\FileException;
+use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\KeyValueStore\KeyValueDatabaseExpirableFactory;
-use Drupal\Core\PageCache\RequestPolicyInterface;
-use Drupal\Core\Routing\RouteMatchInterface;
-use Drupal\Core\Routing\StackedRouteMatchInterface;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Menu\MenuTreeParameters;
+use Drupal\Core\PageCache\RequestPolicyInterface;
+use Drupal\Core\Queue\QueueGarbageCollectionInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Routing\StackedRouteMatchInterface;
 use Drupal\Core\Url;
-use Drupal\Core\Block\BlockPluginInterface;
-use Drupal\user\UserInterface;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use GuzzleHttp\Exception\RequestException;
-
-/**
- * New users will be set to the default time zone at registration.
- *
- * @deprecated in Drupal 8.3.x and will be removed before Drupal 9.0.0.
- *   Use \Drupal\user\UserInterface::TIMEZONE_DEFAULT instead.
- *
- * @see https://www.drupal.org/node/2831620
- */
-const DRUPAL_USER_TIMEZONE_DEFAULT = 0;
-
-/**
- * New users will get an empty time zone at registration.
- *
- * @deprecated in Drupal 8.3.x and will be removed before Drupal 9.0.0.
- *   Use \Drupal\user\UserInterface::TIMEZONE_EMPTY instead.
- *
- * @see https://www.drupal.org/node/2831620
- */
-const DRUPAL_USER_TIMEZONE_EMPTY = 1;
-
-/**
- * New users will select their own timezone at registration.
- *
- * @deprecated in Drupal 8.3.x and will be removed before Drupal 9.0.0.
- *   Use \Drupal\user\UserInterface::TIMEZONE_SELECT instead.
- *
- * @see https://www.drupal.org/node/2831620
- */
-const DRUPAL_USER_TIMEZONE_SELECT = 2;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * Disabled option on forms and settings
@@ -77,22 +47,14 @@ const DRUPAL_REQUIRED = 2;
 /**
  * Return only visible regions.
  *
- * @deprecated in Drupal 8.3.x and will be removed before Drupal 9.0.0.
- *   Use \Drupal\block\BlockRepositoryInterface::REGIONS_VISIBLE instead.
- *
  * @see system_region_list()
- * @see https://www.drupal.org/node/2831620
  */
 const REGIONS_VISIBLE = 'visible';
 
 /**
  * Return all regions.
  *
- * @deprecated in Drupal 8.3.x and will be removed before Drupal 9.0.0.
- *   Use \Drupal\block\BlockRepositoryInterface::REGIONS_ALL instead.
- *
  * @see system_region_list()
- * @see https://www.drupal.org/node/2831620
  */
 const REGIONS_ALL = 'all';
 
@@ -445,13 +407,14 @@ function template_preprocess_entity_add_list(&$variables) {
 /**
  * Setup a given callback to run via authorize.php with elevated privileges.
  *
- * To use authorize.php, certain variables must be stashed into $_SESSION. This
- * function sets up all the necessary $_SESSION variables. The calling function
- * should then redirect to authorize.php, using the full path returned by
- * system_authorized_get_url(). That initiates the workflow that will eventually
- * lead to the callback being invoked. The callback will be invoked at a low
- * bootstrap level, without all modules being invoked, so it needs to be careful
- * not to assume any code exists. Example (system_authorized_run()):
+ * To use authorize.php, certain variables must be stashed in the user's
+ * session. This function sets up all the necessary session variables. The
+ * calling function should then redirect to authorize.php, using the full path
+ * returned by system_authorized_get_url(). That initiates the workflow that
+ * will eventually lead to the callback being invoked. The callback will be
+ * invoked at a low bootstrap level, without all modules being invoked, so it
+ * needs to be careful not to assume any code exists.
+ * Example (system_authorized_run()):
  * @code
  *   system_authorized_init($callback, $file, $arguments, $page_title);
  *   return new RedirectResponse(system_authorized_get_url()->toString());
@@ -474,24 +437,26 @@ function template_preprocess_entity_add_list(&$variables) {
  *   object created by authorize.php when the user authorizes the operation.
  * @param $page_title
  *   Optional string to use as the page title once redirected to authorize.php.
+ *
  * @return
  *   Nothing, this function just initializes variables in the user's session.
  */
 function system_authorized_init($callback, $file, $arguments = [], $page_title = NULL) {
+  $session = \Drupal::request()->getSession();
   // First, figure out what file transfer backends the site supports, and put
   // all of those in the SESSION so that authorize.php has access to all of
   // them via the class autoloader, even without a full bootstrap.
-  $_SESSION['authorize_filetransfer_info'] = drupal_get_filetransfer_info();
+  $session->set('authorize_filetransfer_info', drupal_get_filetransfer_info());
 
   // Now, define the callback to invoke.
-  $_SESSION['authorize_operation'] = [
+  $session->set('authorize_operation', [
     'callback' => $callback,
     'file' => $file,
     'arguments' => $arguments,
-  ];
+  ]);
 
   if (isset($page_title)) {
-    $_SESSION['authorize_page_title'] = $page_title;
+    $session->set('authorize_page_title', $page_title);
   }
 }
 
@@ -500,6 +465,7 @@ function system_authorized_init($callback, $file, $arguments = [], $page_title =
  *
  * @param array $options
  *   Optional array of options to set on the \Drupal\Core\Url object.
+ *
  * @return \Drupal\Core\Url
  *   The full URL to authorize.php, using HTTPS if available.
  *
@@ -814,79 +780,6 @@ function system_form_alter(&$form, FormStateInterface $form_state) {
 }
 
 /**
- * Implements hook_form_FORM_ID_alter() for \Drupal\user\AccountForm.
- */
-function system_form_user_form_alter(&$form, FormStateInterface $form_state) {
-  if (\Drupal::config('system.date')->get('timezone.user.configurable')) {
-    system_user_timezone($form, $form_state);
-  }
-}
-
-/**
- * Implements hook_form_FORM_ID_alter() for \Drupal\user\RegisterForm.
- */
-function system_form_user_register_form_alter(&$form, FormStateInterface $form_state) {
-  $config = \Drupal::config('system.date');
-  if ($config->get('timezone.user.configurable') && $config->get('timezone.user.default') == DRUPAL_USER_TIMEZONE_SELECT) {
-    system_user_timezone($form, $form_state);
-  }
-}
-
-/**
- * Implements hook_ENTITY_TYPE_presave() for user entities.
- */
-function system_user_presave(UserInterface $account) {
-  $config = \Drupal::config('system.date');
-  if ($config->get('timezone.user.configurable') && !$account->getTimeZone() && !$config->get('timezone.user.default')) {
-    $account->timezone = $config->get('timezone.default');
-  }
-}
-
-/**
- * Implements hook_user_login().
- */
-function system_user_login(UserInterface $account) {
-  $config = \Drupal::config('system.date');
-  // If the user has a NULL time zone, notify them to set a time zone.
-  if (!$account->getTimezone() && $config->get('timezone.user.configurable') && $config->get('timezone.user.warn')) {
-    \Drupal::messenger()
-      ->addStatus(t('Configure your <a href=":user-edit">account time zone setting</a>.', [
-        ':user-edit' => $account->toUrl('edit-form', [
-          'query' => \Drupal::destination()->getAsArray(),
-          'fragment' => 'edit-timezone',
-        ])->toString(),
-      ]));
-  }
-}
-
-/**
- * Add the time zone field to the user edit and register forms.
- */
-function system_user_timezone(&$form, FormStateInterface $form_state) {
-  $user = \Drupal::currentUser();
-
-  $account = $form_state->getFormObject()->getEntity();
-  $form['timezone'] = [
-    '#type' => 'details',
-    '#title' => t('Locale settings'),
-    '#open' => TRUE,
-    '#weight' => 6,
-  ];
-  $form['timezone']['timezone'] = [
-    '#type' => 'select',
-    '#title' => t('Time zone'),
-    '#default_value' => $account->getTimezone() ? $account->getTimezone() : \Drupal::config('system.date')->get('timezone.default'),
-    '#options' => system_time_zones($account->id() != $user->id(), TRUE),
-    '#description' => t('Select the desired local time and time zone. Dates and times throughout this site will be displayed using this time zone.'),
-  ];
-  $user_input = $form_state->getUserInput();
-  if (!$account->getTimezone() && $account->id() == $user->id() && empty($user_input['timezone'])) {
-    $form['timezone']['#attached']['library'][] = 'core/drupal.timezone';
-    $form['timezone']['timezone']['#attributes'] = ['class' => ['timezone-detect']];
-  }
-}
-
-/**
  * Implements hook_preprocess_HOOK() for block templates.
  */
 function system_preprocess_block(&$variables) {
@@ -948,113 +841,15 @@ function system_check_directory($form_element, FormStateInterface $form_state) {
   elseif (is_dir($directory)) {
     if ($form_element['#name'] == 'file_public_path') {
       // Create public .htaccess file.
-      file_save_htaccess($directory, FALSE);
+      FileSecurity::writeHtaccess($directory, FALSE);
     }
     else {
       // Create private .htaccess file.
-      file_save_htaccess($directory);
+      FileSecurity::writeHtaccess($directory);
     }
   }
 
   return $form_element;
-}
-
-/**
- * Returns an array of information about enabled modules or themes.
- *
- * This function returns the contents of the .info.yml file for each installed
- * module or theme.
- *
- * @param $type
- *   Either 'module' or 'theme'.
- * @param $name
- *   (optional) The name of a module or theme whose information shall be
- *   returned. If omitted, all records for the provided $type will be returned.
- *   If $name does not exist in the provided $type or is not enabled, an empty
- *   array will be returned.
- *
- * @return
- *   An associative array of module or theme information keyed by name, or only
- *   information for $name, if given. If no records are available, an empty
- *   array is returned.
- *
- * @see \Drupal\Core\Extension\ModuleExtensionList::getList()
- * @see \Drupal\Core\Extension\ThemeExtensionList
- */
-function system_get_info($type, $name = NULL) {
-  /** @var \Drupal\Core\Extension\ExtensionList $extension_list */
-  $extension_list = \Drupal::service('extension.list.' . $type);
-  if (isset($name)) {
-    try {
-      return $extension_list->getExtensionInfo($name);
-    }
-    catch (\InvalidArgumentException $e) {
-      return [];
-    }
-  }
-  return $extension_list->getAllInstalledInfo();
-}
-
-/**
- * Ensures that dependencies of required modules are also required.
- *
- * @param \Drupal\Core\Extension\Extension $module
- *   The module info.
- * @param \Drupal\Core\Extension\Extension[] $modules
- *   The array of all module info.
- *
- * @deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0. This
- *   function is no longer used in Drupal core.
- *
- * @see https://www.drupal.org/node/2709919
- */
-function _system_rebuild_module_data_ensure_required($module, &$modules) {
-  @trigger_error("_system_rebuild_module_data_ensure_required() is deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0. This function is no longer used in Drupal core. See https://www.drupal.org/node/2709919", E_USER_DEPRECATED);
-  if (!empty($module->info['required'])) {
-    foreach ($module->info['dependencies'] as $dependency) {
-      $dependency_name = Dependency::createFromString($dependency)->getName();
-      if (!isset($modules[$dependency_name]->info['required'])) {
-        $modules[$dependency_name]->info['required'] = TRUE;
-        $modules[$dependency_name]->info['explanation'] = t('Dependency of required module @module', ['@module' => $module->info['name']]);
-        // Ensure any dependencies it has are required.
-        _system_rebuild_module_data_ensure_required($modules[$dependency_name], $modules);
-      }
-    }
-  }
-}
-
-/**
- * Helper function to scan and collect module .info.yml data.
- *
- * @return \Drupal\Core\Extension\Extension[]
- *   An associative array of module information.
- *
- * @deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0.
- *   Use \Drupal::service('extension.list.module')->reset()->getList()
- *   instead. Note: You probably don't need the reset() method.
- *
- * @see https://www.drupal.org/node/2709919
- */
-function _system_rebuild_module_data() {
-  @trigger_error("_system_rebuild_module_data() is deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0. Instead, you should use \\Drupal::service('extension.list.module')->reset()->getList(). See https://www.drupal.org/node/2709919", E_USER_DEPRECATED);
-  return \Drupal::service('extension.list.module')->reset()->getList();
-}
-
-/**
- * Rebuild, save, and return data about all currently available modules.
- *
- * @return \Drupal\Core\Extension\Extension[]
- *   Array of all available modules and their data.
- *
- * @deprecated in Drupal 8.8.0 and will be removed before Drupal 9.0.0.
- *   Use \Drupal::service('extension.list.module')->getList() instead.
- *   Note: use reset() only when you really need to rescan and rebuild the list.
- *
- * @see https://www.drupal.org/node/2709919
- */
-function system_rebuild_module_data() {
-  @trigger_error('system_rebuild_module_data() is deprecated in Drupal 8.8.0 and will be removed before Drupal 9.0.0. Instead, you should use \Drupal::service("extension.list.module")->getList(). See https://www.drupal.org/node/2709919', E_USER_DEPRECATED);
-  return \Drupal::service('extension.list.module')->reset()->getList();
 }
 
 /**
@@ -1065,6 +860,7 @@ function system_rebuild_module_data() {
  * @param $show
  *   Possible values: REGIONS_ALL or REGIONS_VISIBLE. Visible excludes hidden
  *   regions.
+ *
  * @return
  *   An array of regions in the form $region['name'] = 'description'.
  */
@@ -1130,6 +926,7 @@ function system_system_info_alter(&$info, Extension $file, $type) {
  *
  * @param $theme
  *   The name of a theme.
+ *
  * @return
  *   A string that is the region name.
  */
@@ -1167,7 +964,8 @@ function system_admin_compact_mode() {
  * @param string $module
  *   Module name.
  * @param array $info
- *   The module's information, as provided by system_get_info().
+ *   The module's information, as provided by
+ *   \Drupal::service('extension.list.module')->getExtensionInfo().
  *
  * @return array
  *   An array of task links.
@@ -1233,7 +1031,8 @@ function system_get_module_admin_tasks($module, array $info) {
 /**
  * Implements hook_cron().
  *
- * Remove older rows from flood, batch cache and expirable keyvalue tables.
+ * Remove older rows from flood, batch cache and expirable keyvalue tables. Also
+ * ensure files directories have .htaccess files.
  */
 function system_cron() {
   // Clean up the flood.
@@ -1259,6 +1058,10 @@ function system_cron() {
       $queue->garbageCollection();
     }
   }
+
+  // Ensure that all of Drupal's standard directories (e.g., the public files
+  // directory and config directory) have appropriate .htaccess files.
+  \Drupal::service('file.htaccess_writer')->ensure();
 }
 
 /**
@@ -1341,10 +1144,10 @@ function system_time_zones($blank = NULL, $grouped = FALSE) {
  *   registered in the database.
  * @param int $replace
  *   Replace behavior when the destination file already exists:
- *   - FILE_EXISTS_REPLACE: Replace the existing file.
- *   - FILE_EXISTS_RENAME: Append _{incrementing number} until the filename is
- *     unique.
- *   - FILE_EXISTS_ERROR: Do nothing and return FALSE.
+ *   - FileSystemInterface::EXISTS_REPLACE: Replace the existing file.
+ *   - FileSystemInterface::EXISTS_RENAME: Append _{incrementing number} until
+ *     the filename is unique.
+ *   - FileSystemInterface::EXISTS_ERROR: Do nothing and return FALSE.
  *
  * @return mixed
  *   One of these possibilities:
@@ -1416,29 +1219,6 @@ function system_block_view_system_main_block_alter(array &$build, BlockPluginInt
 }
 
 /**
- * Implements hook_path_update().
- */
-function system_path_update($path) {
-  $alias_manager = \Drupal::service('path.alias_manager');
-  $alias_manager->cacheClear($path['source']);
-  $alias_manager->cacheClear($path['original']['source']);
-}
-
-/**
- * Implements hook_path_insert().
- */
-function system_path_insert($path) {
-  \Drupal::service('path.alias_manager')->cacheClear($path['source']);
-}
-
-/**
- * Implements hook_path_delete().
- */
-function system_path_delete($path) {
-  \Drupal::service('path.alias_manager')->cacheClear($path['source']);
-}
-
-/**
  * Implements hook_query_TAG_alter() for entity reference selection handlers.
  */
 function system_query_entity_reference_alter(AlterableInterface $query) {
@@ -1452,5 +1232,25 @@ function system_query_entity_reference_alter(AlterableInterface $query) {
 function system_element_info_alter(&$type) {
   if (isset($type['page'])) {
     $type['page']['#theme_wrappers']['off_canvas_page_wrapper'] = ['#weight' => -1000];
+  }
+}
+
+/**
+ * Implements hook_modules_uninstalled().
+ */
+function system_modules_uninstalled($modules) {
+  // @todo Remove this when modules are able to maintain their revision metadata
+  //   keys.
+  //   @see https://www.drupal.org/project/drupal/issues/3074333
+  if (!in_array('workspaces', $modules, TRUE)) {
+    return;
+  }
+
+  $entity_definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  foreach ($entity_definition_update_manager->getEntityTypes() as $entity_type) {
+    if ($entity_type instanceof ContentEntityTypeInterface && $entity_type->hasRevisionMetadataKey('workspace')) {
+      $entity_type->setRevisionMetadataKey('workspace', NULL);
+      $entity_definition_update_manager->updateEntityType($entity_type);
+    }
   }
 }

@@ -11,7 +11,12 @@ use Drupal\Tests\BrowserTestBase;
  */
 class IndexPhpTest extends BrowserTestBase {
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
   }
 
@@ -22,10 +27,10 @@ class IndexPhpTest extends BrowserTestBase {
     $index_php = $GLOBALS['base_url'] . '/index.php';
 
     $this->drupalGet($index_php, ['external' => TRUE]);
-    $this->assertResponse(200, 'Make sure index.php returns a valid page.');
+    $this->assertSession()->statusCodeEquals(200);
 
     $this->drupalGet($index_php . '/user', ['external' => TRUE]);
-    $this->assertResponse(200, 'Make sure index.php/user returns a valid page.');
+    $this->assertSession()->statusCodeEquals(200);
   }
 
 }

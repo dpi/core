@@ -79,8 +79,8 @@ function quickedit_library_info_alter(&$libraries, $extension) {
 
     // First let the base theme modify the library, then the actual theme.
     $alter_library = function (&$library, $theme) use (&$alter_library) {
-      if (isset($theme) && $theme_path = drupal_get_path('theme', $theme)) {
-        $info = system_get_info('theme', $theme);
+      if (!empty($theme) && $theme_path = drupal_get_path('theme', $theme)) {
+        $info = \Drupal::service('extension.list.theme')->getExtensionInfo($theme);
         // Recurse to process base theme(s) first.
         if (isset($info['base theme'])) {
           $alter_library($library, $info['base theme']);
@@ -168,25 +168,4 @@ function quickedit_entity_view_alter(&$build, EntityInterface $entity, EntityVie
   }
 
   $build['#attributes']['data-quickedit-entity-id'] = $entity->getEntityTypeId() . '/' . $entity->id();
-}
-
-/**
- * Check if a loaded entity is the latest revision.
- *
- * @param \Drupal\Core\Entity\RevisionableInterface $entity
- *   The entity to check.
- *
- * @return bool
- *   TRUE if the loaded entity is the latest revision, FALSE otherwise.
- *
- * @deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0. Use
- *   \Drupal\Core\Entity\RevisionableInterface::isLatestRevision() instead.
- *   As internal API, _quickedit_entity_is_latest_revision() may also be removed
- *   in a minor release.
- *
- * @internal
- */
-function _quickedit_entity_is_latest_revision(RevisionableInterface $entity) {
-  @trigger_error('_quickedit_entity_is_latest_revision() is deprecated in Drupal 8.5.0 and will be removed before Drupal 9.0.0. Use \Drupal\Core\Entity\RevisionableInterface::isLatestRevision() instead. As internal API, _quickedit_entity_is_latest_revision() may also be removed in a minor release.', E_USER_DEPRECATED);
-  return $entity->isLatestRevision();
 }

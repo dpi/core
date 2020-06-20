@@ -83,31 +83,6 @@
     }
   }
 
-  /**
-   * Themes the error displayed when the media embed preview fails.
-   *
-   * @return {string}
-   *   An HTML string to insert in the CKEditor.
-   */
-  Drupal.theme.mediaEmbedError = function() {
-    const error = Drupal.t(
-      'An error occurred while trying to preview the media. Please save your work and reload this page.',
-    );
-    return `<div class="media-embed-error media-embed-error--preview-error">${error}</div>`;
-  };
-
-  /**
-   * Themes the edit button for a media embed.
-   *
-   * @return {string}
-   *   An HTML string to insert in the CKEditor.
-   */
-  Drupal.theme.mediaEmbedEditButton = function() {
-    return `<button class="media-library-item__edit">${Drupal.t(
-      'Edit media',
-    )}</button>`;
-  };
-
   CKEDITOR.plugins.add('drupalmedia', {
     requires: 'widget',
 
@@ -163,6 +138,13 @@
           },
         },
 
+        getLabel() {
+          if (this.data.label) {
+            return this.data.label;
+          }
+          return Drupal.t('Embedded media');
+        },
+
         upcast(element, data) {
           const { attributes } = element;
           // This matches the behavior of the corresponding server-side text filter plugin.
@@ -181,6 +163,7 @@
           if (data.hasCaption && data.attributes['data-caption'] === '') {
             data.attributes['data-caption'] = ' ';
           }
+          data.label = null;
           data.link = null;
           if (element.parent.name === 'a') {
             data.link = CKEDITOR.tools.copy(element.parent.attributes);
@@ -223,7 +206,10 @@
             // @see ckeditor_ckeditor_css_alter()
             if (!this.data.hasCaption && this.oldData.hasCaption) {
               delete this.data.attributes['data-caption'];
-            } else if (this.data.hasCaption && !this.oldData.hasCaption) {
+            } else if (
+              this.data.hasCaption &&
+              !this.data.attributes['data-caption']
+            ) {
               this.data.attributes['data-caption'] = ' ';
             }
           }
@@ -239,26 +225,14 @@
             });
           }
 
-          // Allow entity_embed.editor.css to respond to changes (for example in alignment).
-          this.element.setAttributes(this.data.attributes);
-          // Convert data-align attribute to class so we're not applying styles
-          // to data attributes.
-          // @todo Consider removing this in https://www.drupal.org/project/drupal/issues/3072279
-          if (this.data.attributes.hasOwnProperty('data-align')) {
-            this.element
-              .getParent()
-              .addClass(`align-${this.data.attributes['data-align']}`);
-          } else {
-            // If data-align property is removed, remove any align classes from
-            // from the widget wrapper. These classes are moved to the wrapper
-            // so that the alignment will still display within CKEditor.
-            const classes = this.element.getParent().$.classList;
-            for (let i = 0; i < classes.length; i++) {
-              if (classes[i].indexOf('align-') === 0) {
-                this.element.getParent().removeClass(classes[i]);
-              }
-            }
+          // Remove old attributes from drupal-media element within the widget.
+          if (this.oldData) {
+            Object.keys(this.oldData.attributes).forEach(attrName => {
+              this.element.removeAttribute(attrName);
+            });
           }
+          // Add attributes to drupal-media element within the widget.
+          this.element.setAttributes(this.data.attributes);
 
           // Track the previous state to allow checking if preview needs
           // server side update.
@@ -468,6 +442,9 @@
           const dataToHash = CKEDITOR.tools.clone(data);
           // The caption does not need rendering.
           delete dataToHash.attributes['data-caption'];
+          // The media entity's label is server-side data and cannot be
+          // modified by the content author.
+          delete dataToHash.label;
           // Changed link destinations do not affect the visual preview.
           if (dataToHash.link) {
             delete dataToHash.link.href;
@@ -492,14 +469,19 @@
             url: Drupal.url(`media/${editor.config.drupal.format}/preview`),
             data: {
               text: this.downcast().getOuterHtml(),
+              uuid: this.data.attributes['data-entity-uuid'],
             },
             dataType: 'html',
-            success: previewHtml => {
+            success: (previewHtml, textStatus, jqXhr) => {
               this.element.setHtml(previewHtml);
+              this.setData(
+                'label',
+                jqXhr.getResponseHeader('Drupal-Media-Label'),
+              );
               callback(this);
             },
             error: () => {
-              this.element.setHtml(Drupal.theme('mediaEmbedError'));
+              this.element.setHtml(Drupal.theme('mediaEmbedPreviewError'));
             },
           });
         },

@@ -18,7 +18,7 @@ class TestMultiWidthLayoutsTest extends WebDriverTestBase {
    */
   const FIELD_UI_PREFIX = 'admin/structure/types/manage/bundle_with_section_field';
 
-  public static $modules = [
+  protected static $modules = [
     'layout_builder',
     'block',
     'node',
@@ -27,7 +27,12 @@ class TestMultiWidthLayoutsTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $this->createContentType(['type' => 'bundle_with_section_field']);
@@ -59,8 +64,8 @@ class TestMultiWidthLayoutsTest extends WebDriverTestBase {
     $width_options = [
       [
         'label' => 'Two column',
-        'widths' => [
-          '50-50',
+        'default_width' => '50-50',
+        'additional_widths' => [
           '33-67',
           '67-33',
           '25-75',
@@ -70,9 +75,9 @@ class TestMultiWidthLayoutsTest extends WebDriverTestBase {
       ],
       [
         'label' => 'Three column',
-        'widths' => [
+        'default_width' => '33-34-33',
+        'additional_widths' => [
           '25-50-25',
-          '33-34-33',
           '25-25-50',
           '50-25-25',
         ],
@@ -80,7 +85,7 @@ class TestMultiWidthLayoutsTest extends WebDriverTestBase {
       ],
     ];
     foreach ($width_options as $width_option) {
-      $width = array_shift($width_option['widths']);
+      $width = $width_option['default_width'];
       $assert_session->linkExists('Add section');
       $page->clickLink('Add section');
       $this->assertNotEmpty($assert_session->waitForElementVisible('css', "#drupal-off-canvas a:contains(\"{$width_option['label']}\")"));
@@ -88,7 +93,7 @@ class TestMultiWidthLayoutsTest extends WebDriverTestBase {
       $this->assertNotEmpty($assert_session->waitForElementVisible('css', '#drupal-off-canvas input[type="submit"][value="Add section"]'));
       $page->pressButton("Add section");
       $this->assertWidthClassApplied($width_option['class'] . $width);
-      foreach ($width_option['widths'] as $width) {
+      foreach ($width_option['additional_widths'] as $width) {
         $width_class = $width_option['class'] . $width;
         $assert_session->linkExists('Configure Section 1');
         $page->clickLink('Configure Section 1');

@@ -22,7 +22,12 @@ class DisplayFeedTest extends UITestBase {
    *
    * @var array
    */
-  public static $modules = ['views_ui', 'aggregator'];
+  protected static $modules = ['views_ui', 'aggregator'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests feed display admin UI.

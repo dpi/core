@@ -25,7 +25,12 @@ class CommentCacheTagsTest extends EntityWithUriCacheTagsTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['comment'];
+  protected static $modules = ['comment'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * @var \Drupal\entity_test\Entity\EntityTest
@@ -40,7 +45,7 @@ class CommentCacheTagsTest extends EntityWithUriCacheTagsTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Give anonymous users permission to view comments, so that we can verify

@@ -18,9 +18,14 @@ class ArbitraryRebuildTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['text', 'form_test'];
+  protected static $modules = ['text', 'form_test'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     // Auto-create a field for testing.

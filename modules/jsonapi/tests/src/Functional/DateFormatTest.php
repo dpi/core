@@ -15,7 +15,7 @@ class DateFormatTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [];
+  protected static $modules = [];
 
   /**
    * {@inheritdoc}
@@ -38,6 +38,11 @@ class DateFormatTest extends ResourceTestBase {
    * @var \Drupal\Core\Datetime\DateFormatInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

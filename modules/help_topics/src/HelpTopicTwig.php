@@ -15,7 +15,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * @see \Drupal\help_topics\HelpTopicPluginManager
  *
  * @internal
- *   Help Topic is currently experimental and should only be leveraged by
+ *   Help Topics is currently experimental and should only be leveraged by
  *   experimental modules and development releases of contributed modules.
  *   See https://www.drupal.org/core/experimental for more information.
  */
@@ -62,8 +62,6 @@ class HelpTopicTwig extends HelpTopicPluginBase implements ContainerFactoryPlugi
    */
   public function getBody() {
     return [
-      // Note that #markup elements are automatically XSS admin filtered which
-      // removes the meta tags from the rendered HTML.
       '#markup' => $this->twig->load('@help_topics/' . $this->getPluginId() . '.html.twig')->render(),
     ];
   }

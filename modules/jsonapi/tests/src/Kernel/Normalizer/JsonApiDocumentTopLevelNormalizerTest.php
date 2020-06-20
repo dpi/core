@@ -41,7 +41,7 @@ class JsonApiDocumentTopLevelNormalizerTest extends JsonapiKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'jsonapi',
     'field',
     'node',
@@ -80,7 +80,7 @@ class JsonApiDocumentTopLevelNormalizerTest extends JsonapiKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     // Add the entity schemas.
     $this->installEntitySchema('node');
@@ -183,7 +183,7 @@ class JsonApiDocumentTopLevelNormalizerTest extends JsonapiKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public function tearDown() {
+  public function tearDown(): void {
     if ($this->node) {
       $this->node->delete();
     }
@@ -230,7 +230,7 @@ class JsonApiDocumentTopLevelNormalizerTest extends JsonapiKernelTestBase {
               'field_image',
             ],
             'user--user' => [
-              'name',
+              'display_name',
             ],
           ],
           'include' => [
@@ -254,8 +254,8 @@ class JsonApiDocumentTopLevelNormalizerTest extends JsonapiKernelTestBase {
         'id' => NodeType::load('article')->uuid(),
       ],
       'links' => [
-        'self' => ['href' => Url::fromUri('internal:/jsonapi/node/article/' . $this->node->uuid() . '/relationships/node_type', ['query' => ['resourceVersion' => 'id:' . $this->node->getRevisionId()]])->setAbsolute()->toString(TRUE)->getGeneratedUrl()],
         'related' => ['href' => Url::fromUri('internal:/jsonapi/node/article/' . $this->node->uuid() . '/node_type', ['query' => ['resourceVersion' => 'id:' . $this->node->getRevisionId()]])->setAbsolute()->toString(TRUE)->getGeneratedUrl()],
+        'self' => ['href' => Url::fromUri('internal:/jsonapi/node/article/' . $this->node->uuid() . '/relationships/node_type', ['query' => ['resourceVersion' => 'id:' . $this->node->getRevisionId()]])->setAbsolute()->toString(TRUE)->getGeneratedUrl()],
       ],
     ], $normalized['data']['relationships']['node_type']);
     $this->assertTrue(!isset($normalized['data']['attributes']['created']));
@@ -279,7 +279,7 @@ class JsonApiDocumentTopLevelNormalizerTest extends JsonapiKernelTestBase {
     $this->assertTrue(empty($normalized['meta']['omitted']));
     $this->assertSame($this->user->uuid(), $normalized['included'][0]['id']);
     $this->assertSame('user--user', $normalized['included'][0]['type']);
-    $this->assertSame('user1', $normalized['included'][0]['attributes']['name']);
+    $this->assertSame('user1', $normalized['included'][0]['attributes']['display_name']);
     $this->assertCount(1, $normalized['included'][0]['attributes']);
     $this->assertSame($this->term1->uuid(), $normalized['included'][1]['id']);
     $this->assertSame('taxonomy_term--tags', $normalized['included'][1]['type']);
@@ -288,7 +288,7 @@ class JsonApiDocumentTopLevelNormalizerTest extends JsonapiKernelTestBase {
     $this->assertTrue(!isset($normalized['included'][1]['attributes']['created']));
     // Make sure that the cache tags for the includes and the requested entities
     // are bubbling as expected.
-    $this->assertArraySubset(
+    $this->assertSame(
       ['file:1', 'node:1', 'taxonomy_term:1', 'taxonomy_term:2', 'user:1'],
       $jsonapi_doc_object->getCacheTags()
     );
@@ -378,7 +378,7 @@ class JsonApiDocumentTopLevelNormalizerTest extends JsonapiKernelTestBase {
     $this->assertCount(12, $normalized['included'][1]['attributes']);
     // Make sure that the cache tags for the includes and the requested entities
     // are bubbling as expected.
-    $this->assertArraySubset(
+    $this->assertSame(
       ['node:1', 'taxonomy_term:1', 'taxonomy_term:2', 'user:1'],
       $jsonapi_doc_object->getCacheTags()
     );
@@ -693,8 +693,12 @@ class JsonApiDocumentTopLevelNormalizerTest extends JsonapiKernelTestBase {
       'account' => NULL,
     ];
     $jsonapi_doc_object = $this->getNormalizer()->normalize(new JsonApiDocumentTopLevel(new ResourceObjectData([$resource_object], 1), new NullIncludedData(), new LinkCollection([])), 'api_json', $context);
-    $this->assertArraySubset($expected_metadata->getCacheTags(), $jsonapi_doc_object->getCacheTags());
-    $this->assertArraySubset($expected_metadata->getCacheContexts(), $jsonapi_doc_object->getCacheContexts());
+    foreach ($expected_metadata->getCacheTags() as $tag) {
+      $this->assertContains($tag, $jsonapi_doc_object->getCacheTags());
+    }
+    foreach ($expected_metadata->getCacheContexts() as $context) {
+      $this->assertContains($context, $jsonapi_doc_object->getCacheContexts());
+    }
     $this->assertSame($expected_metadata->getCacheMaxAge(), $jsonapi_doc_object->getCacheMaxAge());
   }
 

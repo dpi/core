@@ -14,7 +14,12 @@ class TrustedHostsTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $admin_user = $this->drupalCreateUser([
@@ -29,7 +34,7 @@ class TrustedHostsTest extends BrowserTestBase {
    */
   public function testStatusPageWithoutConfiguration() {
     $this->drupalGet('admin/reports/status');
-    $this->assertResponse(200, 'The status page is reachable.');
+    $this->assertSession()->statusCodeEquals(200);
 
     $this->assertRaw(t('Trusted Host Settings'));
     $this->assertRaw(t('The trusted_host_patterns setting is not configured in settings.php.'));
@@ -47,7 +52,7 @@ class TrustedHostsTest extends BrowserTestBase {
     $this->writeSettings($settings);
 
     $this->drupalGet('admin/reports/status');
-    $this->assertResponse(200, 'The status page is reachable.');
+    $this->assertSession()->statusCodeEquals(200);
 
     $this->assertRaw(t('Trusted Host Settings'));
     $this->assertRaw(t('The trusted_host_patterns setting is set to allow'));
@@ -103,7 +108,7 @@ class TrustedHostsTest extends BrowserTestBase {
     $this->drupalPlaceBlock('shortcuts');
 
     $this->drupalGet('');
-    $this->assertLink($shortcut->label());
+    $this->assertSession()->linkExists($shortcut->label());
   }
 
 }

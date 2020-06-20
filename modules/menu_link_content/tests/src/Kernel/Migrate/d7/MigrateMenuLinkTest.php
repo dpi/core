@@ -21,14 +21,12 @@ class MigrateMenuLinkTest extends MigrateDrupal7TestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'content_translation',
     'language',
     'link',
     'menu_ui',
     'menu_link_content',
-    // Required for translation migrations.
-    'migrate_drupal_multilingual',
     'node',
     'text',
   ];
@@ -36,7 +34,7 @@ class MigrateMenuLinkTest extends MigrateDrupal7TestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->setUpCurrentUser();
@@ -131,7 +129,7 @@ class MigrateMenuLinkTest extends MigrateDrupal7TestBase {
     $tree = $menu_link_tree_service->load(static::MENU_NAME, $parameters);
     $found = FALSE;
     foreach ($tree as $menu_link_tree_element) {
-      $this->assertTrue($menu_link_tree_element->link->getUrlObject()->toString());
+      $this->assertNotEmpty($menu_link_tree_element->link->getUrlObject()->toString());
       if ($menu_link_tree_element->link->getTitle() == 'custom link test') {
         $found = TRUE;
         break;

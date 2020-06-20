@@ -20,12 +20,17 @@ class UrlBubbleableMetadataBubblingTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['cache_test'];
+  protected static $modules = ['cache_test'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
   }
 

@@ -22,9 +22,14 @@ class CommentBookTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['book', 'comment'];
+  protected static $modules = ['book', 'comment'];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     // Create comment field on book.

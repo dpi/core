@@ -19,7 +19,7 @@ class ModerationInformationTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'content_moderation',
     'entity_test',
     'user',
@@ -38,7 +38,7 @@ class ModerationInformationTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('entity_test_rev');
@@ -60,9 +60,8 @@ class ModerationInformationTest extends KernelTestBase {
 
   /**
    * @covers ::getDefaultRevisionId
-   * @covers ::getLatestRevisionId
    */
-  public function testDefaultAndLatestRevisionId() {
+  public function testGetDefaultRevisionId() {
     $entity_test_rev = EntityTestRev::create([
       'name' => 'Default Revision',
       'moderation_state' => 'published',
@@ -77,11 +76,6 @@ class ModerationInformationTest extends KernelTestBase {
     // revision ID.
     $default_revision_id = $this->moderationInformation->getDefaultRevisionId('entity_test_rev', $entity_test_rev->id());
     $this->assertSame(1, $default_revision_id);
-
-    // Check that moderation information service returns the correct latest
-    // revision ID.
-    $latest_revision_id = $this->moderationInformation->getLatestRevisionId('entity_test_rev', $entity_test_rev->id());
-    $this->assertSame(2, $latest_revision_id);
   }
 
   /**

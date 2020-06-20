@@ -36,7 +36,7 @@ class SummaryLengthTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'node',
     'datetime',
     'user',
@@ -49,7 +49,7 @@ class SummaryLengthTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installSchema('system', 'sequences');
     $this->installSchema('node', 'node_access');
@@ -86,7 +86,7 @@ class SummaryLengthTest extends KernelTestBase {
       'promote' => 1,
     ];
     $node = $this->drupalCreateNode($settings);
-    $this->assertTrue(Node::load($node->id()), 'Node created.');
+    $this->assertNotEmpty(Node::load($node->id()), 'Node created.');
 
     // Render the node as a teaser.
     $content = $this->drupalBuildEntityView($node, 'teaser');

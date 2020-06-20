@@ -3,7 +3,6 @@ type: theme
 description: A default base theme using Drupal 8.0.0's core markup and CSS.
 package: Core
 version: VERSION
-core: 8.x
 base theme: false
 hidden: true
 
@@ -90,6 +89,9 @@ libraries-override:
       component:
         misc/vertical-tabs.css: css/core/vertical-tabs.css
 
+  # Load version 3.0.3 of normalize.css for backwards compatibility.
+  core/normalize: stable/normalize
+
   dblog/drupal.dblog:
     css:
       component:
@@ -158,11 +160,6 @@ libraries-override:
       component:
         css/oembed.frame.css: css/media/oembed.frame.css
 
-  media/media_embed:
-    css:
-      component:
-        css/filter.media_embed.css: css/media/filter.media_embed.css
-
   menu_ui/drupal.menu_ui.adminforms:
     css:
       theme:
@@ -212,11 +209,6 @@ libraries-override:
       theme:
         css/shortcut.theme.css: css/shortcut/shortcut.theme.css
         css/shortcut.icons.theme.css: css/shortcut/shortcut.icons.theme.css
-
-  simpletest/drupal.simpletest:
-    css:
-      component:
-        css/simpletest.module.css: css/simpletest/simpletest.module.css
 
   system/base:
     css:
@@ -310,5 +302,7 @@ libraries-override:
         css/views_ui.contextual.css: css/views_ui/views_ui.contextual.css
 
 libraries-extend:
+  core/drupal.ajax:
+    - stable/drupal.ajax
   user/drupal.user:
     - stable/drupal.user

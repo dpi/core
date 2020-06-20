@@ -17,7 +17,12 @@ class TwigSettingsTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['theme_test'];
+  protected static $modules = ['theme_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Ensures Twig template auto reload setting can be overridden.
@@ -127,9 +132,9 @@ class TwigSettingsTest extends BrowserTestBase {
     $this->rebuildContainer();
 
     $this->drupalGet('theme-test/inline-template-test');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->drupalGet('theme-test/inline-template-test');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
   }
 
 }

@@ -15,7 +15,12 @@ class ViewTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['views'];
+  protected static $modules = ['views'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}
@@ -79,7 +84,6 @@ class ViewTest extends ResourceTestBase {
         'attributes' => [
           'base_field' => 'nid',
           'base_table' => 'node',
-          'core' => '8.x',
           'dependencies' => [],
           'description' => '',
           'display' => [

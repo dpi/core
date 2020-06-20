@@ -16,11 +16,16 @@ class LanguageNegotiationUrlTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'language',
     'node',
     'path',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * @var \Drupal\user\Entity\User
@@ -30,7 +35,7 @@ class LanguageNegotiationUrlTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create an Article node type.

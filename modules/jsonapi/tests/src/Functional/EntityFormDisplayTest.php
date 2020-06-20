@@ -16,7 +16,7 @@ class EntityFormDisplayTest extends ResourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['node'];
+  protected static $modules = ['node'];
 
   /**
    * {@inheritdoc}
@@ -34,6 +34,11 @@ class EntityFormDisplayTest extends ResourceTestBase {
    * @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface
    */
   protected $entity;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}
@@ -139,6 +144,7 @@ class EntityFormDisplayTest extends ResourceTestBase {
               'weight' => 5,
               'settings' => [
                 'match_operator' => 'CONTAINS',
+                'match_limit' => 10,
                 'size' => 60,
                 'placeholder' => '',
               ],

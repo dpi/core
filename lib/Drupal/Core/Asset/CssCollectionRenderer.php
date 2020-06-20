@@ -36,7 +36,7 @@ class CssCollectionRenderer implements AssetCollectionRendererInterface {
     // browser-caching. The string changes on every update or full cache
     // flush, forcing browsers to load a new copy of the files, as the
     // URL changed.
-    $query_string = $this->state->get('system.css_js_query_string') ?: '0';
+    $query_string = $this->state->get('system.css_js_query_string', '0');
 
     // Defaults for LINK and STYLE elements.
     $link_element_defaults = [
@@ -70,6 +70,11 @@ class CssCollectionRenderer implements AssetCollectionRendererInterface {
 
         default:
           throw new \Exception('Invalid CSS asset type.');
+      }
+
+      // Merge any additional attributes.
+      if (!empty($css_asset['attributes'])) {
+        $element['#attributes'] += $css_asset['attributes'];
       }
 
       $elements[] = $element;

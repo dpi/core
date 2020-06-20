@@ -3,7 +3,6 @@
 namespace Drupal\Tests\block_content\Functional;
 
 use Drupal\block_content\Entity\BlockContent;
-use Drupal\Core\Database\Database;
 
 /**
  * Tests $block_content->save() for saving content.
@@ -17,12 +16,17 @@ class BlockContentSaveTest extends BlockContentTestBase {
    *
    * @var array
    */
-  public static $modules = ['block_content_test'];
+  protected static $modules = ['block_content_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * Sets the test up.
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalLogin($this->adminUser);
@@ -33,7 +37,7 @@ class BlockContentSaveTest extends BlockContentTestBase {
    */
   public function testImport() {
     // Custom block ID must be a number that is not in the database.
-    $max_id = Database::getConnection()->query('SELECT MAX(id) FROM {block_content}')->fetchField();
+    $max_id = (int) \Drupal::entityQueryAggregate('block_content')->aggregate('id', 'max')->execute()[0]['id_max'];
     $test_id = $max_id + mt_rand(1000, 1000000);
     $info = $this->randomMachineName(8);
     $block_array = [
@@ -51,7 +55,7 @@ class BlockContentSaveTest extends BlockContentTestBase {
 
     // Test the import saved.
     $block_by_id = BlockContent::load($test_id);
-    $this->assertTrue($block_by_id, 'Custom block load by block ID.');
+    $this->assertNotEmpty($block_by_id, 'Custom block load by block ID.');
     $this->assertIdentical($block_by_id->body->value, $block_array['body']['value']);
   }
 

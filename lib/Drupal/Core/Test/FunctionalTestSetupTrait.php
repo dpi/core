@@ -6,6 +6,9 @@ use Drupal\Component\FileCache\FileCacheFactory;
 use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Component\Utility\Environment;
 use Drupal\Core\Config\Development\ConfigSchemaChecker;
+use Drupal\Core\Config\FileStorage;
+use Drupal\Core\Config\InstallStorage;
+use Drupal\Core\Config\StorageInterface;
 use Drupal\Core\Database\Database;
 use Drupal\Core\DrupalKernel;
 use Drupal\Core\Extension\MissingDependencyException;
@@ -42,16 +45,6 @@ trait FunctionalTestSetupTrait {
    * @var \Symfony\Component\Classloader\Classloader
    */
   protected $classLoader;
-
-  /**
-   * The config directories used in this test.
-   *
-   * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use
-   *   \Drupal\Core\Site\Settings::get('config_sync_directory') instead.
-   *
-   * @see https://www.drupal.org/node/3018145
-   */
-  protected $configDirectories = [];
 
   /**
    * The flag to set 'apcu_ensure_unique_prefix' setting.
@@ -105,12 +98,6 @@ trait FunctionalTestSetupTrait {
       'value' => $this->originalSite,
       'required' => TRUE,
     ];
-    // Add the parent profile's search path to the child site's search paths.
-    // @see \Drupal\Core\Extension\ExtensionDiscovery::getProfileDirectories()
-    $settings['conf']['simpletest.settings']['parent_profile'] = (object) [
-      'value' => $this->originalProfile,
-      'required' => TRUE,
-    ];
     $settings['settings']['apcu_ensure_unique_prefix'] = (object) [
       'value' => $this->apcuEnsureUniquePrefix,
       'required' => TRUE,
@@ -137,7 +124,7 @@ trait FunctionalTestSetupTrait {
       $yaml = new SymfonyYaml();
       $content = file_get_contents($directory . '/services.yml');
       $services = $yaml->parse($content);
-      $services['services']['simpletest.config_schema_checker'] = [
+      $services['services']['testing.config_schema_checker'] = [
         'class' => ConfigSchemaChecker::class,
         'arguments' => ['@config.typed', $this->getConfigSchemaExclusions()],
         'tags' => [['name' => 'event_subscriber']],
@@ -304,7 +291,6 @@ trait FunctionalTestSetupTrait {
    */
   protected function initSettings() {
     Settings::initialize(DRUPAL_ROOT, $this->siteDirectory, $this->classLoader);
-    $this->configDirectories['sync'] = Settings::get('config_sync_directory');
 
     // After writing settings.php, the installer removes write permissions
     // from the site directory. To allow drupal_generate_test_ua() to write
@@ -401,6 +387,54 @@ trait FunctionalTestSetupTrait {
     $request->attributes->set(RouteObjectInterface::ROUTE_NAME, '<none>');
     $this->kernel->preHandle($request);
     return $this->kernel->getContainer();
+  }
+
+  /**
+   * Installs the default theme defined by `static::$defaultTheme` when needed.
+   *
+   * To install a test theme outside of the testing environment, add
+   * @code
+   * $settings['extension_discovery_scan_tests'] = TRUE;
+   * @endcode
+   * to your settings.php.
+   *
+   * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
+   *   The container.
+   *
+   * @throws \Exception
+   *   If the test case does not initialize default theme.
+   */
+  protected function installDefaultThemeFromClassProperty(ContainerInterface $container) {
+    // Use the install profile to determine the default theme if configured and
+    // not already specified.
+    $profile = $container->getParameter('install_profile');
+
+    $default_sync_path = drupal_get_path('profile', $profile) . '/config/sync';
+    $profile_config_storage = new FileStorage($default_sync_path, StorageInterface::DEFAULT_COLLECTION);
+    if (!isset($this->defaultTheme) && $profile_config_storage->exists('system.theme')) {
+      $this->defaultTheme = $profile_config_storage->read('system.theme')['default'];
+    }
+
+    $default_install_path = drupal_get_path('profile', $profile) . '/' . InstallStorage::CONFIG_INSTALL_DIRECTORY;
+    $profile_config_storage = new FileStorage($default_install_path, StorageInterface::DEFAULT_COLLECTION);
+    if (!isset($this->defaultTheme) && $profile_config_storage->exists('system.theme')) {
+      $this->defaultTheme = $profile_config_storage->read('system.theme')['default'];
+    }
+
+    // Require a default theme to be specified at this point.
+    if (!isset($this->defaultTheme)) {
+      throw new \Exception('Drupal\Tests\BrowserTestBase::$defaultTheme is required. See https://www.drupal.org/node/3083055, which includes recommendations on which theme to use.');
+    }
+
+    // Ensure the default theme is installed.
+    $container->get('theme_installer')->install([$this->defaultTheme], TRUE);
+
+    $system_theme_config = $container->get('config.factory')->getEditable('system.theme');
+    if ($system_theme_config->get('default') !== $this->defaultTheme) {
+      $system_theme_config
+        ->set('default', $this->defaultTheme)
+        ->save();
+    }
   }
 
   /**
@@ -614,7 +648,6 @@ trait FunctionalTestSetupTrait {
     $this->container = NULL;
 
     // Unset globals.
-    unset($GLOBALS['config_directories']);
     unset($GLOBALS['config']);
     unset($GLOBALS['conf']);
 

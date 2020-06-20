@@ -38,6 +38,7 @@
 
 use Drupal\Core\Url;
 use Drupal\Core\File\Exception\FileException;
+use Drupal\Core\File\FileSystemInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
@@ -59,7 +60,7 @@ function update_manager_download_batch_finished($success, $results) {
   }
   elseif ($success) {
     \Drupal::messenger()->addStatus(t('Updates downloaded successfully.'));
-    $_SESSION['update_manager_update_projects'] = $results['projects'];
+    \Drupal::request()->getSession()->set('update_manager_update_projects', $results['projects']);
     return new RedirectResponse(Url::fromRoute('update.confirmation_page', [], ['absolute' => TRUE])->toString());
   }
   else {
@@ -155,7 +156,7 @@ function update_manager_archive_extract($file, $directory) {
     'filepath' => $file,
   ]);
   if (!$archiver) {
-    throw new Exception(t('Cannot extract %file, not a valid archive.', ['%file' => $file]));
+    throw new Exception("Cannot extract '$file', not a valid archive");
   }
 
   // Remove the directory if it exists, otherwise it might contain a mixture of
@@ -226,7 +227,7 @@ function update_manager_file_get($url) {
   $local = $cache_directory . '/' . \Drupal::service('file_system')->basename($parsed_url['path']);
 
   if (!file_exists($local) || update_delete_file_if_stale($local)) {
-    return system_retrieve_file($url, $local, FALSE, FILE_EXISTS_REPLACE);
+    return system_retrieve_file($url, $local, FALSE, FileSystemInterface::EXISTS_REPLACE);
   }
   else {
     return $local;
@@ -317,7 +318,7 @@ function update_manager_local_transfers_allowed() {
   // the configuration directory to determine if local transfers will be
   // allowed.
   $temporary_file = \Drupal::service('file_system')->tempnam('temporary://', 'update_');
-  $site_path = \Drupal::service('site.path');
+  $site_path = \Drupal::getContainer()->getParameter('site.path');
   $local_transfers_allowed = fileowner($temporary_file) === fileowner($site_path);
 
   // Clean up. If this fails, we can ignore it (since this is just a temporary

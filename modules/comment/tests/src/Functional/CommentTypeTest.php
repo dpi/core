@@ -18,6 +18,11 @@ use Drupal\node\Entity\Node;
 class CommentTypeTest extends CommentTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Admin user.
    *
    * @var \Drupal\Core\Session\AccountInterface
@@ -38,7 +43,7 @@ class CommentTypeTest extends CommentTestBase {
   /**
    * Sets the test up.
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalPlaceBlock('page_title_block');
@@ -54,13 +59,14 @@ class CommentTypeTest extends CommentTestBase {
     $type = $this->createCommentType('other');
 
     $comment_type = CommentType::load('other');
-    $this->assertTrue($comment_type, 'The new comment type has been created.');
+    $this->assertInstanceOf(CommentType::class, $comment_type);
 
     // Log in a test user.
     $this->drupalLogin($this->adminUser);
 
+    // Ensure that the new comment type admin page can be accessed.
     $this->drupalGet('admin/structure/comment/manage/' . $type->id());
-    $this->assertResponse(200, 'The new comment type can be accessed at the edit form.');
+    $this->assertSession()->statusCodeEquals(200);
 
     // Create a comment type via the user interface.
     $edit = [
@@ -71,7 +77,7 @@ class CommentTypeTest extends CommentTestBase {
     ];
     $this->drupalPostForm('admin/structure/comment/types/add', $edit, t('Save'));
     $comment_type = CommentType::load('foo');
-    $this->assertTrue($comment_type, 'The new comment type has been created.');
+    $this->assertInstanceOf(CommentType::class, $comment_type);
 
     // Check that the comment type was created in site default language.
     $default_langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
@@ -109,7 +115,7 @@ class CommentTypeTest extends CommentTestBase {
     $this->assertRaw('Bar', 'New name was displayed.');
     $this->clickLink('Manage fields');
     $this->assertUrl(Url::fromRoute('entity.comment.field_ui_fields', ['comment_type' => 'comment'], ['absolute' => TRUE])->toString(), [], 'Original machine name was used in URL.');
-    $this->assertTrue($this->cssSelect('tr#comment-body'), 'Body field exists.');
+    $this->assertCount(1, $this->cssSelect('tr#comment-body'), 'Body field exists.');
 
     // Remove the body field.
     $this->drupalPostForm('admin/structure/comment/manage/comment/fields/comment.comment.comment_body/delete', [], t('Delete'));
@@ -117,7 +123,7 @@ class CommentTypeTest extends CommentTestBase {
     $this->drupalPostForm('admin/structure/comment/manage/comment', [], t('Save'));
     // Check that the body field doesn't exist.
     $this->drupalGet('admin/structure/comment/manage/comment/fields');
-    $this->assertFalse($this->cssSelect('tr#comment-body'), 'Body field does not exist.');
+    $this->assertCount(0, $this->cssSelect('tr#comment-body'), 'Body field does not exist.');
   }
 
   /**

@@ -41,12 +41,17 @@ class TimestampTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['node', 'entity_test', 'field_ui'];
+  protected static $modules = ['node', 'entity_test', 'field_ui'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $web_user = $this->drupalCreateUser([
@@ -111,7 +116,7 @@ class TimestampTest extends BrowserTestBase {
 
     // Make sure the "datetime_timestamp" widget is on the page.
     $fields = $this->xpath('//div[contains(@class, "field--widget-datetime-timestamp") and @id="edit-field-timestamp-wrapper"]');
-    $this->assertEquals(1, count($fields));
+    $this->assertCount(1, $fields);
 
     // Look for the widget elements and make sure they are empty.
     $this->assertSession()->fieldExists('field_timestamp[0][value][date]');

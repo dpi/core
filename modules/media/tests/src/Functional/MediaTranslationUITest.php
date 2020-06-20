@@ -15,6 +15,11 @@ class MediaTranslationUITest extends ContentTranslationUITestBase {
   use MediaTypeCreationTrait;
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
+
+  /**
    * {inheritdoc}
    */
   protected $defaultCacheContexts = [
@@ -30,7 +35,7 @@ class MediaTranslationUITest extends ContentTranslationUITestBase {
   /**
    * {inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'language',
     'content_translation',
     'media',
@@ -40,7 +45,7 @@ class MediaTranslationUITest extends ContentTranslationUITestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     $this->entityTypeId = 'media';
     $this->bundle = 'test';
     parent::setUp();

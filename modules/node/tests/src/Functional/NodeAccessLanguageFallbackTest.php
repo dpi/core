@@ -16,12 +16,21 @@ class NodeAccessLanguageFallbackTest extends NodeTestBase {
    *
    * @var array
    */
-  public static $modules = ['language', 'node_access_test', 'content_translation'];
+  protected static $modules = [
+    'language',
+    'node_access_test',
+    'content_translation',
+  ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     // After enabling a node access module, the {node_access} table has to be

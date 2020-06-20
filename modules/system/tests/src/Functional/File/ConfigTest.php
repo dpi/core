@@ -11,7 +11,12 @@ use Drupal\Tests\BrowserTestBase;
  */
 class ConfigTest extends BrowserTestBase {
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
     $this->drupalLogin($this->drupalCreateUser(['administer site configuration']));
   }

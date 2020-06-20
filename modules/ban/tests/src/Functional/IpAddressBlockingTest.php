@@ -18,7 +18,12 @@ class IpAddressBlockingTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['ban'];
+  protected static $modules = ['ban'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests various user input to confirm correct validation and saving of data.
@@ -35,7 +40,7 @@ class IpAddressBlockingTest extends BrowserTestBase {
     $edit['ip'] = '1.2.3.3';
     $this->drupalPostForm('admin/config/people/ban', $edit, t('Add'));
     $ip = $connection->query("SELECT iid from {ban_ip} WHERE ip = :ip", [':ip' => $edit['ip']])->fetchField();
-    $this->assertTrue($ip, 'IP address found in database.');
+    $this->assertNotEmpty($ip, 'IP address found in database.');
     $this->assertRaw(t('The IP address %ip has been banned.', ['%ip' => $edit['ip']]), 'IP address was banned.');
 
     // Try to block an IP address that's already blocked.
@@ -66,7 +71,7 @@ class IpAddressBlockingTest extends BrowserTestBase {
     $submit_ip = '1.2.3.4';
     $this->drupalPostForm('admin/config/people/ban/' . $submit_ip, [], t('Add'));
     $ip = $connection->query("SELECT iid from {ban_ip} WHERE ip = :ip", [':ip' => $submit_ip])->fetchField();
-    $this->assertTrue($ip, 'IP address found in database');
+    $this->assertNotEmpty($ip, 'IP address found in database');
     $this->assertRaw(t('The IP address %ip has been banned.', ['%ip' => $submit_ip]), 'IP address was banned.');
 
     // Submit your own IP address. This fails, although it works when testing
@@ -88,7 +93,7 @@ class IpAddressBlockingTest extends BrowserTestBase {
     $query->fields('bip', ['iid']);
     $query->condition('bip.ip', $ip);
     $ip_count = $query->execute()->fetchAll();
-    $this->assertEqual(1, count($ip_count));
+    $this->assertCount(1, $ip_count);
     $ip = '';
     $banIp->banIp($ip);
     $banIp->banIp($ip);
@@ -96,7 +101,7 @@ class IpAddressBlockingTest extends BrowserTestBase {
     $query->fields('bip', ['iid']);
     $query->condition('bip.ip', $ip);
     $ip_count = $query->execute()->fetchAll();
-    $this->assertEqual(1, count($ip_count));
+    $this->assertCount(1, $ip_count);
   }
 
 }

@@ -22,7 +22,12 @@ class FilterNodeAccessTest extends NodeTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['node_access_test'];
+  protected static $modules = ['node_access_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Views used by this test.
@@ -34,7 +39,7 @@ class FilterNodeAccessTest extends NodeTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->drupalCreateContentType(['type' => 'article', 'name' => 'Article']);

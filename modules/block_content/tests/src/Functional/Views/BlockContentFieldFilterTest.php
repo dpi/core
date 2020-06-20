@@ -15,7 +15,12 @@ class BlockContentFieldFilterTest extends BlockContentTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['language'];
+  protected static $modules = ['language'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Views used by this test.
@@ -34,7 +39,7 @@ class BlockContentFieldFilterTest extends BlockContentTestBase {
   /**
    * {@inheritdoc}
    */
-  public function setUp($import_test_views = TRUE) {
+  public function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     // Add two new languages.
@@ -51,7 +56,7 @@ class BlockContentFieldFilterTest extends BlockContentTestBase {
     $this->blockContentInfos = [
       'en' => 'Food in Paris',
       'es' => 'Comida en Paris',
-      'fr' => 'Nouriture en Paris',
+      'fr' => 'Nourriture en Paris',
     ];
 
     // Create block_content with translations.

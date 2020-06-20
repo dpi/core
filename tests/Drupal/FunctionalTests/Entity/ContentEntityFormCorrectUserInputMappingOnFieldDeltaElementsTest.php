@@ -31,12 +31,17 @@ class ContentEntityFormCorrectUserInputMappingOnFieldDeltaElementsTest extends B
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['entity_test'];
+  protected static $modules = ['entity_test'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     $web_user = $this->drupalCreateUser(['administer entity_test content']);
     $this->drupalLogin($web_user);

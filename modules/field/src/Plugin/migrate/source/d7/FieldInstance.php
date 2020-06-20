@@ -108,6 +108,7 @@ class FieldInstance extends DrupalSqlBase {
       ->fetch();
     $row->setSourceProperty('field_definition', $field_definition);
 
+    // Determine the translatable setting.
     $translatable = FALSE;
     if ($row->getSourceProperty('entity_type') == 'node') {
       $language_content_type_bundle = (int) $this->variableGet('language_content_type_' . $row->getSourceProperty('bundle'), 0);
@@ -126,6 +127,14 @@ class FieldInstance extends DrupalSqlBase {
       $field_data = unserialize($field_definition['data']);
       $translatable = $field_data['translatable'];
     }
+
+    // Check if this is an i18n synchronized field.
+    $synchronized_fields = $this->variableGet('i18n_sync_node_type_' . $row->getSourceProperty('bundle'), NULL);
+    if ($synchronized_fields) {
+      if (in_array($row->getSourceProperty('field_name'), $synchronized_fields)) {
+        $translatable = FALSE;
+      }
+    }
     $row->setSourceProperty('translatable', $translatable);
 
     // Get the vid for each allowed value for taxonomy term reference fields
@@ -143,11 +152,11 @@ class FieldInstance extends DrupalSqlBase {
       $row->setSourceProperty('allowed_vid', $allowed_vid);
 
       // If there is an i18n_mode use it to determine if this field is
-      // translatable. It is TRUE only for i18n_mode 'Translate', all others are
-      // FALSE. When there is a term reference field with two vocabularies where
-      // one vocabulary is translatable and other is not the field itself is set
-      // to not translatable. Note mode '5' is not used for taxonomy but is
-      // listed here for completeness.
+      // translatable. It is TRUE for i18n_modes 'Vocab Fixed' and  'Translate',
+      // for all others it is FALSE. When there is a term reference field with
+      // two vocabularies where one vocabulary is translatable and other is not
+      // the field itself is set to not translatable. Note mode '5' is not used
+      // for taxonomy but is listed here for completeness.
       // - 0: No multilingual options.
       // - 1: Localize. Localizable object.
       // - 2: Fixed Language.
@@ -161,18 +170,15 @@ class FieldInstance extends DrupalSqlBase {
           ->fields('v', ['i18n_mode'])
           ->condition('machine_name', $vocabulary, 'IN');
         $results = $query->execute()->fetchAllAssoc('i18n_mode');
-        $translatable = TRUE;
+        $translatable = FALSE;
         foreach ($results as $result) {
-          if ($result['i18n_mode'] != '4') {
-            $translatable = FALSE;
+          if ($result['i18n_mode'] == '2' || $result['i18n_mode'] == '4') {
+            $translatable = TRUE;
           }
         }
         $row->setSourceProperty('translatable', $translatable);
       }
     }
-
-    $field_data = unserialize($row->getSourceProperty('field_data'));
-    $row->setSourceProperty('field_settings', $field_data['settings']);
 
     return parent::prepareRow($row);
   }

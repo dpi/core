@@ -15,7 +15,12 @@ class SchemaConfigListenerWebTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['config_test'];
+  protected static $modules = ['config_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests \Drupal\Core\Config\Development\ConfigSchemaChecker.

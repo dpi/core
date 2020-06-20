@@ -21,7 +21,12 @@ class TaxonomyTermViewTest extends TaxonomyTestBase {
    *
    * @var array
    */
-  public static $modules = ['taxonomy', 'views'];
+  protected static $modules = ['taxonomy', 'views'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * An user with permissions to administer taxonomy.
@@ -40,7 +45,7 @@ class TaxonomyTermViewTest extends TaxonomyTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     // Create an administrative user.
@@ -143,7 +148,7 @@ class TaxonomyTermViewTest extends TaxonomyTestBase {
     $condition = $query->conditions();
     // We only want to check the no. of conditions in the query.
     unset($condition['#conjunction']);
-    $this->assertEqual(1, count($condition));
+    $this->assertCount(1, $condition);
 
     // Clear permissions for anonymous users to check access for default views.
     Role::load(RoleInterface::ANONYMOUS_ID)->revokePermission('access content')->save();
@@ -151,9 +156,9 @@ class TaxonomyTermViewTest extends TaxonomyTestBase {
     // Test the default views disclose no data by default.
     $this->drupalLogout();
     $this->drupalGet('taxonomy/term/' . $term->id());
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
     $this->drupalGet('taxonomy/term/' . $term->id() . '/feed');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
   }
 
 }

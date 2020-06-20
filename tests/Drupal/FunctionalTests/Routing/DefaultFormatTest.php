@@ -12,7 +12,12 @@ class DefaultFormatTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['system', 'default_format_test'];
+  protected static $modules = ['system', 'default_format_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   public function testFoo() {
     $this->drupalGet('/default_format_test/human');
