@@ -56,7 +56,7 @@ entity.node.version_history:
     _title: 'Revisions'
     _controller: '\Drupal\node\Controller\NodeController::revisionOverview'
   requirements:
-    _access_node_revision: 'view'
+    _entity_access: 'node.view all revisions'
     node: \d+
   options:
     _node_operation_route: TRUE
