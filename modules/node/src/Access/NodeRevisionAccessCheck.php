@@ -13,9 +13,6 @@ use Symfony\Component\Routing\Route;
  * Provides an access checker for node revisions.
  *
  * @ingroup node_access
- * @deprecated as of Drupal 8.8, use '_entity_access' requirement with relevant
- *   operation instead. Routes in node.module using this check will switch to
- *   new requirement after https://www.drupal.org/project/drupal/issues/2730631.
  */
 class NodeRevisionAccessCheck implements AccessInterface {
 
