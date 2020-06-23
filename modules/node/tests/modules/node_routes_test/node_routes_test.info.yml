@@ -1,0 +1,7 @@
+name: 'Node routes test'
+type: module
+description: 'Module for testing routes.'
+package: Testing
+version: VERSION
+dependecies:
+  - node

@@ -14,3 +14,9 @@ function node_removed_post_updates() {
     'node_post_update_node_revision_views_data' => '9.0.0',
   ];
 }
+
+/**
+ * Update field names for multi-value base fields.
+ */
+function node_post_update_rebuild_node_revision_routes() {
+}
