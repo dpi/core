@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\system\Unit\Menu;
 
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Extension\Extension;
 use Drupal\Tests\Core\Menu\LocalTaskIntegrationTestBase;
 
@@ -15,7 +16,7 @@ class SystemLocalTasksTest extends LocalTaskIntegrationTestBase {
   /**
    * The mocked theme handler.
    *
-   * @var \Drupal\Core\Extension\ThemeHandlerInterface|\PHPUnit\Framework\MockObject\MockObject
+   * @var \Drupal\Core\Extension\ThemeHandlerInterface
    */
   protected $themeHandler;
 
@@ -44,6 +45,12 @@ class SystemLocalTasksTest extends LocalTaskIntegrationTestBase {
       ->with('bartik')
       ->willReturn(TRUE);
     $this->container->set('theme_handler', $this->themeHandler);
+
+    $entityTypeManager = $this->createMock(EntityTypeManagerInterface::class);
+    $entityTypeManager->expects($this->any())
+      ->method('getDefinitions')
+      ->willReturn([]);
+    $this->container->set('entity_type.manager', $entityTypeManager);
   }
 
   /**
