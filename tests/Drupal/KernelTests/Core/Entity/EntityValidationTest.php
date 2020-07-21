@@ -159,10 +159,10 @@ class EntityValidationTest extends EntityKernelTestBase {
     $this->assertEqual($violations[0]->getMessage(), t('This value should not be null.'));
 
     $test_entity = clone $entity;
-    $test_entity->name->value = $this->randomString(33);
+    $test_entity->name->value = $this->randomString(65);
     $violations = $test_entity->validate();
     $this->assertEqual($violations->count(), 1, 'Validation failed.');
-    $this->assertEqual($violations[0]->getMessage(), t('%name: may not be longer than @max characters.', ['%name' => 'Name', '@max' => 32]));
+    $this->assertEquals(t('%name: may not be longer than @max characters.', ['%name' => 'Name', '@max' => 64]), $violations[0]->getMessage());
 
     // Make sure the information provided by a violation is correct.
     $violation = $violations[0];

@@ -4,7 +4,6 @@ namespace Drupal\Core\Entity\Form;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
-use Drupal\Core\Entity\EntityChangedInterface;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
@@ -20,11 +19,11 @@ use Drupal\Core\Session\AccountInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Provides a form for reverting an entity revision.
+ * Provides a form for deleting an entity revision.
  *
  * @internal
  */
-class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface {
+class RevisionDeleteForm extends ConfirmFormBase implements EntityFormInterface {
 
   /**
    * The entity operation.
@@ -83,10 +82,12 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
   protected $currentUser;
 
   /**
-   * Creates a new RevisionRevertForm instance.
+   * Creates a new RevisionDeleteForm instance.
    *
    * @param \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter
    *   The date formatter.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   Entity type manager.
    * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $bundleInformation
    *   The bundle information.
    * @param \Drupal\Core\Messenger\MessengerInterface $messenger
@@ -96,8 +97,9 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
    * @param \Drupal\Core\Session\AccountInterface $currentUser
    *   The current user.
    */
-  public function __construct(DateFormatterInterface $dateFormatter, EntityTypeBundleInfoInterface $bundleInformation, MessengerInterface $messenger, TimeInterface $time, AccountInterface $currentUser) {
+  public function __construct(DateFormatterInterface $dateFormatter, EntityTypeManagerInterface $entityTypeManager, EntityTypeBundleInfoInterface $bundleInformation, MessengerInterface $messenger, TimeInterface $time, AccountInterface $currentUser) {
     $this->dateFormatter = $dateFormatter;
+    $this->entityTypeManager = $entityTypeManager;
     $this->bundleInformation = $bundleInformation;
     $this->messenger = $messenger;
     $this->time = $time;
@@ -110,6 +112,7 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('date.formatter'),
+      $container->get('entity_type.manager'),
       $container->get('entity_type.bundle.info'),
       $container->get('messenger'),
       $container->get('datetime.time'),
@@ -121,14 +124,14 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
    * {@inheritdoc}
    */
   public function getBaseFormId() {
-    return $this->revision->getEntityTypeId() . '_revision_revert';
+    return $this->revision->getEntityTypeId() . '_revision_delete';
   }
 
   /**
    * {@inheritdoc}
    */
   public function getFormId() {
-    return $this->revision->getEntityTypeId() . '_revision_revert';
+    return $this->revision->getEntityTypeId() . '_revision_delete';
   }
 
   /**
@@ -136,9 +139,11 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
    */
   public function getQuestion() {
     if ($this->getEntity() instanceof RevisionLogInterface) {
-      return $this->t('Are you sure you want to revert to the revision from %revision-date?', ['%revision-date' => $this->dateFormatter->format($this->getEntity()->getRevisionCreationTime())]);
+      return $this->t('Are you sure you want to delete the revision from %revision-date?', [
+        '%revision-date' => $this->dateFormatter->format($this->getEntity()->getRevisionCreationTime()),
+      ]);
     }
-    return $this->t('Are you sure you want to revert the revision?');
+    return $this->t('Are you sure you want to delete the revision?');
   }
 
   /**
@@ -155,7 +160,7 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
    * {@inheritdoc}
    */
   public function getConfirmText() {
-    return $this->t('Revert');
+    return $this->t('Delete');
   }
 
   /**
@@ -168,52 +173,43 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state) {
-    $form = parent::buildForm($form, $form_state);
-    $form['actions']['submit']['#submit'] = [
-      '::submitForm',
-      '::save',
-    ];
-    return $form;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    $revisionId = $this->revision->getRevisionId();
-    $revisionLabel = $this->revision->label();
+    $entityTypeId = $this->revision->getEntityTypeId();
+    $entityStorage = $this->entityTypeManager->getStorage($entityTypeId);
+    $entityStorage->deleteRevision($this->revision->getRevisionId());
+
     $bundleLabel = $this->getBundleLabel($this->revision);
+    $messengerArgs = [
+      '@type' => $bundleLabel ? $bundleLabel : $this->revision->getEntityType()->getLabel(),
+      '%title' => $this->revision->label(),
+    ];
     if ($this->revision instanceof RevisionLogInterface) {
-      $originalRevisionTimestamp = $this->revision->getRevisionCreationTime();
-    }
-
-    $this->prepareRevision($this->revision, $form_state);
-
-    if ($this->revision instanceof RevisionLogInterface) {
-      $date = $this->dateFormatter->format($originalRevisionTimestamp);
-      $this->messenger->addMessage($this->t('@type %title has been reverted to the revision from %revision-date.', [
-        '@type' => $bundleLabel,
-        '%title' => $revisionLabel,
-        '%revision-date' => $date,
-      ]));
+      $messengerArgs['%revision-date'] = $this->dateFormatter->format($this->revision->getRevisionCreationTime());
+      $this->messenger->addStatus($this->t('Revision from %revision-date of @type %title has been deleted.', $messengerArgs));
     }
     else {
-      $this->messenger->addMessage($this->t('@type %title has been reverted.', [
-        '@type' => $bundleLabel,
-        '%title' => $revisionLabel,
-      ]));
+      $this->messenger->addStatus($this->t('Revision of @type %title has been deleted.', $messengerArgs));
     }
 
-    $this->logger($this->revision->getEntityType()->getProvider())->notice('@type: reverted %title revision %revision.', [
+    $this->logger($this->revision->getEntityType()->getProvider())->notice('@type: deleted %title revision %revision.', [
       '@type' => $this->revision->bundle(),
-      '%title' => $revisionLabel,
-      '%revision' => $revisionId,
+      '%title' => $this->revision->label(),
+      '%revision' => $this->revision->getRevisionId(),
     ]);
 
-    $versionHistoryUrl = $this->revision->toUrl('version-history');
-    if ($versionHistoryUrl->access($this->currentUser())) {
-      $form_state->setRedirectUrl($versionHistoryUrl);
+    // When there is more than one remaining revision, redirect to the version
+    // history page.
+    if ($this->revision->hasLinkTemplate('version-history')) {
+      $query = $this->entityTypeManager->getStorage($entityTypeId)->getQuery();
+      $remainingRevisions = $query
+        ->allRevisions()
+        ->condition($this->revision->getEntityType()->getKey('id'), $this->revision->id())
+        ->count()
+        ->execute();
+      $versionHistoryUrl = $this->revision->toUrl('version-history');
+      if ($remainingRevisions > 1 && $versionHistoryUrl->access($this->currentUser())) {
+        $form_state->setRedirectUrl($versionHistoryUrl);
+      }
     }
 
     if (!$form_state->getRedirect()) {
@@ -221,30 +217,6 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
       if ($canonicalUrl->access($this->currentUser())) {
         $form_state->setRedirectUrl($canonicalUrl);
       }
-    }
-  }
-
-  /**
-   * Prepares a revision to be reverted.
-   *
-   * @param \Drupal\Core\Entity\RevisionableInterface $revision
-   *   The revision to be reverted.
-   * @param \Drupal\Core\Form\FormStateInterface $formState
-   *   The current state of the form.
-   */
-  protected function prepareRevision(RevisionableInterface $revision, FormStateInterface $formState): void {
-    $revision->setNewRevision();
-    $revision->isDefaultRevision(TRUE);
-    $time = $this->time->getRequestTime();
-    if ($revision instanceof EntityChangedInterface) {
-      $revision->setChangedTime($time);
-    }
-    if ($revision instanceof RevisionLogInterface) {
-      $originalRevisionTimestamp = $revision->getRevisionCreationTime();
-      $date = $this->dateFormatter->format($originalRevisionTimestamp);
-      $revision->setRevisionLogMessage($this->t('Copy of the revision from %date.', ['%date' => $date]));
-      $revision->setRevisionCreationTime($time);
-      $revision->setRevisionUserId($this->currentUser()->id());
     }
   }
 
@@ -308,10 +280,13 @@ class RevisionRevertForm extends ConfirmFormBase implements EntityFormInterface 
 
   /**
    * {@inheritdoc}
+   *
+   * The save() method is not used in RevisionDeleteForm. This
+   * overrides the default implementation that saves the entity.
+   *
+   * Confirmation forms should override submitForm() instead for their logic.
    */
-  public function save(array $form, FormStateInterface $form_state) {
-    $this->revision->save();
-  }
+  public function save(array $form, FormStateInterface $form_state) {}
 
   /**
    * {@inheritdoc}

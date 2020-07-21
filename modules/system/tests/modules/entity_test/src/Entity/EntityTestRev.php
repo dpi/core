@@ -17,7 +17,9 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *     "form" = {
  *       "default" = "Drupal\entity_test\EntityTestForm",
  *       "delete" = "Drupal\entity_test\EntityTestDeleteForm",
- *       "delete-multiple-confirm" = "Drupal\Core\Entity\Form\DeleteMultipleForm"
+ *       "delete-multiple-confirm" = "Drupal\Core\Entity\Form\DeleteMultipleForm",
+ *       "revision-delete" = "Drupal\Core\Entity\Form\RevisionDeleteForm",
+ *       "revision-revert" = "Drupal\Core\Entity\Form\RevisionRevertForm",
  *     },
  *     "view_builder" = "Drupal\entity_test\EntityTestViewBuilder",
  *     "views_data" = "Drupal\views\EntityViewsData",
@@ -45,6 +47,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *     "delete-multiple-form" = "/entity_test_rev/delete_multiple",
  *     "edit-form" = "/entity_test_rev/manage/{entity_test_rev}/edit",
  *     "revision" = "/entity_test_rev/{entity_test_rev}/revision/{entity_test_rev_revision}/view",
+ *     "revision-delete-form" = "/entity_test_rev/{entity_test_rev}/revision/{entity_test_rev_revision}/delete",
  *     "revision-revert-form" = "/entity_test_rev/{entity_test_rev}/revision/{entity_test_rev_revision}/revert",
  *     "version-history" = "/entity_test_rev/{entity_test_rev}/revisions",
  *   }
@@ -59,6 +62,7 @@ class EntityTestRev extends EntityTest {
     $fields = parent::baseFieldDefinitions($entity_type);
 
     $fields['name']->setRevisionable(TRUE);
+    $fields['name']->setSetting('max_length', 64);
     $fields['user_id']->setRevisionable(TRUE);
 
     $fields['non_rev_field'] = BaseFieldDefinition::create('string')

@@ -6,6 +6,7 @@ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Core\Render\RendererInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -121,12 +122,26 @@ class EntityViewController implements ContainerInjectionInterface, TrustedCallba
    * @param string $view_mode
    *   (optional) The view mode that should be used to display the entity.
    *   Defaults to 'full'.
+   * @param \Drupal\Core\Routing\RouteMatchInterface|null $routeMatch
+   *   The current route match, or NULL.
    *
    * @return array
    *   A render array.
    */
-  public function viewRevision(EntityInterface $_entity_revision, $view_mode = 'full') {
-    return $this->view($_entity_revision, $view_mode);
+  public function viewRevision(EntityInterface $_entity_revision, $view_mode = 'full', RouteMatchInterface $routeMatch = NULL) {
+    $page = $this->view($_entity_revision, $view_mode);
+
+    // Remove buildTitle pre-render added by view() if the route has a title
+    // callback.
+    if (isset($routeMatch) && ($route = $routeMatch->getRouteObject()) && $route->getDefault('_title_callback')) {
+      foreach ($page['#pre_render'] ?? [] as $key => $preRender) {
+        if (is_array($preRender) && (($preRender[0] ?? NULL) instanceof static) && (($preRender[1] ?? NULL) === 'buildTitle')) {
+          unset($page['#pre_render'][$key]);
+        }
+      }
+    }
+
+    return $page;
   }
 
 }

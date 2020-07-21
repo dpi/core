@@ -18,9 +18,15 @@ use Drupal\Core\Entity\EntityTypeInterface;
  *     "form" = {
  *       "default" = "Drupal\entity_test\EntityTestForm",
  *       "delete" = "Drupal\entity_test\EntityTestDeleteForm",
- *       "delete-multiple-confirm" = "Drupal\Core\Entity\Form\DeleteMultipleForm"
+ *       "delete-multiple-confirm" = "Drupal\Core\Entity\Form\DeleteMultipleForm",
+ *       "revision-delete" = "Drupal\Core\Entity\Form\RevisionDeleteForm",
+ *       "revision-revert" = "Drupal\Core\Entity\Form\RevisionRevertForm",
  *     },
  *     "view_builder" = "Drupal\entity_test\EntityTestViewBuilder",
+ *     "route_provider" = {
+ *       "html" = "Drupal\Core\Entity\Routing\DefaultHtmlRouteProvider",
+ *       "revision" = "Drupal\Core\Entity\Routing\RevisionHtmlRouteProvider",
+ *     },
  *   },
  *   base_table = "entity_test_revpub",
  *   revision_table = "entity_test_revpub_revision",
@@ -36,12 +42,15 @@ use Drupal\Core\Entity\EntityTypeInterface;
  *     "published" = "status",
  *   },
  *   links = {
- *     "add-form" = "/entity_test_rev/add",
- *     "canonical" = "/entity_test_rev/manage/{entity_test_rev}",
- *     "delete-form" = "/entity_test/delete/entity_test_rev/{entity_test_rev}",
- *     "delete-multiple-form" = "/entity_test_rev/delete_multiple",
- *     "edit-form" = "/entity_test_rev/manage/{entity_test_rev}/edit",
- *     "revision" = "/entity_test_rev/{entity_test_rev}/revision/{entity_test_rev_revision}/view",
+ *     "add-form" = "/entity_test_revpub/add",
+ *     "canonical" = "/entity_test_revpub/manage/{entity_test_revpub}",
+ *     "delete-form" = "/entity_test/delete/entity_test_revpub/{entity_test_revpub}",
+ *     "delete-multiple-form" = "/entity_test_revpub/delete_multiple",
+ *     "edit-form" = "/entity_test_revpub/manage/{entity_test_revpub}/edit",
+ *     "revision" = "/entity_test_revpub/{entity_test_revpub}/revision/{entity_test_revpub_revision}/view",
+ *     "revision-delete-form" = "/entity_test_revpub/{entity_test_revpub}/revision/{entity_test_revpub_revision}/delete",
+ *     "revision-revert-form" = "/entity_test_revpub/{entity_test_revpub}/revision/{entity_test_revpub_revision}/revert",
+ *     "version-history" = "/entity_test_revpub/{entity_test_revpub}/revisions",
  *   }
  * )
  */

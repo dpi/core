@@ -44,14 +44,6 @@ class VersionHistoryLocalTasks extends DeriverBase implements ContainerDeriverIn
   public function getDerivativeDefinitions($base_plugin_definition) {
     $this->derivatives = [];
     foreach ($this->entityTypeManager->getDefinitions() as $entity_type_id => $entity_type) {
-      // @todo remove node workaround, either switching over Node to use this
-      // deriver and all associated revision routes, or require all entities to
-      // specify their own tasks, just as they already have to opt into
-      // revision templates and form classes.
-      if ($entity_type_id === 'node') {
-        continue;
-      }
-
       if (!$entity_type->hasLinkTemplate('version-history')) {
         continue;
       }

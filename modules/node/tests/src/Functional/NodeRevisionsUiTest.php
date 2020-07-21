@@ -20,6 +20,11 @@ class NodeRevisionsUiTest extends NodeTestBase {
   protected $defaultTheme = 'stark';
 
   /**
+   * {@inheritdoc}
+   */
+  protected static $modules = ['block'];
+
+  /**
    * @var \Drupal\user\Entity\User
    */
   protected $editor;
@@ -184,6 +189,27 @@ class NodeRevisionsUiTest extends NodeTestBase {
     $this->assertNoLinkByHref('/node/' . $node_id . '/revisions/2/revert');
     $this->assertNoLinkByHref('/node/' . $node_id . '/revisions/3/revert');
     $this->assertNoLinkByHref('/node/' . $node_id . '/revisions/5/revert');
+  }
+
+  /**
+   * Checks the Revisions tab.
+   *
+   * Tests two 'Revisions' local tasks are not added by both Node and
+   * VersionHistoryLocalTasks.
+   *
+   * This can be removed after 'entity.node.version_history' local task is
+   * removed by https://www.drupal.org/project/drupal/issues/3153559.
+   */
+  public function testNodeDuplicateRevisionsTab() {
+    $this->drupalPlaceBlock('local_tasks_block');
+    $this->drupalLogin($this->editor);
+
+    $node = $this->drupalCreateNode();
+    $this->drupalGet($node->toUrl('edit-form'));
+
+    // There must be exactly one 'Revisions' local task.
+    $xpath = $this->assertSession()->buildXPathQuery('//a[contains(@href, :href)]', [':href' => $node->toUrl('version-history')->toString()]);
+    $this->assertSession()->elementsCount('xpath', $xpath, 1);
   }
 
 }

@@ -70,7 +70,7 @@ class VersionHistoryController extends ControllerBase {
   }
 
   /**
-   * Generates an overview table of older revisions of an entity.
+   * Generates an overview table of revisions for an entity.
    *
    * @param \Drupal\Core\Routing\RouteMatchInterface $routeMatch
    *   The route match.
@@ -93,10 +93,15 @@ class VersionHistoryController extends ControllerBase {
     }
 
     $url = $revision->toUrl('revision-revert-form');
+    // Merge in cacheability after
+    // https://www.drupal.org/project/drupal/issues/2473873.
+    if (!$url->access()) {
+      return NULL;
+    }
+
     return [
       'title' => $this->t('Revert'),
-      'url' => $revision->toUrl('revision-revert-form'),
-      'access' => $url->access(),
+      'url' => $url,
     ];
   }
 
@@ -104,16 +109,20 @@ class VersionHistoryController extends ControllerBase {
    * {@inheritdoc}
    */
   protected function buildDeleteRevisionLink(EntityInterface $revision): ?array {
-    // @todo Delete form doesnt exist yet.
     if (!$revision->hasLinkTemplate('revision-delete-form')) {
       return NULL;
     }
 
     $url = $revision->toUrl('revision-delete-form');
+    // Merge in cacheability after
+    // https://www.drupal.org/project/drupal/issues/2473873.
+    if (!$url->access()) {
+      return NULL;
+    }
+
     return [
       'title' => $this->t('Delete'),
-      'url' => $revision->toUrl('revision-delete-form'),
-      'access' => $url->access(),
+      'url' => $url,
     ];
   }
 
@@ -124,7 +133,8 @@ class VersionHistoryController extends ControllerBase {
     $context = [];
     if ($revision instanceof RevisionLogInterface) {
       // Use revision link to link to revisions that are not active.
-      $linkText = $this->dateFormatter->format($revision->getRevisionCreationTime(), 'short');
+      ['type' => $dateFormatType, 'format' => $dateFormatFormat] = $this->getRevisionDescriptionDateFormat($revision);
+      $linkText = $this->dateFormatter->format($revision->getRevisionCreationTime(), $dateFormatType, $dateFormatFormat);
 
       // @todo: Simplify this when https://www.drupal.org/node/2334319 lands.
       $username = [
@@ -134,10 +144,13 @@ class VersionHistoryController extends ControllerBase {
       $context['username'] = $this->renderer->render($username);
     }
     else {
-      $linkText = $revision->label();
+      $linkText = $revision->access('view label') ? $revision->label() : $this->t('- Restricted access -');
     }
 
-    $context['date'] = $revision->toLink($linkText, 'revision')->toString();
+    $revisionViewLink = $revision->toLink($linkText, 'revision');
+    $context['revision'] = $revisionViewLink->getUrl()->access()
+      ? $revisionViewLink->toString()
+      : (string) $revisionViewLink->getText();
     $context['message'] = $revision instanceof RevisionLogInterface ? [
       '#markup' => $revision->getRevisionLogMessage(),
       '#allowed_tags' => Xss::getHtmlTagList(),
@@ -147,10 +160,27 @@ class VersionHistoryController extends ControllerBase {
       'data' => [
         '#type' => 'inline_template',
         '#template' => isset($context['username'])
-        ? '{% trans %}{{ date }} by {{ username }}{% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}'
-        : '{% trans %} {{ date }} {% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}',
+        ? '{% trans %} {{ revision }} by {{ username }}{% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}'
+        : '{% trans %} {{ revision }} {% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}',
         '#context' => $context,
       ],
+    ];
+  }
+
+  /**
+   * Date format to use for revision description dates.
+   *
+   * @param \Drupal\Core\Entity\RevisionableInterface $revision
+   *   The revision in context.
+   *
+   * @return array
+   *   An array with keys 'type' and optionally 'format' suitable for passing
+   *   to date formatter service.
+   */
+  protected function getRevisionDescriptionDateFormat(RevisionableInterface $revision): array {
+    return [
+      'type' => 'short',
+      'format' => '',
     ];
   }
 

@@ -64,22 +64,35 @@ trait RevisionControllerTrait {
   abstract protected function getRevisionDescription(RevisionableInterface $revision): array;
 
   /**
-   * Loads all revision IDs of an entity sorted by revision ID descending.
+   * Generates revisions of an entity relevant to the current user.
    *
    * @param \Drupal\Core\Entity\RevisionableInterface $entity
    *   The entity.
    *
-   * @return int|string[]
-   *   An array of revision IDs.
+   * @return \Generator|\Drupal\Core\Entity\RevisionableInterface
+   *   Generates revisions.
    */
-  protected function revisionIds(RevisionableInterface $entity): array {
-    $entity_type = $entity->getEntityType();
-    $result = $this->entityTypeManager()->getStorage($entity_type->id())->getQuery()
+  protected function loadRevisions(RevisionableInterface $entity) {
+    $entityType = $entity->getEntityType();
+    $entityStorage = $this->entityTypeManager()->getStorage($entity->getEntityTypeId());
+    assert($entityStorage instanceof RevisionableStorageInterface);
+
+    $result = $entityStorage->getQuery()
       ->allRevisions()
-      ->condition($entity_type->getKey('id'), $entity->id())
-      ->sort($entity_type->getKey('revision'), 'DESC')
+      ->condition($entityType->getKey('id'), $entity->id())
+      ->sort($entityType->getKey('revision'), 'DESC')
       ->execute();
-    return array_keys($result);
+
+    $currentLangcode = $this->languageManager()
+      ->getCurrentLanguage(LanguageInterface::TYPE_CONTENT)
+      ->getId();
+    foreach ($entityStorage->loadMultipleRevisions(array_keys($result)) as $revision) {
+      // Only show revisions that are affected by the language that is being
+      // displayed.
+      if ($revision->hasTranslation($currentLangcode) && $revision->getTranslation($currentLangcode)->isRevisionTranslationAffected()) {
+        yield $revision;
+      }
+    }
   }
 
   /**
@@ -92,56 +105,20 @@ trait RevisionControllerTrait {
    *   A render array.
    */
   protected function revisionOverview(RevisionableInterface $entity): array {
-    $currentLangcode = $this->languageManager()
-      ->getCurrentLanguage(LanguageInterface::TYPE_CONTENT)
-      ->getId();
-
-    $entityStorage = $this->entityTypeManager()->getStorage($entity->getEntityTypeId());
-    assert($entityStorage instanceof RevisionableStorageInterface);
-
-    $rows = [];
-    foreach ($entityStorage->loadMultipleRevisions($this->revisionIds($entity)) as $revision) {
-      $row = [];
-
-      // Only show revisions that are affected by the language that is being
-      // displayed.
-      if ($revision->hasTranslation($currentLangcode) && $revision->getTranslation($currentLangcode)->isRevisionTranslationAffected()) {
-        $row[] = $this->getRevisionDescription($revision);
-
-        if ($revision->isDefaultRevision()) {
-          $row[] = [
-            'data' => [
-              '#prefix' => '<em>',
-              '#markup' => $this->t('Current revision'),
-              '#suffix' => '</em>',
-            ],
-          ];
-          foreach ($row as &$current) {
-            $current['class'] = ['revision-current'];
-          }
-        }
-        else {
-          $links = $this->getOperationLinks($revision);
-          $row[] = [
-            'data' => [
-              '#type' => 'operations',
-              '#links' => $links,
-            ],
-          ];
-        }
-      }
-
-      $rows[] = $row;
-    }
-
     $build['entity_revisions_table'] = [
       '#theme' => 'table',
       '#header' => [
-        $this->t('Revision'),
-        $this->t('Operations'),
+        'revision' => ['data' => $this->t('Revision')],
+        'operations' => ['data' => $this->t('Operations')],
       ],
-      '#rows' => $rows,
     ];
+    foreach ($this->loadRevisions($entity) as $revision) {
+      $row = $this->buildRow($revision);
+      if (empty($row)) {
+        continue;
+      }
+      $build['entity_revisions_table']['#rows'][$revision->getRevisionId()] = $row;
+    }
 
     (new CacheableMetadata())
       // Only dealing with this entity and no external dependencies.
@@ -150,6 +127,40 @@ trait RevisionControllerTrait {
       ->applyTo($build);
 
     return $build;
+  }
+
+  /**
+   * Builds a table row for a revision.
+   *
+   * @param \Drupal\Core\Entity\RevisionableInterface $revision
+   *   An entity revision.
+   *
+   * @return array
+   *   A table row.
+   */
+  protected function buildRow(RevisionableInterface $revision): array {
+    $row = [];
+    $rowAttributes = [];
+
+    $row['revision']['data'] = $this->getRevisionDescription($revision);
+    $row['operations']['data'] = [];
+
+    // Revision status.
+    if ($revision->isDefaultRevision()) {
+      $rowAttributes['class'][] = 'revision-current';
+      $row['operations']['data']['status']['#markup'] = $this->t('<em>Current revision</em>');
+    }
+
+    // Operation links.
+    $links = $this->getOperationLinks($revision);
+    if (count($links) > 0) {
+      $row['operations']['data']['operations'] = [
+        '#type' => 'operations',
+        '#links' => $links,
+      ];
+    }
+
+    return ['data' => $row] + $rowAttributes;
   }
 
   /**

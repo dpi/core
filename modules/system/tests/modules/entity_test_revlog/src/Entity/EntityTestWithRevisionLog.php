@@ -12,6 +12,18 @@ use Drupal\Core\Field\BaseFieldDefinition;
  * @ContentEntityType(
  *   id = "entity_test_revlog",
  *   label = @Translation("Test entity - revisions log"),
+ *   handlers = {
+ *     "access" = "Drupal\entity_test_revlog\EntityTestRevlogAccessControlHandler",
+ *     "form" = {
+ *       "default" = "Drupal\Core\Entity\ContentEntityForm",
+ *       "revision-delete" = "Drupal\Core\Entity\Form\RevisionDeleteForm",
+ *       "revision-revert" = "Drupal\Core\Entity\Form\RevisionRevertForm",
+ *     },
+ *     "route_provider" = {
+ *       "html" = "Drupal\Core\Entity\Routing\DefaultHtmlRouteProvider",
+ *       "revision" = "Drupal\Core\Entity\Routing\RevisionHtmlRouteProvider",
+ *     },
+ *   },
  *   base_table = "entity_test_revlog",
  *   revision_table = "entity_test_revlog_revision",
  *   entity_keys = {
@@ -27,6 +39,17 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *     "revision_created" = "revision_created",
  *     "revision_log_message" = "revision_log_message"
  *   },
+ *   links = {
+ *     "add-form" = "/entity_test_revlog/add",
+ *     "canonical" = "/entity_test_revlog/manage/{entity_test_revlog}",
+ *     "delete-form" = "/entity_test/delete/entity_test_revlog/{entity_test_revlog}",
+ *     "delete-multiple-form" = "/entity_test_revlog/delete_multiple",
+ *     "edit-form" = "/entity_test_revlog/manage/{entity_test_revlog}/edit",
+ *     "revision" = "/entity_test_revlog/{entity_test_revlog}/revision/{entity_test_revlog_revision}/view",
+ *     "revision-delete-form" = "/entity_test_revlog/{entity_test_revlog}/revision/{entity_test_revlog_revision}/delete",
+ *     "revision-revert-form" = "/entity_test_revlog/{entity_test_revlog}/revision/{entity_test_revlog_revision}/revert",
+ *     "version-history" = "/entity_test_revlog/{entity_test_revlog}/revisions",
+ *   }
  * )
  */
 class EntityTestWithRevisionLog extends RevisionableContentEntityBase {
@@ -42,7 +65,7 @@ class EntityTestWithRevisionLog extends RevisionableContentEntityBase {
       ->setDescription(t('The name of the test entity.'))
       ->setTranslatable(TRUE)
       ->setRevisionable(TRUE)
-      ->setSetting('max_length', 32)
+      ->setSetting('max_length', 64)
       ->setDisplayOptions('view', [
         'label' => 'hidden',
         'type' => 'string',
@@ -54,6 +77,19 @@ class EntityTestWithRevisionLog extends RevisionableContentEntityBase {
       ]);
 
     return $fields;
+  }
+
+  /**
+   * Sets the name.
+   *
+   * @param string $name
+   *   Name of the entity.
+   *
+   * @return $this
+   */
+  public function setName($name) {
+    $this->set('name', $name);
+    return $this;
   }
 
 }

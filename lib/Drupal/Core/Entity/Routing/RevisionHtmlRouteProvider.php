@@ -33,6 +33,10 @@ class RevisionHtmlRouteProvider implements EntityRouteProviderInterface {
       $collection->add("entity.$entityTypeId.revision_revert_form", $revision_revert_route);
     }
 
+    if ($revision_delete_route = $this->getRevisionDeleteRoute($entity_type)) {
+      $collection->add("entity.$entityTypeId.revision_delete_form", $revision_delete_route);
+    }
+
     return $collection;
   }
 
@@ -57,7 +61,7 @@ class RevisionHtmlRouteProvider implements EntityRouteProviderInterface {
         '_controller' => VersionHistoryController::class . '::versionHistory',
         '_title' => 'Revisions',
       ])
-      ->setRequirement('_entity_access_revision', "$entityTypeId.list")
+      ->setRequirement('_entity_access', $entityTypeId . '.view all revisions')
       ->setOption('entity_type_id', $entityTypeId)
       ->setOption('parameters', [
         $entityTypeId => [
@@ -82,19 +86,18 @@ class RevisionHtmlRouteProvider implements EntityRouteProviderInterface {
     }
 
     $entityTypeId = $entityType->id();
+    $revisionParameterName = $entityTypeId . '_revision';
     return (new Route($entityType->getLinkTemplate('revision')))
       ->addDefaults([
         '_controller' => EntityViewController::class . '::viewRevision',
-        '_title_callback' => EntityController::class . '::title',
+        '_title_callback' => EntityController::class . '::revisionTitle',
       ])
-      ->addRequirements([
-        '_entity_access_revision' => "$entityTypeId.view",
-      ])
+      ->setRequirement('_entity_access', $revisionParameterName . '.view revision')
       ->setOption('parameters', [
         $entityTypeId => [
           'type' => 'entity:' . $entityTypeId,
         ],
-        $entityTypeId . '_revision' => [
+        $revisionParameterName => [
           'type' => 'entity_revision:' . $entityTypeId,
         ],
       ]);
@@ -116,19 +119,53 @@ class RevisionHtmlRouteProvider implements EntityRouteProviderInterface {
     }
 
     $entityTypeId = $entityType->id();
+    $revisionParameterName = $entityTypeId . '_revision';
     return (new Route($entityType->getLinkTemplate('revision-revert-form')))
       ->addDefaults([
         '_entity_form' => $entityTypeId . '.revision-revert',
         '_title' => 'Revert revision',
       ])
-      ->addRequirements([
-        '_entity_access_revision' => "$entityTypeId.update",
-      ])
+      ->setRequirement('_entity_access_revision', $revisionParameterName . '.revert')
+      ->setRequirement('_entity_access', $revisionParameterName . '.revert')
       ->setOption('parameters', [
         $entityTypeId => [
           'type' => 'entity:' . $entityTypeId,
         ],
-        $entityTypeId . '_revision' => [
+        $revisionParameterName => [
+          'type' => 'entity_revision:' . $entityTypeId,
+        ],
+      ]);
+  }
+
+  /**
+   * Gets the entity revision delete route.
+   *
+   * @param \Drupal\Core\Entity\EntityTypeInterface $entityType
+   *   The entity type.
+   *
+   * @return \Symfony\Component\Routing\Route|null
+   *   The entity revision delete route, or NULL if the entity type does not
+   *   support deleting revisions.
+   */
+  protected function getRevisionDeleteRoute(EntityTypeInterface $entityType): ?Route {
+    if (!$entityType->hasLinkTemplate('revision-delete-form')) {
+      return NULL;
+    }
+
+    $entityTypeId = $entityType->id();
+    $revisionParameterName = $entityTypeId . '_revision';
+    return (new Route($entityType->getLinkTemplate('revision-delete-form')))
+      ->addDefaults([
+        '_entity_form' => $entityTypeId . '.revision-delete',
+        '_title' => 'Delete revision',
+      ])
+      ->setRequirement('_entity_access_revision', $revisionParameterName . '.delete revision')
+      ->setRequirement('_entity_access', $revisionParameterName . '.delete revision')
+      ->setOption('parameters', [
+        $entityTypeId => [
+          'type' => 'entity:' . $entityTypeId,
+        ],
+        $revisionParameterName => [
           'type' => 'entity_revision:' . $entityTypeId,
         ],
       ]);
