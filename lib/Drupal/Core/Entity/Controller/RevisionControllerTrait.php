@@ -74,6 +74,7 @@ trait RevisionControllerTrait {
    */
   protected function loadRevisions(RevisionableInterface $entity) {
     $entityType = $entity->getEntityType();
+    $translatable = $entityType->isTranslatable();
     $entityStorage = $this->entityTypeManager()->getStorage($entity->getEntityTypeId());
     assert($entityStorage instanceof RevisionableStorageInterface);
 
@@ -89,7 +90,7 @@ trait RevisionControllerTrait {
     foreach ($entityStorage->loadMultipleRevisions(array_keys($result)) as $revision) {
       // Only show revisions that are affected by the language that is being
       // displayed.
-      if ($revision->hasTranslation($currentLangcode) && $revision->getTranslation($currentLangcode)->isRevisionTranslationAffected()) {
+      if (!$translatable || ($revision->hasTranslation($currentLangcode) && $revision->getTranslation($currentLangcode)->isRevisionTranslationAffected())) {
         yield $revision;
       }
     }
