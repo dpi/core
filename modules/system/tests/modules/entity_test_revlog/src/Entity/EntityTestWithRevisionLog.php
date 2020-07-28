@@ -26,13 +26,13 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *   },
  *   base_table = "entity_test_revlog",
  *   revision_table = "entity_test_revlog_revision",
+ *   translatable = FALSE,
  *   entity_keys = {
  *     "id" = "id",
  *     "uuid" = "uuid",
  *     "revision" = "revision_id",
  *     "bundle" = "type",
  *     "label" = "name",
- *     "langcode" = "langcode",
  *   },
  *   revision_metadata_keys = {
  *     "revision_user" = "revision_user",
@@ -63,7 +63,6 @@ class EntityTestWithRevisionLog extends RevisionableContentEntityBase {
     $fields['name'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Name'))
       ->setDescription(t('The name of the test entity.'))
-      ->setTranslatable(TRUE)
       ->setRevisionable(TRUE)
       ->setSetting('max_length', 64)
       ->setDisplayOptions('view', [
