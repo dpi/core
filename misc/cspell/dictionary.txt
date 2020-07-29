@@ -569,7 +569,6 @@ eridani
 errmode
 errored
 errrf
-escapeable
 eslintignore
 eslinting
 espagnol
@@ -798,7 +797,6 @@ iframe's
 iframes
 iframeupload
 ignoretag
-iids
 ilike
 imageapi
 imagecache
@@ -1267,7 +1265,6 @@ pagina
 pangram
 paramconverter
 parens
-parentc
 parentlist
 parseable
 parsererror
@@ -1392,7 +1389,6 @@ pseudotag
 ptablenode
 pterm
 pulks
-punit
 puzzlepiece
 pvde
 pwprompt
@@ -1503,8 +1499,6 @@ robloach
 robo
 rolename
 roly
-roota
-rootb
 routable
 routeable
 routename
@@ -1870,8 +1864,6 @@ tsid
 tspan
 turbolinks
 twistie
-twoa
-twob
 twocol
 txtzzzz
 typehint
@@ -2070,7 +2062,6 @@ whos
 widget's
 widt
 widthx
-wiget
 wimoids
 windir
 winnt
