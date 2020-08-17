@@ -56,12 +56,12 @@ class SearchPageTextTest extends BrowserTestBase {
   public function testSearchLabelXSS() {
     $this->drupalLogin($this->drupalCreateUser(['administer search']));
 
-    $keys['label'] = '<script>alert("Dont Panic");</script>';
+    $keys['label'] = '<script>alert("Don\'t Panic");</script>';
     $this->drupalPostForm('admin/config/search/pages/manage/node_search', $keys, t('Save search page'));
 
     $this->drupalLogin($this->searchingUser);
     $this->drupalGet('search/node');
-    $this->assertEscaped($keys['label']);
+    $this->assertSession()->assertEscaped($keys['label']);
   }
 
   /**

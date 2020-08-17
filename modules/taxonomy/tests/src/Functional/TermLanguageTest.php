@@ -54,7 +54,7 @@ class TermLanguageTest extends TaxonomyTestBase {
     // Add a term.
     $this->drupalGet('admin/structure/taxonomy/manage/' . $this->vocabulary->id() . '/add');
     // Check that we have the language selector.
-    $this->assertField('edit-langcode-0-value', t('The language selector field was found on the page.'));
+    $this->assertSession()->fieldExists('edit-langcode-0-value');
     // Submit the term.
     $edit = [
       'name[0][value]' => $this->randomMachineName(),
@@ -142,7 +142,7 @@ class TermLanguageTest extends TaxonomyTestBase {
 
     // Overview page in the other language shows the translated term
     $this->drupalGet('bb/admin/structure/taxonomy/manage/' . $this->vocabulary->id() . '/overview');
-    $this->assertPattern('|<a[^>]*>' . $translated_title . '</a>|', 'The term language is correct');
+    $this->assertSession()->responseMatches('|<a[^>]*>' . $translated_title . '</a>|');
   }
 
 }

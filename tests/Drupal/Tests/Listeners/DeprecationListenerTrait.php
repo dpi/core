@@ -2,8 +2,6 @@
 
 namespace Drupal\Tests\Listeners;
 
-use Drupal\Tests\Traits\ExpectDeprecationTrait;
-use PHPUnit\Framework\TestCase;
 use PHPUnit\Util\Test;
 
 /**
@@ -15,22 +13,12 @@ use PHPUnit\Util\Test;
  */
 trait DeprecationListenerTrait {
 
-  use ExpectDeprecationTrait;
-
   /**
    * The previous error handler.
    *
    * @var callable
    */
   private $previousHandler;
-
-  protected function deprecationStartTest($test) {
-    if ($test instanceof TestCase) {
-      if ($this->willBeIsolated($test)) {
-        putenv('DRUPAL_EXPECTED_DEPRECATIONS_SERIALIZE=' . tempnam(sys_get_temp_dir(), 'exdep'));
-      }
-    }
-  }
 
   /**
    * Reacts to the end of a test.
@@ -42,13 +30,6 @@ trait DeprecationListenerTrait {
    */
   protected function deprecationEndTest($test, $time) {
     /** @var \PHPUnit\Framework\Test $test */
-    if ($file = getenv('DRUPAL_EXPECTED_DEPRECATIONS_SERIALIZE')) {
-      putenv('DRUPAL_EXPECTED_DEPRECATIONS_SERIALIZE');
-      $expected_deprecations = file_get_contents($file);
-      if ($expected_deprecations) {
-        $test->expectedDeprecations(unserialize($expected_deprecations));
-      }
-    }
     if ($file = getenv('SYMFONY_DEPRECATIONS_SERIALIZE')) {
       $method = $test->getName(FALSE);
       if (strpos($method, 'testLegacy') === 0
@@ -75,26 +56,6 @@ trait DeprecationListenerTrait {
         file_put_contents($file, serialize($deprecations));
       }
     }
-  }
-
-  /**
-   * Determines if a test is isolated.
-   *
-   * @param \PHPUnit\Framework\TestCase $test
-   *   The test to check.
-   *
-   * @return bool
-   *   TRUE if the isolated, FALSE if not.
-   */
-  private function willBeIsolated($test) {
-    if ($test->isInIsolation()) {
-      return FALSE;
-    }
-
-    $r = new \ReflectionProperty($test, 'runTestInSeparateProcess');
-    $r->setAccessible(TRUE);
-
-    return $r->getValue($test);
   }
 
   /**
@@ -172,8 +133,6 @@ trait DeprecationListenerTrait {
       'AssertLegacyTrait::assertFieldByName() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->fieldExists() or $this->assertSession()->buttonExists() or $this->assertSession()->fieldValueEquals() instead. See https://www.drupal.org/node/3129738',
       'AssertLegacyTrait::assertNoFieldByName() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->fieldNotExists() or $this->assertSession()->buttonNotExists() or $this->assertSession()->fieldValueNotEquals() instead. See https://www.drupal.org/node/3129738',
       'AssertLegacyTrait::assertFieldById() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->fieldExists() or $this->assertSession()->buttonExists() or $this->assertSession()->fieldValueEquals() instead. See https://www.drupal.org/node/3129738',
-      'AssertLegacyTrait::assertField() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->fieldExists() or $this->assertSession()->buttonExists() instead. See https://www.drupal.org/node/3129738',
-      'AssertLegacyTrait::assertNoField() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->fieldNotExists() or $this->assertSession()->buttonNotExists() instead. See https://www.drupal.org/node/3129738',
       'AssertLegacyTrait::assertRaw() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->responseContains() instead. See https://www.drupal.org/node/3129738',
       'AssertLegacyTrait::assertNoRaw() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->responseNotContains() instead. See https://www.drupal.org/node/3129738',
       'AssertLegacyTrait::assertLinkByHref() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->linkByHrefExists() instead. See https://www.drupal.org/node/3129738',
@@ -183,9 +142,6 @@ trait DeprecationListenerTrait {
       'AssertLegacyTrait::assertFieldByXPath() is deprecated in drupal:8.3.0 and is removed from drupal:10.0.0. Use $this->xpath() instead and check the values directly in the test. See https://www.drupal.org/node/3129738',
       'AssertLegacyTrait::assertNoFieldByXPath() is deprecated in drupal:8.3.0 and is removed from drupal:10.0.0. Use $this->xpath() instead and assert that the result is empty. See https://www.drupal.org/node/3129738',
       'AssertLegacyTrait::assertFieldsByValue() is deprecated in drupal:8.3.0 and is removed from drupal:10.0.0. Use iteration over the fields yourself instead and directly check the values in the test. See https://www.drupal.org/node/3129738',
-      'AssertLegacyTrait::assertEscaped() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->assertEscaped() instead. See https://www.drupal.org/node/3129738',
-      'AssertLegacyTrait::assertNoEscaped() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->assertNoEscaped() instead. See https://www.drupal.org/node/3129738',
-      'AssertLegacyTrait::assertPattern() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->responseMatches() instead. See https://www.drupal.org/node/3129738',
       'AssertLegacyTrait::constructFieldXpath() is deprecated in drupal:8.5.0 and is removed from drupal:10.0.0. Use $this->getSession()->getPage()->findField() instead. See https://www.drupal.org/node/3129738',
     ];
   }

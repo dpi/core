@@ -58,7 +58,7 @@ class ExposedFormTest extends ViewTestBase {
     // Test the submit button value defaults to 'Apply'.
     $this->drupalGet('test_exposed_form_buttons');
     $this->assertSession()->statusCodeEquals(200);
-    $this->helperButtonHasLabel('edit-submit-test-exposed-form-buttons', t('Apply'));
+    $this->helperButtonHasLabel('edit-submit-test-exposed-form-buttons', 'Apply');
 
     // Rename the label of the submit button.
     $view = Views::getView('test_exposed_form_buttons');
@@ -84,7 +84,7 @@ class ExposedFormTest extends ViewTestBase {
 
     // Make sure the submit button label shows 'Apply'.
     $this->drupalGet('test_exposed_form_buttons');
-    $this->helperButtonHasLabel('edit-submit-test-exposed-form-buttons', t('Apply'));
+    $this->helperButtonHasLabel('edit-submit-test-exposed-form-buttons', 'Apply');
   }
 
   /**
@@ -156,7 +156,7 @@ class ExposedFormTest extends ViewTestBase {
   public function testResetButton() {
     // Test the button is hidden when there is no exposed input.
     $this->drupalGet('test_exposed_form_buttons');
-    $this->assertNoField('edit-reset');
+    $this->assertSession()->fieldNotExists('edit-reset');
 
     $this->drupalGet('test_exposed_form_buttons', ['query' => ['type' => 'article']]);
     // Test that the type has been set.
@@ -169,7 +169,7 @@ class ExposedFormTest extends ViewTestBase {
     $this->assertFieldById('edit-type', 'All', 'Article type filter has been reset.');
 
     // Test the button is hidden after reset.
-    $this->assertNoField('edit-reset');
+    $this->assertSession()->fieldNotExists('edit-reset');
 
     // Test the reset works with type set.
     $this->drupalGet('test_exposed_form_buttons', ['query' => ['type' => 'article', 'op' => 'Reset']]);
@@ -177,7 +177,7 @@ class ExposedFormTest extends ViewTestBase {
     $this->assertFieldById('edit-type', 'All', 'Article type filter has been reset.');
 
     // Test the button is hidden after reset.
-    $this->assertNoField('edit-reset');
+    $this->assertSession()->fieldNotExists('edit-reset');
 
     // Rename the label of the reset button.
     $view = Views::getView('test_exposed_form_buttons');
@@ -266,7 +266,7 @@ class ExposedFormTest extends ViewTestBase {
 
     $this->drupalGet('test_exposed_form_buttons');
     $this->assertSession()->statusCodeEquals(200);
-    $this->helperButtonHasLabel('edit-submit-test-exposed-form-buttons', t('Apply'));
+    $this->helperButtonHasLabel('edit-submit-test-exposed-form-buttons', 'Apply');
 
     // Ensure that no results are displayed.
     $rows = $this->xpath("//div[contains(@class, 'views-row')]");

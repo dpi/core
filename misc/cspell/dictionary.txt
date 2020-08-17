@@ -1,5 +1,4 @@
 a'foo
-abantu
 abcdefg
 abcdefghijklmno
 abcdefghijklmnopqrstuvwxyz
@@ -37,19 +36,16 @@ aliquet
 alle
 allowtransparency
 allwords
-alows
 alphadecimal
 alterjs
 alternatif
 amet
 amphibius
 ampm
-and's
 anded
 andif
+anding
 annot
-annotationwithconstants
-annots
 anonyme
 anonymize
 anothermodule
@@ -61,7 +57,6 @@ api's
 apng
 apos
 applix
-aptain
 archiver
 archivers
 arctor
@@ -292,7 +287,6 @@ classmap
 classmaps
 classname
 classtype
-classwithconstants
 classy's
 cldr
 clearfix
@@ -331,7 +325,6 @@ conkey
 conname
 conneg
 conrelid
-contant
 contaynz
 contentblock
 contenteditable
@@ -404,7 +397,6 @@ daycounter
 dblog
 dbtng
 dburl
-dcom
 ddblock
 ddev
 deckard
@@ -448,7 +440,6 @@ descripcion
 deserialization
 deserializes
 destid
-destinationproperty
 destructable
 destructured
 desynchronized
@@ -476,7 +467,6 @@ docroot
 docroots
 docx
 dolore
-dont
 doubleclick
 downcasting
 downlevel
@@ -580,8 +570,6 @@ eurozone
 evenodd
 eventhandler
 exampleurl
-exdep
-existant
 exitcode
 expirable
 extlink
@@ -619,7 +607,6 @@ fieldgroups
 fielditem
 fieldlinks
 fieldnames
-fieldright
 fieldsets
 filecount
 filefield
@@ -798,13 +785,9 @@ iframes
 iframeupload
 ignoretag
 ilike
-imageapi
 imagecache
 imagecreatefrom
-imagefield
 imagefields
-imagelink
-imagemagick
 imagetest
 inator
 indexname
@@ -822,11 +805,8 @@ instaclick
 install's
 installable
 instantiator
-inteface
-intefacewithconstants
 internal's
 introspectable
-invalida
 invalidateby
 invalidators
 invalididentifier
@@ -901,7 +881,6 @@ langcodes
 langname
 languageswitcher
 larowlan
-lastsplit
 latn
 layouted
 lazybuilder
@@ -1154,7 +1133,6 @@ nocdata
 nocookie
 nocssjs
 nodeaccess
-nodeapi
 nodelink
 nodereference
 nodo
@@ -1232,9 +1210,6 @@ optgroups
 optimizable
 optin
 optionchecker
-optionwidgets
-or'd
-or's
 ored
 org's
 orgchart
@@ -1548,7 +1523,6 @@ sebe
 secondcolumn
 seld
 selectbox
-selectlist
 semver
 sendmail
 serializer's
@@ -1556,7 +1530,6 @@ serviceform
 sess
 sessionpath
 settingstray
-setttings
 setval
 sharedspace
 shatner
@@ -1665,7 +1638,6 @@ subjectkeyword
 subkey
 subkeys
 submenu
-subpackage
 subparse
 subpath
 subpatterns
@@ -1981,7 +1953,6 @@ uploadsize
 uppercased
 upscaling
 upsert
-upserting
 upto
 urandom
 uri's
@@ -1993,7 +1964,6 @@ usecase
 userid
 userinfo
 userref
-userreference
 users's
 userspace
 usuario
@@ -2023,18 +1993,13 @@ viewports
 viewsviewfiles
 vivamus
 vmov
-vocabfixed
-vocablocalized
 vocabs
-vocabtranslate
 volgende
 vorige
 vous
 vxezb
 vxfbk
 waitfor
-wambooli
-wamboolipastafazoul
 wcprops
 wcsrefsdf
 webassert
@@ -2055,7 +2020,6 @@ webtest
 webuser
 wellformedwebentry
 wellformedwebrendererentry
-whakamataku
 whitespaces
 whois
 whos

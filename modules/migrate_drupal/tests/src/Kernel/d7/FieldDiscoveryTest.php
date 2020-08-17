@@ -10,6 +10,8 @@ use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\Tests\migrate_drupal\Traits\FieldDiscoveryTestTrait;
 use Drupal\field_discovery_test\FieldDiscoveryTestClass;
 
+// cspell:ignore imagelink
+
 /**
  * Test FieldDiscovery Service against Drupal 7.
  *
@@ -280,7 +282,7 @@ class FieldDiscoveryTest extends MigrateDrupal7TestBase {
     $this->assertArrayHasKey('user', $actual_fields['user']);
     $this->assertArrayHasKey('test_content_type', $actual_fields['node']);
     $this->assertCount(7, $actual_fields['node']);
-    $this->assertCount(6, $actual_fields['comment']);
+    $this->assertCount(7, $actual_fields['comment']);
     $this->assertCount(22, $actual_fields['node']['test_content_type']);
     foreach ($actual_fields as $entity_type_id => $bundles) {
       foreach ($bundles as $bundle => $fields) {

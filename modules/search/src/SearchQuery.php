@@ -2,7 +2,6 @@
 
 namespace Drupal\search;
 
-use Drupal\Core\Database\Query\Condition;
 use Drupal\Core\Database\Query\SelectExtender;
 use Drupal\Core\Database\Query\SelectInterface;
 
@@ -205,7 +204,7 @@ class SearchQuery extends SelectExtender {
     $this->addTag('search_' . $type);
 
     // Initialize conditions and status.
-    $this->conditions = new Condition('AND');
+    $this->conditions = $this->connection->condition('AND');
     $this->status = 0;
 
     return $this;
@@ -266,7 +265,7 @@ class SearchQuery extends SelectExtender {
         $this->keys['negative'] = array_merge($this->keys['negative'], $words);
       }
       // OR operator: instead of a single keyword, we store an array of all
-      // OR'd keywords.
+      // ORed keywords.
       elseif ($match[2] == 'OR' && count($this->keys['positive'])) {
         $last = array_pop($this->keys['positive']);
         // Starting a new OR?
@@ -308,14 +307,14 @@ class SearchQuery extends SelectExtender {
     foreach ($this->keys['positive'] as $key) {
       // Group of ORed terms.
       if (is_array($key) && count($key)) {
-        // If we had already found one OR, this is another one AND-ed with the
+        // If we had already found one OR, this is another one ANDed with the
         // first, meaning it is not a simple query.
         if ($has_or) {
           $this->simple = FALSE;
         }
         $has_or = TRUE;
         $has_new_scores = FALSE;
-        $queryor = new Condition('OR');
+        $queryor = $this->connection->condition('OR');
         foreach ($key as $or) {
           list($num_new_scores) = $this->parseWord($or);
           $has_new_scores |= $num_new_scores;
@@ -403,7 +402,7 @@ class SearchQuery extends SelectExtender {
     }
 
     // Build the basic search query: match the entered keywords.
-    $or = new Condition('OR');
+    $or = $this->connection->condition('OR');
     foreach ($this->words as $word) {
       $or->condition('i.word', $word);
     }

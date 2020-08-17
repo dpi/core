@@ -2,6 +2,7 @@
 
 namespace Drupal\FunctionalTests;
 
+use Behat\Mink\Exception\ElementNotFoundException;
 use Behat\Mink\Exception\ExpectationException;
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\Html;
@@ -56,6 +57,7 @@ class BrowserTestBaseTest extends BrowserTestBase {
     $this->assertStringNotContainsString('</html>', $text);
 
     // Response includes cache tags that we can assert.
+    $this->assertSession()->responseHeaderExists('X-Drupal-Cache-Tags');
     $this->assertSession()->responseHeaderEquals('X-Drupal-Cache-Tags', 'http_response rendered');
 
     // Test that we can read the JS settings.
@@ -74,8 +76,8 @@ class BrowserTestBaseTest extends BrowserTestBase {
     $this->drupalGet('system-test/header', [], [
       'Test-Header' => 'header value',
     ]);
-    $returned_header = $this->getSession()->getResponseHeader('Test-Header');
-    $this->assertSame('header value', $returned_header);
+    $this->assertSession()->responseHeaderExists('Test-Header');
+    $this->assertSession()->responseHeaderEquals('Test-Header', 'header value');
   }
 
   /**
@@ -227,6 +229,16 @@ class BrowserTestBaseTest extends BrowserTestBase {
   }
 
   /**
+   * Tests responseHeaderDoesNotExist() functionality.
+   *
+   * @see \Drupal\Tests\WebAssert::responseHeaderDoesNotExist()
+   */
+  public function testResponseHeaderDoesNotExist() {
+    $this->drupalGet('test-pipe-char');
+    $this->assertSession()->responseHeaderDoesNotExist('Foo-Bar');
+  }
+
+  /**
    * Tests linkNotExistsExact() functionality fail.
    *
    * @see \Drupal\Tests\WebAssert::linkNotExistsExact()
@@ -282,6 +294,17 @@ class BrowserTestBaseTest extends BrowserTestBase {
     $sanitized = Html::escape($dangerous);
     $this->assertNoText($dangerous);
     $this->assertText($sanitized);
+  }
+
+  /**
+   * Tests legacy assertPattern().
+   *
+   * @group legacy
+   * @expectedDeprecation AssertLegacyTrait::assertPattern() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->responseMatches() instead. See https://www.drupal.org/node/3129738
+   */
+  public function testAssertPattern() {
+    $this->drupalGet('test-escaped-characters');
+    $this->assertPattern('/div class.*escaped/');
   }
 
   /**
@@ -350,16 +373,29 @@ class BrowserTestBaseTest extends BrowserTestBase {
 
   /**
    * Tests legacy field asserts using textfields.
+   *
+   * @group legacy
+   * @expectedDeprecation AssertLegacyTrait::assertField() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->fieldExists() or $this->assertSession()->buttonExists() instead. See https://www.drupal.org/node/3129738
+   * @expectedDeprecation AssertLegacyTrait::assertNoField() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->fieldNotExists() or $this->assertSession()->buttonNotExists() instead. See https://www.drupal.org/node/3129738
+   */
+  public function testAssertField() {
+    $this->drupalGet('test-field-xpath');
+    $this->assertField('name');
+    $this->assertNoField('invalid_name_and_id');
+  }
+
+  /**
+   * Tests field asserts using textfields.
    */
   public function testFieldAssertsForTextfields() {
     $this->drupalGet('test-field-xpath');
 
-    // *** 1. assertNoField().
-    $this->assertNoField('invalid_name_and_id');
+    // *** 1. fieldNotExists().
+    $this->assertSession()->fieldNotExists('invalid_name_and_id');
 
     // Test that the assertion fails correctly when searching by name.
     try {
-      $this->assertNoField('name');
+      $this->assertSession()->fieldNotExists('name');
       $this->fail('The "name" field was not found based on name.');
     }
     catch (ExpectationException $e) {
@@ -368,23 +404,23 @@ class BrowserTestBaseTest extends BrowserTestBase {
 
     // Test that the assertion fails correctly when searching by id.
     try {
-      $this->assertNoField('edit-name');
+      $this->assertSession()->fieldNotExists('edit-name');
       $this->fail('The "name" field was not found based on id.');
     }
     catch (ExpectationException $e) {
       // Expected exception; just continue testing.
     }
 
-    // *** 2. assertField().
-    $this->assertField('name');
-    $this->assertField('edit-name');
+    // *** 2. fieldExists().
+    $this->assertSession()->fieldExists('name');
+    $this->assertSession()->fieldExists('edit-name');
 
     // Test that the assertion fails correctly if the field does not exist.
     try {
-      $this->assertField('invalid_name_and_id');
+      $this->assertSession()->fieldExists('invalid_name_and_id');
       $this->fail('The "invalid_name_and_id" field was found.');
     }
-    catch (ExpectationFailedException $e) {
+    catch (ElementNotFoundException $e) {
       // Expected exception; just continue testing.
     }
 
@@ -833,6 +869,19 @@ class BrowserTestBaseTest extends BrowserTestBase {
     $assert->responseContains('<div class="unescaped">');
     $assert->responseContains("<script>alert('Marked safe');alert(\"Marked safe\");</script>");
     $assert->assertNoEscaped("<script>alert('Marked safe');alert(\"Marked safe\");</script>");
+  }
+
+  /**
+   * Tests deprecation of legacy assertEscaped() and assertNoEscaped().
+   *
+   * @group legacy
+   * @expectedDeprecation AssertLegacyTrait::assertNoEscaped() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->assertNoEscaped() instead. See https://www.drupal.org/node/3129738
+   * @expectedDeprecation AssertLegacyTrait::assertEscaped() is deprecated in drupal:8.2.0 and is removed from drupal:10.0.0. Use $this->assertSession()->assertEscaped() instead. See https://www.drupal.org/node/3129738
+   */
+  public function testLegacyEscapingAssertions(): void {
+    $this->drupalGet('test-escaped-characters');
+    $this->assertNoEscaped('<div class="escaped">');
+    $this->assertEscaped('Escaped: <"\'&>');
   }
 
   /**

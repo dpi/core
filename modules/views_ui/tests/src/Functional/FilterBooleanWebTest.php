@@ -32,6 +32,11 @@ class FilterBooleanWebTest extends UITestBase {
     $result = $this->cssSelect('#edit-options-value--wrapper legend span');
     $this->assertEqual($result[0]->getHtml(), 'Status');
 
+    // Ensure that the operator and the filter value are displayed using correct
+    // layout.
+    $this->assertSession()->elementExists('css', '.views-left-30 .form-item-options-operator');
+    $this->assertSession()->elementExists('css', '.views-right-70 .form-item-options-value');
+
     $this->drupalPostForm(NULL, [], t('Expose filter'));
     $this->drupalPostForm(NULL, [], t('Grouped filters'));
 
@@ -67,7 +72,7 @@ class FilterBooleanWebTest extends UITestBase {
     $this->drupalPostForm(NULL, $edit, t('Apply'));
     $this->drupalGet('admin/structure/views/nojs/handler/test_view/default/filter/status');
     $this->assertFieldByName('options[group_info][default_group]', 2, 'Second item was set as the default.');
-    $this->assertNoField('options[group_info][group_items][3][remove]', 'Third item was removed.');
+    $this->assertSession()->fieldNotExists('options[group_info][group_items][3][remove]');
   }
 
 }
