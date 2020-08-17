@@ -1,13 +1,18 @@
 administer comments:
   title: 'Administer comments and comment settings'
+  entity operation: 'comment.administer'
 administer comment types:
   title: 'Administer comment types and settings'
   restrict access: true
+  entity operation: 'comment_type.administer'
 access comments:
   title: 'View comments'
+  entity operation: 'comment.view'
 post comments:
   title: 'Post comments'
+  entity operation: 'comment.create'
 skip comment approval:
   title: 'Skip comment approval'
 edit own comments:
   title: 'Edit own comments'
+  entity operation: 'comment.update'

@@ -11,6 +11,7 @@ administer users:
   restrict access: true
 access user profiles:
   title: 'View user information'
+  entity operation: 'user.view'
 change own username:
   title: 'Change own username'
 select account cancellation method:
@@ -19,3 +20,4 @@ select account cancellation method:
 cancel account:
   title: 'Cancel own user account'
   description: 'Note: content may be kept, unpublished, deleted or transferred to the anonymous user depending on the configured user settings.'
+  entity operation: 'user.delete'

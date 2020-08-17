@@ -19,6 +19,7 @@ view the administration theme:
 # permission form when the Node module is enabled.
 access content:
   title: 'View published content'
+  entity_operation: 'node.view'
 access site reports:
   title: 'View site reports'
   restrict access: true

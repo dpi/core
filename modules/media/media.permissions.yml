@@ -1,6 +1,7 @@
 administer media:
   title: 'Administer media'
   restrict access: TRUE
+  entity operation: 'media.administer'
 
 administer media types:
   title: 'Administer media types'
@@ -8,26 +9,33 @@ administer media types:
 
 view media:
   title: 'View media'
+  entity operation: 'media.view'
 
 # @todo: Deprecate some permissions in https://www.drupal.org/project/drupal/issues/2925459
 update media:
   title: 'Update own media'
+  entity operation: 'media.update'
 
 update any media:
   title: 'Update any media'
+  entity operation: 'media.update'
 
 delete media:
   title:  'Delete own media'
+  entity operation: 'media.delete'
 
 delete any media:
   title:  'Delete any media'
+  entity operation: 'media.delete'
 
 create media:
   title: 'Create media'
+  entity operation: 'media.create'
 
 view all media revisions:
   title: 'View all media revisions'
   description: 'To view a revision, you also need permission to view the media item.'
+  entity operation: 'media.view'
 
 access media overview:
   title: 'Access media overview'
@@ -38,3 +46,4 @@ permission_callbacks:
 
 view own unpublished media:
   title: 'View own unpublished media'
+  entity operation: 'media.view'

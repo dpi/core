@@ -1,5 +1,6 @@
 administer taxonomy:
   title: 'Administer vocabularies and terms'
+  entity operation: 'taxonomy_term.administer, taxonomy_vocabulary.administer'
 
 access taxonomy overview:
   title: 'Access the taxonomy vocabulary overview page'
