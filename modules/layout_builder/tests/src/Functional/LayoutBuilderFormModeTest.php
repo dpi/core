@@ -12,7 +12,7 @@ use Drupal\Tests\BrowserTestBase;
 /**
  * Tests Layout Builder forms.
  *
- * @group LayoutBuilderFormTest
+ * @group layout_builder
  */
 class LayoutBuilderFormModeTest extends BrowserTestBase {
 
@@ -101,7 +101,7 @@ class LayoutBuilderFormModeTest extends BrowserTestBase {
     $this->drupalGet($url);
     $this->drupalPostForm(NULL, [], 'Discard changes');
     $session->pageTextNotContains('foo field is required.');
-    $session->addressEquals(Url::fromRoute('layout_builder.overrides.entity_test.discard_changes', $urlParameters)->toString());
+    $session->addressEquals('/entity_test/1/layout/discard-changes');
   }
 
 }
