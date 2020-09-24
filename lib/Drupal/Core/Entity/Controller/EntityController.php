@@ -2,18 +2,22 @@
 
 namespace Drupal\Core\Entity\Controller;
 
+use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityDescriptionInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Entity\RevisionableInterface;
+use Drupal\Core\Entity\RevisionLogInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Routing\UrlGeneratorInterface;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\StringTranslation\TranslationInterface;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -63,6 +67,13 @@ class EntityController implements ContainerInjectionInterface {
   protected $renderer;
 
   /**
+   * The date formatter.
+   *
+   * @var \Drupal\Core\Datetime\DateFormatterInterface
+   */
+  protected $dateFormatter;
+
+  /**
    * Constructs a new EntityController.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -77,14 +88,21 @@ class EntityController implements ContainerInjectionInterface {
    *   The string translation.
    * @param \Drupal\Core\Routing\UrlGeneratorInterface $url_generator
    *   The url generator.
+   * @param \Drupal\Core\Datetime\DateFormatterInterface|null $date_formatter
+   *   The date formatter.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, EntityTypeBundleInfoInterface $entity_type_bundle_info, EntityRepositoryInterface $entity_repository, RendererInterface $renderer, TranslationInterface $string_translation, UrlGeneratorInterface $url_generator) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, EntityTypeBundleInfoInterface $entity_type_bundle_info, EntityRepositoryInterface $entity_repository, RendererInterface $renderer, TranslationInterface $string_translation, UrlGeneratorInterface $url_generator, DateFormatterInterface $date_formatter = NULL) {
     $this->entityTypeManager = $entity_type_manager;
     $this->entityTypeBundleInfo = $entity_type_bundle_info;
     $this->entityRepository = $entity_repository;
     $this->renderer = $renderer;
     $this->stringTranslation = $string_translation;
     $this->urlGenerator = $url_generator;
+    if (!$date_formatter) {
+      @trigger_error('Calling ' . __METHOD__ . ' without the $date_formatter argument is deprecated in drupal:9.1.0 and will be required in drupal:10.0.0. See https://www.drupal.org/node/3160537', E_USER_DEPRECATED);
+      $date_formatter = \Drupal::service('date.formatter');
+    }
+    $this->dateFormatter = $date_formatter;
   }
 
   /**
@@ -97,7 +115,8 @@ class EntityController implements ContainerInjectionInterface {
       $container->get('entity.repository'),
       $container->get('renderer'),
       $container->get('string_translation'),
-      $container->get('url_generator')
+      $container->get('url_generator'),
+      $container->get('date.formatter')
     );
   }
 
@@ -252,6 +271,29 @@ class EntityController implements ContainerInjectionInterface {
   }
 
   /**
+   * Provides a generic title callback for a revision of an entity.
+   *
+   * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
+   *   The route match.
+   * @param \Drupal\Core\Entity\RevisionableInterface $_entity_revision
+   *   The revisionable entity, passed in directly from request attributes.
+   *
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+   *   The title for the entity revision view page.
+   */
+  public function revisionTitle(RouteMatchInterface $route_match, RevisionableInterface $_entity_revision): TranslatableMarkup {
+    $revision = $this->doGetEntity($route_match, $_entity_revision);
+    $titleArgs = ['%title' => $revision->label()];
+    if ($revision instanceof RevisionLogInterface) {
+      $titleArgs['%date'] = $this->dateFormatter()->format($revision->getRevisionCreationTime());
+      return $this->t('Revision of %title from %date', $titleArgs);
+    }
+    else {
+      return $this->t('Revision of %title', $titleArgs);
+    }
+  }
+
+  /**
    * Provides a generic edit title callback.
    *
    * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
@@ -343,6 +385,16 @@ class EntityController implements ContainerInjectionInterface {
     }
 
     return $bundles;
+  }
+
+  /**
+   * Get the date formatter service.
+   *
+   * @return \Drupal\Core\Datetime\DateFormatterInterface
+   *   The date formatter service.
+   */
+  final protected function dateFormatter(): DateFormatterInterface {
+    return $this->dateFormatter;
   }
 
 }
