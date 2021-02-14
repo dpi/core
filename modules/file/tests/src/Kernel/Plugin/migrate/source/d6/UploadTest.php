@@ -4,6 +4,8 @@ namespace Drupal\Tests\file\Kernel\Plugin\migrate\source\d6;
 
 use Drupal\Tests\migrate\Kernel\MigrateSqlSourceTestBase;
 
+// cspell:ignore abantu
+
 /**
  * Tests D6 d6_upload source plugin.
  *
@@ -16,7 +18,7 @@ class UploadTest extends MigrateSqlSourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['file', 'migrate_drupal'];
+  protected static $modules = ['file', 'migrate_drupal'];
 
   /**
    * {@inheritdoc}
@@ -33,6 +35,14 @@ class UploadTest extends MigrateSqlSourceTestBase {
         'description' => 'file 1-1-1',
         'list' => '0',
         'weight' => '-1',
+      ],
+      [
+        'fid' => '3',
+        'nid' => '12',
+        'vid' => '15',
+        'description' => 'file 12-15-3',
+        'list' => '0',
+        'weight' => '0',
       ],
     ];
 
@@ -54,6 +64,23 @@ class UploadTest extends MigrateSqlSourceTestBase {
         'tnid' => '0',
         'translate' => '0',
       ],
+      [
+        'nid' => '12',
+        'vid' => '15',
+        'type' => 'page',
+        'language' => 'zu',
+        'title' => 'Abantu zulu',
+        'uid' => '1',
+        'status' => '1',
+        'created' => '1444238800',
+        'changed' => '1444238808',
+        'comment' => '0',
+        'promote' => '0',
+        'moderate' => '0',
+        'sticky' => '0',
+        'tnid' => '12',
+        'translate' => '0',
+      ],
     ];
 
     // The expected results.
@@ -66,9 +93,23 @@ class UploadTest extends MigrateSqlSourceTestBase {
             'list' => '0',
           ],
         ],
+        'language' => '',
         'nid' => '1',
         'vid' => '1',
         'type' => 'story',
+      ],
+      [
+        'upload' => [
+          [
+            'fid' => '3',
+            'description' => 'file 12-15-3',
+            'list' => '0',
+          ],
+        ],
+        'language' => 'zu',
+        'nid' => '12',
+        'vid' => '15',
+        'type' => 'page',
       ],
     ];
 

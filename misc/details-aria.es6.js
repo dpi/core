@@ -11,15 +11,20 @@
    */
   Drupal.behaviors.detailsAria = {
     attach() {
-      $('body').once('detailsAria').on('click.detailsAria', 'summary', (event) => {
-        const $summary = $(event.currentTarget);
-        const open = $(event.currentTarget.parentNode).attr('open') === 'open' ? 'false' : 'true';
+      $('body')
+        .once('detailsAria')
+        .on('click.detailsAria', 'summary', (event) => {
+          const $summary = $(event.currentTarget);
+          const open =
+            $(event.currentTarget.parentNode).attr('open') === 'open'
+              ? 'false'
+              : 'true';
 
-        $summary.attr({
-          'aria-expanded': open,
-          'aria-pressed': open,
+          $summary.attr({
+            'aria-expanded': open,
+            'aria-pressed': open,
+          });
         });
-      });
     },
   };
-}(jQuery, Drupal));
+})(jQuery, Drupal);

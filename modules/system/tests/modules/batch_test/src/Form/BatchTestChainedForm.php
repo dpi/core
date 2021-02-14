@@ -7,6 +7,8 @@ use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Generate form of id batch_test_chained_form.
+ *
+ * @internal
  */
 class BatchTestChainedForm extends FormBase {
 
@@ -48,7 +50,7 @@ class BatchTestChainedForm extends FormBase {
   }
 
   /**
-   * Form submission handler #1 for batch_test_chained_form
+   * Form submission handler #1 for batch_test_chained_form.
    */
   public static function batchTestChainedFormSubmit1($form, FormStateInterface $form_state) {
     batch_test_stack(NULL, TRUE);
@@ -64,7 +66,7 @@ class BatchTestChainedForm extends FormBase {
   }
 
   /**
-   * Form submission handler #2 for batch_test_chained_form
+   * Form submission handler #2 for batch_test_chained_form.
    */
   public static function batchTestChainedFormSubmit2($form, FormStateInterface $form_state) {
     batch_test_stack('submit handler 2');
@@ -78,7 +80,7 @@ class BatchTestChainedForm extends FormBase {
   }
 
   /**
-   * Form submission handler #3 for batch_test_chained_form
+   * Form submission handler #3 for batch_test_chained_form.
    */
   public static function batchTestChainedFormSubmit3($form, FormStateInterface $form_state) {
     batch_test_stack('submit handler 3');
@@ -91,7 +93,7 @@ class BatchTestChainedForm extends FormBase {
   }
 
   /**
-   * Form submission handler #4 for batch_test_chained_form
+   * Form submission handler #4 for batch_test_chained_form.
    */
   public static function batchTestChainedFormSubmit4($form, FormStateInterface $form_state) {
     batch_test_stack('submit handler 4');

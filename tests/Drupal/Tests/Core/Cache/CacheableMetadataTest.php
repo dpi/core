@@ -87,12 +87,12 @@ class CacheableMetadataTest extends UnitTestCase {
   public function testAddCacheTags() {
     $metadata = new CacheableMetadata();
     $add_expected = [
-      [[], [] ],
-      [['foo:bar'], ['foo:bar'] ],
-      [['foo:baz'], ['foo:bar', 'foo:baz'] ],
-      [['axx:first', 'foo:baz'], ['axx:first', 'foo:bar', 'foo:baz'] ],
-      [[], ['axx:first', 'foo:bar', 'foo:baz'] ],
-      [['axx:first'], ['axx:first', 'foo:bar', 'foo:baz'] ],
+      [[], []],
+      [['foo:bar'], ['foo:bar']],
+      [['foo:baz'], ['foo:bar', 'foo:baz']],
+      [['axx:first', 'foo:baz'], ['axx:first', 'foo:bar', 'foo:baz']],
+      [[], ['axx:first', 'foo:bar', 'foo:baz']],
+      [['axx:first'], ['axx:first', 'foo:bar', 'foo:baz']],
     ];
 
     foreach ($add_expected as $data) {
@@ -111,7 +111,7 @@ class CacheableMetadataTest extends UnitTestCase {
   public function testSetCacheMaxAge($data, $expect_exception) {
     $metadata = new CacheableMetadata();
     if ($expect_exception) {
-      $this->setExpectedException('\InvalidArgumentException');
+      $this->expectException('\InvalidArgumentException');
     }
     $metadata->setCacheMaxAge($data);
     $this->assertEquals($data, $metadata->getCacheMaxAge());
@@ -128,7 +128,7 @@ class CacheableMetadataTest extends UnitTestCase {
       [new \stdClass(), TRUE],
       [300, FALSE],
       [[], TRUE],
-      [8.0, TRUE]
+      [8.0, TRUE],
    ];
   }
 

@@ -16,11 +16,15 @@
    */
   Drupal.behaviors.localeTranslateDirty = {
     attach() {
-      const $form = $('#locale-translate-edit-form').once('localetranslatedirty');
+      const $form = $('#locale-translate-edit-form').once(
+        'localetranslatedirty',
+      );
       if ($form.length) {
         // Display a notice if any row changed.
         $form.one('formUpdated.localeTranslateDirty', 'table', function () {
-          const $marker = $(Drupal.theme('localeTranslateChangedWarning')).hide();
+          const $marker = $(
+            Drupal.theme('localeTranslateChangedWarning'),
+          ).hide();
           $(this).addClass('changed').before($marker);
           $marker.fadeIn('slow');
         });
@@ -40,7 +44,9 @@
     },
     detach(context, settings, trigger) {
       if (trigger === 'unload') {
-        const $form = $('#locale-translate-edit-form').removeOnce('localetranslatedirty');
+        const $form = $('#locale-translate-edit-form').removeOnce(
+          'localetranslatedirty',
+        );
         if ($form.length) {
           $form.off('formUpdated.localeTranslateDirty');
         }
@@ -58,13 +64,15 @@
    */
   Drupal.behaviors.hideUpdateInformation = {
     attach(context, settings) {
-      const $table = $('#locale-translation-status-form').once('expand-updates');
+      const $table = $('#locale-translation-status-form').once(
+        'expand-updates',
+      );
       if ($table.length) {
         const $tbodies = $table.find('tbody');
 
         // Open/close the description details by toggling a tr class.
         $tbodies.on('click keydown', '.description', function (e) {
-          if (e.keyCode && (e.keyCode !== 13 && e.keyCode !== 32)) {
+          if (e.keyCode && e.keyCode !== 13 && e.keyCode !== 32) {
             return;
           }
           e.preventDefault();
@@ -86,26 +94,34 @@
     },
   };
 
-  $.extend(Drupal.theme, /** @lends Drupal.theme */{
+  $.extend(
+    Drupal.theme,
+    /** @lends Drupal.theme */ {
+      /**
+       * Creates markup for a changed translation marker.
+       *
+       * @return {string}
+       *   Markup for the marker.
+       */
+      localeTranslateChangedMarker() {
+        return `<abbr class="warning ajax-changed" title="${Drupal.t(
+          'Changed',
+        )}">*</abbr>`;
+      },
 
-    /**
-     * Creates markup for a changed translation marker.
-     *
-     * @return {string}
-     *   Markup for the marker.
-     */
-    localeTranslateChangedMarker() {
-      return `<abbr class="warning ajax-changed" title="${Drupal.t('Changed')}">*</abbr>`;
+      /**
+       * Creates markup for the translation changed warning.
+       *
+       * @return {string}
+       *   Markup for the warning.
+       */
+      localeTranslateChangedWarning() {
+        return `<div class="clearfix messages messages--warning">${Drupal.theme(
+          'localeTranslateChangedMarker',
+        )} ${Drupal.t(
+          'Changes made in this table will not be saved until the form is submitted.',
+        )}</div>`;
+      },
     },
-
-    /**
-     * Creates markup for the translation changed warning.
-     *
-     * @return {string}
-     *   Markup for the warning.
-     */
-    localeTranslateChangedWarning() {
-      return `<div class="clearfix messages messages--warning">${Drupal.theme('localeTranslateChangedMarker')} ${Drupal.t('Changes made in this table will not be saved until the form is submitted.')}</div>`;
-    },
-  });
-}(jQuery, Drupal));
+  );
+})(jQuery, Drupal);

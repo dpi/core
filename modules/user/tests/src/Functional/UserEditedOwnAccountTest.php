@@ -3,6 +3,7 @@
 namespace Drupal\Tests\user\Functional;
 
 use Drupal\Tests\BrowserTestBase;
+use Drupal\user\UserInterface;
 
 /**
  * Tests user edited own account can still log in.
@@ -12,16 +13,14 @@ use Drupal\Tests\BrowserTestBase;
 class UserEditedOwnAccountTest extends BrowserTestBase {
 
   /**
-   * Modules to enable.
-   *
-   * @var array
+   * {@inheritdoc}
    */
-  public static $modules = ['user_form_test'];
+  protected $defaultTheme = 'stark';
 
   public function testUserEditedOwnAccount() {
     // Change account setting 'Who can register accounts?' to Administrators
     // only.
-    $this->config('user.settings')->set('register', USER_REGISTER_ADMINISTRATORS_ONLY)->save();
+    $this->config('user.settings')->set('register', UserInterface::REGISTER_ADMINISTRATORS_ONLY)->save();
 
     // Create a new user account and log in.
     $account = $this->drupalCreateUser(['change own username']);
@@ -30,7 +29,7 @@ class UserEditedOwnAccountTest extends BrowserTestBase {
     // Change own username.
     $edit = [];
     $edit['name'] = $this->randomMachineName();
-    $this->drupalPostForm('user/' . $account->id() . '/edit', $edit, t('Save'));
+    $this->drupalPostForm('user/' . $account->id() . '/edit', $edit, 'Save');
 
     // Log out.
     $this->drupalLogout();

@@ -7,6 +7,8 @@ use Drupal\views\Views;
 
 /**
  * Provides a form for editing the details of a View.
+ *
+ * @internal
  */
 class EditDetails extends ViewsFormBase {
 
@@ -39,7 +41,7 @@ class EditDetails extends ViewsFormBase {
     ];
     $form['details']['label'] = [
       '#type' => 'textfield',
-      '#title' => t('Administrative name'),
+      '#title' => $this->t('Administrative name'),
       '#default_value' => $view->label(),
     ];
     $form['details']['langcode'] = [
@@ -50,13 +52,13 @@ class EditDetails extends ViewsFormBase {
     ];
     $form['details']['description'] = [
        '#type' => 'textfield',
-       '#title' => t('Administrative description'),
+       '#title' => $this->t('Administrative description'),
        '#default_value' => $view->get('description'),
      ];
     $form['details']['tag'] = [
       '#type' => 'textfield',
-      '#title' => t('Administrative tags'),
-      '#description' => t('Enter a comma-separated list of words to describe your view.'),
+      '#title' => $this->t('Administrative tags'),
+      '#description' => $this->t('Enter a comma-separated list of words to describe your view.'),
       '#default_value' => $view->get('tag'),
       '#autocomplete_route_name' => 'views_ui.autocomplete',
     ];

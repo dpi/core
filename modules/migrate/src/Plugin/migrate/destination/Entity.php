@@ -6,12 +6,52 @@ use Drupal\Component\Plugin\DependentPluginInterface;
 use Drupal\Core\Entity\DependencyTrait;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\migrate\EntityFieldDefinitionTrait;
 use Drupal\migrate\Plugin\MigrationInterface;
 use Drupal\migrate\Row;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Provides entity destination plugin.
+ * Provides a generic destination to import entities.
+ *
+ * Available configuration keys:
+ * - default_bundle: (optional) The bundle to use for this row if 'bundle' is
+ *   not defined on the row.
+ *
+ * Examples:
+ *
+ * @code
+ * source:
+ *   plugin: d7_node
+ * process:
+ *   nid: tnid
+ *   vid: vid
+ *   langcode: language
+ *   title: title
+ *   ...
+ *   revision_timestamp: timestamp
+ * destination:
+ *   plugin: entity:node
+ * @endcode
+ *
+ * This will save the processed, migrated row as a node.
+ *
+ * @code
+ * source:
+ *   plugin: d7_node
+ * process:
+ *   nid: tnid
+ *   vid: vid
+ *   langcode: language
+ *   title: title
+ *   ...
+ *   revision_timestamp: timestamp
+ * destination:
+ *   plugin: entity:node
+ *   default_bundle: custom
+ * @endcode
+ *
+ * This will save the processed, migrated row as a node of type 'custom'.
  *
  * @MigrateDestination(
  *   id = "entity",
@@ -21,6 +61,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 abstract class Entity extends DestinationBase implements ContainerFactoryPluginInterface, DependentPluginInterface {
 
   use DependencyTrait;
+  use EntityFieldDefinitionTrait;
 
   /**
    * The entity storage.
@@ -45,14 +86,18 @@ abstract class Entity extends DestinationBase implements ContainerFactoryPluginI
    *   The plugin_id for the plugin instance.
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
-   * @param MigrationInterface $migration
+   * @param \Drupal\migrate\Plugin\MigrationInterface $migration
    *   The migration.
-   * @param EntityStorageInterface $storage
+   * @param \Drupal\Core\Entity\EntityStorageInterface $storage
    *   The storage for this entity type.
    * @param array $bundles
    *   The list of bundles this entity type has.
    */
   public function __construct(array $configuration, $plugin_id, $plugin_definition, MigrationInterface $migration, EntityStorageInterface $storage, array $bundles) {
+    $plugin_definition += [
+      'label' => $storage->getEntityType()->getPluralLabel(),
+    ];
+
     parent::__construct($configuration, $plugin_id, $plugin_definition, $migration);
     $this->storage = $storage;
     $this->bundles = $bundles;
@@ -69,23 +114,9 @@ abstract class Entity extends DestinationBase implements ContainerFactoryPluginI
       $plugin_id,
       $plugin_definition,
       $migration,
-      $container->get('entity.manager')->getStorage($entity_type_id),
-      array_keys($container->get('entity.manager')->getBundleInfo($entity_type_id))
+      $container->get('entity_type.manager')->getStorage($entity_type_id),
+      array_keys($container->get('entity_type.bundle.info')->getBundleInfo($entity_type_id))
     );
-  }
-
-  /**
-   * Finds the entity type from configuration or plugin ID.
-   *
-   * @param string $plugin_id
-   *   The plugin ID.
-   *
-   * @return string
-   *   The entity type.
-   */
-  protected static function getEntityTypeId($plugin_id) {
-    // Remove "entity:".
-    return substr($plugin_id, 7);
   }
 
   /**
@@ -106,7 +137,7 @@ abstract class Entity extends DestinationBase implements ContainerFactoryPluginI
   /**
    * {@inheritdoc}
    */
-  public function fields(MigrationInterface $migration = NULL) {
+  public function fields() {
     // TODO: Implement fields() method.
   }
 

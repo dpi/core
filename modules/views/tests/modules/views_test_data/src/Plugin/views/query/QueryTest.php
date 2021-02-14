@@ -60,7 +60,7 @@ class QueryTest extends QueryPluginBase {
     $this->conditions[] = [
       'field' => $field,
       'value' => $value,
-      'operator' => $operator
+      'operator' => $operator,
     ];
 
   }
@@ -73,7 +73,6 @@ class QueryTest extends QueryPluginBase {
   public function addOrderBy($table, $field = NULL, $order = 'ASC', $alias = '', $params = []) {
     $this->orderBy = ['field' => $field, 'order' => $order];
   }
-
 
   public function ensureTable($table, $relationship = NULL, JoinPluginBase $join = NULL) {
     // There is no concept of joins.
@@ -136,6 +135,7 @@ class QueryTest extends QueryPluginBase {
     switch ($condition['operator']) {
       case '=':
         return $value == $condition['value'];
+
       case 'IN':
         return in_array($value, $condition['value']);
     }
@@ -150,5 +150,10 @@ class QueryTest extends QueryPluginBase {
       'content' => ['QueryTest'],
     ];
   }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setFieldTimezoneOffset(&$field, $offset) {}
 
 }

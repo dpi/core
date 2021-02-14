@@ -21,7 +21,15 @@ class RowEntityRenderersTest extends ViewsKernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['field', 'filter', 'text', 'node', 'user', 'language', 'views_test_language'];
+  protected static $modules = [
+    'field',
+    'filter',
+    'text',
+    'node',
+    'user',
+    'language',
+    'views_test_language',
+  ];
 
   /**
    * Views used by this test.
@@ -64,16 +72,13 @@ class RowEntityRenderersTest extends ViewsKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp();
 
     $this->installEntitySchema('node');
     $this->installEntitySchema('user');
     $this->installSchema('node', ['node_access']);
     $this->installConfig(['node', 'language']);
-
-    // The entity.node.canonical route must exist when nodes are rendered.
-    $this->container->get('router.builder')->rebuild();
 
     $this->langcodes = [\Drupal::languageManager()->getDefaultLanguage()->getId()];
     for ($i = 0; $i < 2; $i++) {
@@ -94,7 +99,7 @@ class RowEntityRenderersTest extends ViewsKernelTestBase {
 
     $this->values = [];
     $this->ids = [];
-    $controller = \Drupal::entityManager()->getStorage('node');
+    $controller = \Drupal::entityTypeManager()->getStorage('node');
     $langcode_index = 0;
 
     for ($i = 0; $i < count($this->langcodes); $i++) {

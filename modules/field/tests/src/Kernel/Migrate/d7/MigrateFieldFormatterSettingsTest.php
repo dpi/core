@@ -2,13 +2,9 @@
 
 namespace Drupal\Tests\field\Kernel\Migrate\d7;
 
-use Drupal\comment\Entity\CommentType;
-use Drupal\Core\Database\Database;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\Entity\EntityViewDisplay;
-use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\Tests\migrate_drupal\Kernel\d7\MigrateDrupal7TestBase;
-use Drupal\node\Entity\NodeType;
 
 /**
  * Tests migration of D7 field formatter settings.
@@ -17,12 +13,12 @@ use Drupal\node\Entity\NodeType;
  */
 class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
 
-  public static $modules = [
+  protected static $modules = [
     'comment',
     'datetime',
-    'file',
     'image',
     'link',
+    'menu_ui',
     'node',
     'taxonomy',
     'telephone',
@@ -32,123 +28,10 @@ class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
-
-    $this->installEntitySchema('node');
-    $this->installEntitySchema('comment');
-    $this->installEntitySchema('taxonomy_term');
-
-    CommentType::create([
-      'id' => 'comment_node_page',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    CommentType::create([
-      'id' => 'comment_node_article',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    CommentType::create([
-      'id' => 'comment_node_blog',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    CommentType::create([
-      'id' => 'comment_node_book',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    CommentType::create([
-      'id' => 'comment_node_forum',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    CommentType::create([
-      'id' => 'comment_node_test_content_type',
-      'label' => $this->randomMachineName(),
-    ])->save();
-
-    NodeType::create([
-      'type' => 'page',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    NodeType::create([
-      'type' => 'article',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    NodeType::create([
-      'type' => 'blog',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    NodeType::create([
-      'type' => 'book',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    NodeType::create([
-      'type' => 'forum',
-      'label' => $this->randomMachineName(),
-    ])->save();
-    NodeType::create([
-      'type' => 'test_content_type',
-      'label' => $this->randomMachineName(),
-    ])->save();
-
-    Vocabulary::create(['vid' => 'test_vocabulary'])->save();
-
-    // Give one unfortunate field instance invalid display settings to ensure
-    // that the migration provides an empty array as a default (thus avoiding
-    // an "unsupported operand types" fatal).
-    Database::getConnection('default', 'migrate')
-      ->update('field_config_instance')
-      ->fields([
-        'data' => serialize([
-          'label' => 'Body',
-          'widget' =>
-             [
-              'type' => 'text_textarea_with_summary',
-              'settings' =>
-                 [
-                  'rows' => 20,
-                  'summary_rows' => 5,
-                ],
-              'weight' => -4,
-              'module' => 'text',
-            ],
-          'settings' =>
-             [
-              'display_summary' => TRUE,
-              'text_processing' => 1,
-              'user_register_form' => FALSE,
-            ],
-          'display' =>
-             [
-              'default' =>
-                 [
-                  'label' => 'hidden',
-                  'type' => 'text_default',
-                  'settings' => [],
-                  'module' => 'text',
-                  'weight' => 0,
-                ],
-              'teaser' =>
-                 [
-                  'label' => 'hidden',
-                  'type' => 'text_summary_or_trimmed',
-                  // settings is always expected to be an array. Making it NULL
-                  // causes a fatal.
-                  'settings' => NULL,
-                  'module' => 'text',
-                  'weight' => 0,
-                ],
-            ],
-          'required' => FALSE,
-          'description' => '',
-        ]),
-      ])
-      ->condition('entity_type', 'node')
-      ->condition('bundle', 'article')
-      ->condition('field_name', 'body')
-      ->execute();
-
+    $this->migrateFields();
     $this->executeMigrations([
-      'd7_field',
-      'd7_field_instance',
       'd7_view_modes',
       'd7_field_formatter_settings',
     ]);
@@ -162,7 +45,7 @@ class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
    */
   protected function assertEntity($id) {
     $display = EntityViewDisplay::load($id);
-    $this->assertTrue($display instanceof EntityViewDisplayInterface);
+    $this->assertInstanceOf(EntityViewDisplayInterface::class, $display);
   }
 
   /**
@@ -181,10 +64,10 @@ class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
    */
   protected function assertComponent($display_id, $component_id, $type, $label, $weight) {
     $component = EntityViewDisplay::load($display_id)->getComponent($component_id);
-    $this->assertTrue(is_array($component));
-    $this->assertIdentical($type, $component['type']);
-    $this->assertIdentical($label, $component['label']);
-    $this->assertIdentical($weight, $component['weight']);
+    $this->assertIsArray($component);
+    $this->assertSame($type, $component['type']);
+    $this->assertSame($label, $component['label']);
+    $this->assertSame($weight, $component['weight']);
   }
 
   /**
@@ -197,7 +80,7 @@ class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
    */
   protected function assertComponentNotExists($display_id, $component_id) {
     $component = EntityViewDisplay::load($display_id)->getComponent($component_id);
-    $this->assertTrue(is_null($component));
+    $this->assertNull($component);
   }
 
   /**
@@ -213,8 +96,8 @@ class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
     $this->assertEntity('comment.comment_node_book.default');
     $this->assertComponent('comment.comment_node_book.default', 'comment_body', 'text_default', 'hidden', 0);
 
-    $this->assertEntity('comment.comment_node_forum.default');
-    $this->assertComponent('comment.comment_node_forum.default', 'comment_body', 'text_default', 'hidden', 0);
+    $this->assertEntity('comment.comment_forum.default');
+    $this->assertComponent('comment.comment_forum.default', 'comment_body', 'text_default', 'hidden', 0);
 
     $this->assertEntity('comment.comment_node_page.default');
     $this->assertComponent('comment.comment_node_page.default', 'comment_body', 'text_default', 'hidden', 0);
@@ -222,6 +105,9 @@ class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
     $this->assertEntity('comment.comment_node_test_content_type.default');
     $this->assertComponent('comment.comment_node_test_content_type.default', 'comment_body', 'text_default', 'hidden', 0);
     $this->assertComponent('comment.comment_node_test_content_type.default', 'field_integer', 'number_integer', 'above', 1);
+
+    $this->assertEntity('comment.comment_node_a_thirty_two_char.default');
+    $this->assertComponent('comment.comment_node_a_thirty_two_char.default', 'comment_body', 'text_default', 'hidden', 0);
 
     $this->assertEntity('node.article.default');
     $this->assertComponent('node.article.default', 'body', 'text_default', 'hidden', 0);
@@ -232,6 +118,8 @@ class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
     $this->assertComponent('node.article.default', 'field_text_long_plain', 'basic_string', 'above', 14);
     $this->assertComponent('node.article.default', 'field_text_long_filtered', 'text_default', 'above', 15);
     $this->assertComponent('node.article.default', 'field_text_sum_filtered', 'text_default', 'above', 18);
+    $this->assertComponent('node.article.default', 'field_reference', 'entity_reference_label', 'above', 20);
+    $this->assertComponent('node.article.default', 'field_reference_2', 'entity_reference_entity_view', 'above', 21);
 
     $this->assertEntity('node.article.teaser');
     $this->assertComponent('node.article.teaser', 'body', 'text_summary_or_trimmed', 'hidden', 0);
@@ -243,6 +131,8 @@ class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
 
     $this->assertEntity('node.blog.teaser');
     $this->assertComponent('node.blog.teaser', 'body', 'text_summary_or_trimmed', 'hidden', 0);
+    $this->assertComponent('node.blog.default', 'field_termplain', 'entity_reference_label', 'above', 13);
+    $this->assertComponent('node.blog.default', 'field_termrss', 'entity_reference_label', 'above', 14);
 
     $this->assertEntity('node.book.default');
     $this->assertComponent('node.book.default', 'body', 'text_default', 'hidden', 0);
@@ -283,6 +173,7 @@ class MigrateFieldFormatterSettingsTest extends MigrateDrupal7TestBase {
     $this->assertComponent('node.test_content_type.default', 'field_link', 'link', 'above', 9);
     $this->assertComponent('node.test_content_type.default', 'field_text_list', 'list_default', 'above', 10);
     $this->assertComponent('node.test_content_type.default', 'field_integer_list', 'list_default', 'above', 11);
+    $this->assertComponent('node.test_content_type.default', 'field_float_list', 'list_default', 'above', 19);
     $this->assertComponent('node.test_content_type.default', 'field_long_text', 'text_default', 'above', 12);
     $this->assertComponent('node.test_content_type.default', 'field_node_entityreference', 'entity_reference_label', 'above', 15);
     $this->assertComponent('node.test_content_type.default', 'field_user_entityreference', 'entity_reference_label', 'above', 16);

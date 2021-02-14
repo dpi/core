@@ -8,14 +8,18 @@ use Drupal\Tests\migrate_drupal\Kernel\d6\MigrateDrupal6TestBase;
  * Tests the user profile field instance migration.
  *
  * @group migrate_drupal_6
- * @group legacy
  */
 class MigrateUserProfileFieldInstanceTranslationTest extends MigrateDrupal6TestBase {
 
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['config_translation', 'locale', 'language', 'field'];
+  protected static $modules = [
+    'config_translation',
+    'locale',
+    'language',
+    'field',
+  ];
 
   /**
    * Tests migration of translated user profile fields.
@@ -28,7 +32,7 @@ class MigrateUserProfileFieldInstanceTranslationTest extends MigrateDrupal6TestB
     ]);
     $language_manager = $this->container->get('language_manager');
 
-    $config_translation = $language_manager->getLanguageConfigOverride('fr', 'field.field.user.user.profile_love_migrations');
+    $config_translation = $language_manager->getLanguageConfigOverride('fr', 'field.field.user.user.profile_really_really_love_mig');
     $this->assertSame("J'aime les migrations", $config_translation->get('label'));
     $this->assertSame("Si vous cochez cette case, vous aimez les migrations.", $config_translation->get('description'));
 

@@ -21,7 +21,15 @@ class RowEntityTest extends ViewsKernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['taxonomy', 'text', 'filter', 'field', 'system', 'node', 'user'];
+  protected static $modules = [
+    'taxonomy',
+    'text',
+    'filter',
+    'field',
+    'system',
+    'node',
+    'user',
+  ];
 
   /**
    * Views used by this test.
@@ -33,12 +41,11 @@ class RowEntityTest extends ViewsKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp();
 
     $this->installEntitySchema('taxonomy_term');
     $this->installConfig(['taxonomy']);
-    \Drupal::service('router.builder')->rebuild();
   }
 
   /**
@@ -47,7 +54,7 @@ class RowEntityTest extends ViewsKernelTestBase {
   public function testEntityRow() {
     $vocab = Vocabulary::create(['name' => $this->randomMachineName(), 'vid' => strtolower($this->randomMachineName())]);
     $vocab->save();
-    $term = Term::create(['name' => $this->randomMachineName(), 'vid' => $vocab->id() ]);
+    $term = Term::create(['name' => $this->randomMachineName(), 'vid' => $vocab->id()]);
     $term->save();
 
     $view = Views::getView('test_entity_row');

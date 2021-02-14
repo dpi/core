@@ -7,7 +7,7 @@ use Drupal\Core\Field\FieldItemList;
 use Drupal\Core\Session\AccountInterface;
 
 /**
- * Defines a item list class for comment fields.
+ * Defines an item list class for comment fields.
  */
 class CommentFieldItemList extends FieldItemList {
 
@@ -50,7 +50,7 @@ class CommentFieldItemList extends FieldItemList {
       return $return_as_object ? $result : $result->isAllowed();
     }
     if ($operation === 'view') {
-      // Only users with either post comments or access comments permisison can
+      // Only users with "post comments" or "access comments" permission can
       // view the field value. The formatter,
       // Drupal\comment\Plugin\Field\FieldFormatter\CommentDefaultFormatter,
       // takes care of showing the thread and form based on individual

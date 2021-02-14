@@ -30,7 +30,7 @@ abstract class PluginBase implements PluginInspectionInterface, DerivativeInspec
    * Configuration information passed into the plugin.
    *
    * When using an interface like
-   * \Drupal\Component\Plugin\ConfigurablePluginInterface, this is where the
+   * \Drupal\Component\Plugin\ConfigurableInterface, this is where the
    * configuration should be stored.
    *
    * Plugin configuration is optional, so plugin implementations must provide
@@ -41,7 +41,7 @@ abstract class PluginBase implements PluginInspectionInterface, DerivativeInspec
   protected $configuration;
 
   /**
-   * Constructs a Drupal\Component\Plugin\PluginBase object.
+   * Constructs a \Drupal\Component\Plugin\PluginBase object.
    *
    * @param array $configuration
    *   A configuration array containing information about the plugin instance.
@@ -91,6 +91,16 @@ abstract class PluginBase implements PluginInspectionInterface, DerivativeInspec
    */
   public function getPluginDefinition() {
     return $this->pluginDefinition;
+  }
+
+  /**
+   * Determines if the plugin is configurable.
+   *
+   * @return bool
+   *   A boolean indicating whether the plugin is configurable.
+   */
+  public function isConfigurable() {
+    return $this instanceof ConfigurableInterface;
   }
 
 }

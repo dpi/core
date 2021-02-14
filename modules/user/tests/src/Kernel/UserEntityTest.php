@@ -19,12 +19,12 @@ class UserEntityTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['system', 'user', 'field'];
+  protected static $modules = ['system', 'user', 'field'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('user');
   }
@@ -37,7 +37,7 @@ class UserEntityTest extends KernelTestBase {
    * @see \Drupal\user\Entity\User::removeRole()
    */
   public function testUserMethods() {
-    $role_storage = $this->container->get('entity.manager')->getStorage('user_role');
+    $role_storage = $this->container->get('entity_type.manager')->getStorage('user_role');
     $role_storage->create(['id' => 'test_role_one'])->save();
     $role_storage->create(['id' => 'test_role_two'])->save();
     $role_storage->create(['id' => 'test_role_three'])->save();

@@ -6,6 +6,8 @@ use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Controller for language edit forms.
+ *
+ * @internal
  */
 class LanguageEditForm extends LanguageFormBase {
 
@@ -13,7 +15,7 @@ class LanguageEditForm extends LanguageFormBase {
    * {@inheritdoc}
    */
   public function getFormId() {
-    // @todo Remove in favour of base method.
+    // @todo Remove in favor of base method.
     return 'language_admin_edit_form';
   }
 
@@ -43,7 +45,7 @@ class LanguageEditForm extends LanguageFormBase {
    */
   public function save(array $form, FormStateInterface $form_state) {
     parent::save($form, $form_state);
-    $form_state->setRedirectUrl($this->entity->urlInfo('collection'));
+    $form_state->setRedirectUrl($this->entity->toUrl('collection'));
     $this->logger('language')->notice('The %language (%langcode) language has been updated.', ['%language' => $this->entity->label(), '%langcode' => $this->entity->id()]);
   }
 

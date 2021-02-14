@@ -40,6 +40,7 @@ class PhpTransliterationTest extends TestCase {
    *   self::testRemoveDiacritics().
    */
   public function providerTestPhpTransliterationRemoveDiacritics() {
+    // cSpell:disable
     return [
       // Test all characters in the Unicode range 0x00bf to 0x017f.
       ['ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ', 'AAAAAAÆCEEEEIIII'],
@@ -58,14 +59,15 @@ class PhpTransliterationTest extends TestCase {
       // Test all characters in the Unicode range 0x01CD to 0x024F.
       ['ǍǎǏ', 'AaI'],
       ['ǐǑǒǓǔǕǖǗǘǙǚǛǜǝǞǟ', 'iOoUuUuUuUuUuǝAa'],
-      ['ǠǡǢǣǤǥǦǧǨǩǪǫǬǭǮǯ', 'AaǢǣGgGgKkOoOoǮǯ'],
-      ['ǰǱǲǳǴǵǶǷǸǹǺǻǼǽǾǿ', 'jǱǲǳGgǶǷNnAaǼǽOo'],
+      ['ǠǡǢǣǤǥǦǧǨǩǪǫǬǭǮǯ', 'AaÆæGgGgKkOoOoƷʒ'],
+      ['ǰǱǲǳǴǵǶǷǸǹǺǻǼǽǾǿ', 'jǱǲǳGgǶǷNnAaÆæOo'],
       ['ȀȁȂȃȄȅȆȇȈȉȊȋȌȍȎȏ', 'AaAaEeEeIiIiOoOo'],
       ['ȐȑȒȓȔȕȖȗȘșȚțȜȝȞȟ', 'RrRrUuUuSsTtȜȝHh'],
       ['ȠȡȢȣȤȥȦȧȨȩȪȫȬȭȮȯ', 'ȠȡȢȣZzAaEeOoOoOo'],
       ['ȰȱȲȳȴȵȶȷȸȹȺȻȼȽȾȿ', 'OoYylntjȸȹACcLTs'],
       ['ɀɁɂɃɄɅɆɇɈɉɊɋɌɍɎɏ', 'zɁɂBUɅEeJjQqRrYy'],
     ];
+    // cSpell:enable
   }
 
   /**
@@ -105,8 +107,9 @@ class PhpTransliterationTest extends TestCase {
     $random = $random_generator->string(10);
     // Make some strings with two, three, and four-byte characters for testing.
     // Note that the 3-byte character is overridden by the 'kg' language.
+    // cSpell:disable-next-line
     $two_byte = 'Ä Ö Ü Å Ø äöüåøhello';
-    // This is a Cyrrillic character that looks something like a u. See
+    // This is a Cyrillic character that looks something like a "u". See
     // http://www.unicode.org/charts/PDF/U0400.pdf
     $three_byte = html_entity_decode('&#x446;', ENT_NOQUOTES, 'UTF-8');
     // This is a Canadian Aboriginal character like a triangle. See
@@ -117,8 +120,10 @@ class PhpTransliterationTest extends TestCase {
     // They are not in our tables, but should at least give us '?' (unknown).
     $five_byte = html_entity_decode('&#x10330;&#x10338;', ENT_NOQUOTES, 'UTF-8');
 
+    // cSpell:disable
     return [
-      // Each test case is (language code, input, output).
+      // Each test case is language code, input, output, unknown character, max
+      // length.
       // Test ASCII in English.
       ['en', $random, $random],
       // Test ASCII in some other language with no overrides.
@@ -136,32 +141,41 @@ class PhpTransliterationTest extends TestCase {
       // Test language overrides provided by core.
       ['de', $two_byte, 'Ae Oe Ue A O aeoeueaohello'],
       ['de', $random, $random],
-      ['dk', $two_byte, 'A O U Aa Oe aouaaoehello'],
-      ['dk', $random, $random],
+      ['da', $two_byte, 'A O U Aa Oe aouaaoehello'],
+      ['da', $random, $random],
       ['kg', $three_byte, 'ts'],
       // Test strings in some other languages.
       // Turkish, provided by drupal.org user Kartagis.
       ['tr', 'Abayı serdiler bize. Söyleyeceğim yüzlerine. Sanırım hepimiz aynı şeyi düşünüyoruz.', 'Abayi serdiler bize. Soyleyecegim yuzlerine. Sanirim hepimiz ayni seyi dusunuyoruz.'],
-      // Illegal/unknown unicode.
-      ['en', chr(0xF8) . chr(0x80) . chr(0x80) . chr(0x80) . chr(0x80), '?'],
       // Max length.
-      ['de', $two_byte, 'Ae Oe', '?', 5],
+      ['de', $two_byte, 'Ae Oe Ue A O aeoe', '?', 17],
+      // Do not split up the transliteration of a single character.
+      ['de', $two_byte, 'Ae Oe Ue A O aeoe', '?', 18],
+      // Illegal/unknown unicode.
+      ['en', chr(0xF8) . chr(0x80) . chr(0x80) . chr(0x80) . chr(0x80), '?????'],
+      ['en', chr(0xF8) . chr(0x80) . chr(0x80) . chr(0x80) . chr(0x80), '-----', '-'],
+      ['en', 'Hel' . chr(0x80) . 'o World', 'Hel?o World'],
+      ['en', 'Hell' . chr(0x80) . ' World', 'Hell? World'],
+      // Non default replacement.
+      ['en', chr(0x80) . 'ello World', '_ello World', '_'],
+      // Keep the original question marks.
+      ['en', chr(0xF8) . '?' . chr(0x80), '???'],
+      ['en', chr(0x80) . 'ello ? World?', '_ello ? World?', '_'],
+      ['pl', 'aąeę' . chr(0x80) . 'oółżźz ?', 'aaee?oolzzz ?'],
+      // Non-US-ASCII replacement.
+      ['en', chr(0x80) . 'ello World?', 'Oello World?', 'Ö'],
+      ['pl', chr(0x80) . 'óóść', 'ooosc', 'ó'],
+      // Ensure question marks are replaced when max length used.
+      ['en', chr(0x80) . 'ello ? World?', '_ello ?', '_', 7],
+      // Empty replacement.
+      ['en', chr(0x80) . 'ello World' . chr(0xF8), 'ello World', ''],
+      // Not affecting spacing from the beginning and end of a string.
+      ['en', ' Hello Abventor! ', ' Hello Abventor! '],
+      ['pl', ' Drupal Kraków Community', ' Drupal Krakow ', '?', 15],
+      // Keep many spaces between words.
+      ['en', 'Too    many    spaces between words !', 'Too    many    spaces between words !'],
     ];
-  }
-
-  /**
-   * Tests the transliteration with max length.
-   */
-  public function testTransliterationWithMaxLength() {
-    $transliteration = new PhpTransliteration();
-
-    // Test with max length, using German. It should never split up the
-    // transliteration of a single character.
-    $input = 'Ä Ö Ü Å Ø äöüåøhello';
-    $trunc_output = 'Ae Oe Ue A O aeoe';
-
-    $this->assertSame($trunc_output, $transliteration->transliterate($input, 'de', '?', 17), 'Truncating to 17 characters works');
-    $this->assertSame($trunc_output, $transliteration->transliterate($input, 'de', '?', 18), 'Truncating to 18 characters works');
+    // cSpell:enable
   }
 
   /**
@@ -182,7 +196,7 @@ class PhpTransliterationTest extends TestCase {
     ]);
     $transliteration = new PhpTransliteration(vfsStream::url('transliteration/dir'));
     $transliterated = $transliteration->transliterate(chr(0xC2) . chr(0x82), '../index');
-    $this->assertSame($transliterated, 'safe');
+    $this->assertSame('safe', $transliterated);
   }
 
 }

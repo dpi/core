@@ -12,7 +12,7 @@ class EntityTypeConstraintsTest extends EntityKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('entity_test_constraints');
   }
@@ -23,8 +23,12 @@ class EntityTypeConstraintsTest extends EntityKernelTestBase {
   public function testConstraintDefinition() {
     // Test reading the annotation. There should be two constraints, the defined
     // constraint and the automatically added EntityChanged constraint.
-    $entity_type = $this->entityManager->getDefinition('entity_test_constraints');
-    $default_constraints = ['NotNull' => [], 'EntityChanged' => NULL];
+    $entity_type = $this->entityTypeManager->getDefinition('entity_test_constraints');
+    $default_constraints = [
+      'NotNull' => [],
+      'EntityChanged' => NULL,
+      'EntityUntranslatableFields' => NULL,
+    ];
     $this->assertEqual($default_constraints, $entity_type->getConstraints());
 
     // Enable our test module and test extending constraints.
@@ -33,11 +37,11 @@ class EntityTypeConstraintsTest extends EntityKernelTestBase {
 
     $extra_constraints = ['Test' => []];
     $this->state->set('entity_test_constraints.build', $extra_constraints);
-    // Re-fetch the entity manager from the new container built after the new
-    // modules were enabled.
-    $this->entityManager = $this->container->get('entity.manager');
-    $this->entityManager->clearCachedDefinitions();
-    $entity_type = $this->entityManager->getDefinition('entity_test_constraints');
+    // Re-fetch the entity type manager from the new container built after the
+    // new modules were enabled.
+    $this->entityTypeManager = $this->container->get('entity_type.manager');
+    $this->entityTypeManager->clearCachedDefinitions();
+    $entity_type = $this->entityTypeManager->getDefinition('entity_test_constraints');
     $this->assertEqual($default_constraints + $extra_constraints, $entity_type->getConstraints());
 
     // Test altering constraints.
@@ -46,8 +50,8 @@ class EntityTypeConstraintsTest extends EntityKernelTestBase {
     // Clear the cache in state instance in the Drupal container, so it can pick
     // up the modified value.
     \Drupal::state()->resetCache();
-    $this->entityManager->clearCachedDefinitions();
-    $entity_type = $this->entityManager->getDefinition('entity_test_constraints');
+    $this->entityTypeManager->clearCachedDefinitions();
+    $entity_type = $this->entityTypeManager->getDefinition('entity_test_constraints');
     $this->assertEqual($altered_constraints, $entity_type->getConstraints());
   }
 
@@ -55,15 +59,15 @@ class EntityTypeConstraintsTest extends EntityKernelTestBase {
    * Tests entity constraints are validated.
    */
   public function testConstraintValidation() {
-    $entity = $this->entityManager->getStorage('entity_test_constraints')->create();
+    $entity = $this->entityTypeManager->getStorage('entity_test_constraints')->create();
     $entity->user_id->target_id = 0;
     $violations = $entity->validate();
-    $this->assertEqual($violations->count(), 0, 'Validation passed.');
+    $this->assertEqual(0, $violations->count(), 'Validation passed.');
     $entity->save();
     $entity->changed->value = REQUEST_TIME - 86400;
     $violations = $entity->validate();
-    $this->assertEqual($violations->count(), 1, 'Validation failed.');
-    $this->assertEqual($violations[0]->getMessage(), t('The content has either been modified by another user, or you have already submitted modifications. As a result, your changes cannot be saved.'));
+    $this->assertEqual(1, $violations->count(), 'Validation failed.');
+    $this->assertEqual(t('The content has either been modified by another user, or you have already submitted modifications. As a result, your changes cannot be saved.'), $violations[0]->getMessage());
   }
 
 }

@@ -4,26 +4,28 @@ namespace Drupal\Component\Bridge;
 
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Zend\Feed\Reader\ExtensionManagerInterface as ReaderManagerInterface;
-use Zend\Feed\Writer\ExtensionManagerInterface as WriterManagerInterface;
+use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
+use Laminas\Feed\Reader\ExtensionManagerInterface as ReaderManagerInterface;
+use Laminas\Feed\Writer\ExtensionManagerInterface as WriterManagerInterface;
 
 /**
- * Defines a bridge between the ZF2 service manager to Symfony container.
+ * Defines a bridge between the Laminas service manager to Symfony container.
  */
 class ZfExtensionManagerSfContainer implements ReaderManagerInterface, WriterManagerInterface, ContainerAwareInterface {
 
   /**
-   * This property was based from Zend Framework (http://framework.zend.com/)
-   *
-   * @link http://github.com/zendframework/zf2 for the canonical source repository
-   * @copyright Copyright (c) 2005-2013 Zend Technologies USA Inc. (http://www.zend.com)
-   * @license http://framework.zend.com/license/new-bsd New BSD License
-   *
    * A map of characters to be replaced through strtr.
+   *
+   * This property is based on Laminas service manager.
+   *
+   * @link https://github.com/laminas/laminas-servicemanager for the canonical source repository
+   * @copyright Copyright (c) 2019, Laminas Foundation. (https://getlaminas.org/)
+   * @license https://github.com/laminas/laminas-servicemanager/blob/master/LICENSE.md
    *
    * @var array
    *
    * @see \Drupal\Component\Bridge\ZfExtensionManagerSfContainer::canonicalizeName().
+   * @see https://github.com/laminas/laminas-servicemanager/blob/2.7.11/src/ServiceManager.php#L114
    */
   protected $canonicalNamesReplacements = ['-' => '', '_' => '', ' ' => '', '\\' => '', '/' => ''];
 
@@ -49,6 +51,11 @@ class ZfExtensionManagerSfContainer implements ReaderManagerInterface, WriterMan
   protected $canonicalNames;
 
   /**
+   * @var \Laminas\Feed\Reader\ExtensionManagerInterface|\Laminas\Feed\Writer\ExtensionManagerInterface
+   */
+  protected $standalone;
+
+  /**
    * Constructs a ZfExtensionManagerSfContainer object.
    *
    * @param string $prefix
@@ -62,30 +69,43 @@ class ZfExtensionManagerSfContainer implements ReaderManagerInterface, WriterMan
    * {@inheritdoc}
    */
   public function get($extension) {
-    return $this->container->get($this->prefix . $this->canonicalizeName($extension));
+    try {
+      return $this->container->get($this->prefix . $this->canonicalizeName($extension));
+    }
+    catch (ServiceNotFoundException $e) {
+      if ($this->standalone && $this->standalone->has($extension)) {
+        return $this->standalone->get($extension);
+      }
+      throw $e;
+    }
   }
 
   /**
    * {@inheritdoc}
    */
   public function has($extension) {
-    return $this->container->has($this->prefix . $this->canonicalizeName($extension));
+    if ($this->container->has($this->prefix . $this->canonicalizeName($extension))) {
+      return TRUE;
+    }
+    return $this->standalone && $this->standalone->has($extension);
   }
 
   /**
-   * This method was based from Zend Framework (http://framework.zend.com/)
-   *
-   * @link http://github.com/zendframework/zf2 for the canonical source repository
-   * @copyright Copyright (c) 2005-2013 Zend Technologies USA Inc. (http://www.zend.com)
-   * @license http://framework.zend.com/license/new-bsd New BSD License
-   *
    * Canonicalize the extension name to a service name.
+   *
+   * This method is based on Laminas service manager.
+   *
+   * @link https://github.com/laminas/laminas-servicemanager for the canonical source repository
+   * @copyright Copyright (c) 2019, Laminas Foundation. (https://getlaminas.org/)
+   * @license https://github.com/laminas/laminas-servicemanager/blob/master/LICENSE.md
    *
    * @param string $name
    *   The extension name.
    *
    * @return string
    *   The service name, without the prefix.
+   *
+   * @see https://github.com/laminas/laminas-servicemanager/blob/2.7.11/src/ServiceManager.php#L900
    */
   protected function canonicalizeName($name) {
     if (isset($this->canonicalNames[$name])) {
@@ -100,6 +120,16 @@ class ZfExtensionManagerSfContainer implements ReaderManagerInterface, WriterMan
    */
   public function setContainer(ContainerInterface $container = NULL) {
     $this->container = $container;
+  }
+
+  /**
+   * @param $class
+   */
+  public function setStandalone($class) {
+    if (!is_subclass_of($class, ReaderManagerInterface::class) && !is_subclass_of($class, WriterManagerInterface::class)) {
+      throw new \RuntimeException("$class must implement Laminas\Feed\Reader\ExtensionManagerInterface or Laminas\Feed\Writer\ExtensionManagerInterface");
+    }
+    $this->standalone = new $class();
   }
 
 }

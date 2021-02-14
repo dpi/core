@@ -15,6 +15,8 @@ use Drupal\search\SearchPageInterface;
  * submit, making sure to redirect with a GET parameter of 'keys' included, to
  * trigger the search being processed by the controller, and adding in any
  * additional query parameters they need to execute search.
+ *
+ * @internal
  */
 class SearchPageForm extends FormBase {
 
@@ -69,7 +71,7 @@ class SearchPageForm extends FormBase {
     $form['help_link'] = [
       '#type' => 'link',
       '#url' => new Url('search.help_' . $this->entity->id()),
-      '#title' => $this->t('Search help'),
+      '#title' => $this->t('About searching'),
       '#options' => ['attributes' => ['class' => 'search-help-link']],
     ];
 

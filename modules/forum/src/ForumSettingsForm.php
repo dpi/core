@@ -7,6 +7,8 @@ use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Configure forum settings for this site.
+ *
+ * @internal
  */
 class ForumSettingsForm extends ConfigFormBase {
 
@@ -46,17 +48,17 @@ class ForumSettingsForm extends ConfigFormBase {
       '#options' => array_combine($options, $options),
       '#description' => $this->t('Default number of forum topics displayed per page.'),
     ];
-    $forder = [
+    $order = [
       1 => $this->t('Date - newest first'),
       2 => $this->t('Date - oldest first'),
       3 => $this->t('Posts - most active first'),
-      4 => $this->t('Posts - least active first')
+      4 => $this->t('Posts - least active first'),
     ];
     $form['forum_order'] = [
       '#type' => 'radios',
       '#title' => $this->t('Default order'),
       '#default_value' => $config->get('topics.order'),
-      '#options' => $forder,
+      '#options' => $order,
       '#description' => $this->t('Default display order for topics.'),
     ];
 

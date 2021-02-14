@@ -10,8 +10,9 @@ use Drupal\Core\Field\FieldItemInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Render\Element;
+use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Core\Theme\Registry;
-use Drupal\Core\TypedData\TranslatableInterface;
+use Drupal\Core\TypedData\TranslatableInterface as TranslatableDataInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -19,7 +20,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *
  * @ingroup entity_api
  */
-class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterface, EntityViewBuilderInterface {
+class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterface, EntityViewBuilderInterface, TrustedCallbackInterface {
 
   /**
    * The type of entities for which this view builder is instantiated.
@@ -36,11 +37,18 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
   protected $entityType;
 
   /**
-   * The entity manager service.
+   * The entity repository service.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
+   * @var \Drupal\Core\Entity\EntityRepositoryInterface
    */
-  protected $entityManager;
+  protected $entityRepository;
+
+  /**
+   * The entity display repository.
+   *
+   * @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface
+   */
+  protected $entityDisplayRepository;
 
   /**
    * The cache bin used to store the render cache.
@@ -52,7 +60,7 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
   /**
    * The language manager.
    *
-   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
+   * @var \Drupal\Core\Language\LanguageManagerInterface
    */
   protected $languageManager;
 
@@ -66,9 +74,9 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
   /**
    * The EntityViewDisplay objects created for individual field rendering.
    *
-   * @see \Drupal\Core\Entity\EntityViewBuilder::getSingleFieldDisplay()
+   * @var \Drupal\Core\Entity\Display\EntityViewDisplayInterface[]
    *
-   * @param \Drupal\Core\Entity\Display\EntityViewDisplayInterface[]
+   * @see \Drupal\Core\Entity\EntityViewBuilder::getSingleFieldDisplay()
    */
   protected $singleFieldDisplays;
 
@@ -77,19 +85,22 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
    *
    * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
    *   The entity type definition.
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
-   *   The entity manager service.
+   * @param \Drupal\Core\Entity\EntityRepositoryInterface $entity_repository
+   *   The entity repository service.
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
    *   The language manager.
    * @param \Drupal\Core\Theme\Registry $theme_registry
    *   The theme registry.
+   * @param \Drupal\Core\Entity\EntityDisplayRepositoryInterface $entity_display_repository
+   *   The entity display repository.
    */
-  public function __construct(EntityTypeInterface $entity_type, EntityManagerInterface $entity_manager, LanguageManagerInterface $language_manager, Registry $theme_registry = NULL) {
+  public function __construct(EntityTypeInterface $entity_type, EntityRepositoryInterface $entity_repository, LanguageManagerInterface $language_manager, Registry $theme_registry, EntityDisplayRepositoryInterface $entity_display_repository) {
     $this->entityTypeId = $entity_type->id();
     $this->entityType = $entity_type;
-    $this->entityManager = $entity_manager;
+    $this->entityRepository = $entity_repository;
     $this->languageManager = $language_manager;
-    $this->themeRegistry = $theme_registry ?: \Drupal::service('theme.registry');
+    $this->themeRegistry = $theme_registry;
+    $this->entityDisplayRepository = $entity_display_repository;
   }
 
   /**
@@ -98,9 +109,10 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
   public static function createInstance(ContainerInterface $container, EntityTypeInterface $entity_type) {
     return new static(
       $entity_type,
-      $container->get('entity.manager'),
+      $container->get('entity.repository'),
       $container->get('language_manager'),
-      $container->get('theme.registry')
+      $container->get('theme.registry'),
+      $container->get('entity_display.repository')
     );
   }
 
@@ -123,6 +135,13 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
   /**
    * {@inheritdoc}
    */
+  public static function trustedCallbacks() {
+    return ['build', 'buildMultiple'];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function viewMultiple(array $entities = [], $view_mode = 'full', $langcode = NULL) {
     $build_list = [
       '#sorted' => TRUE,
@@ -132,7 +151,7 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
     foreach ($entities as $key => $entity) {
       // Ensure that from now on we are dealing with the proper translation
       // object.
-      $entity = $this->entityManager->getTranslationFromContext($entity, $langcode);
+      $entity = $this->entityRepository->getTranslationFromContext($entity, $langcode);
 
       // Set build defaults.
       $build_list[$key] = $this->getBuildDefaults($entity, $view_mode);
@@ -189,7 +208,7 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
         'bin' => $this->cacheBin,
       ];
 
-      if ($entity instanceof TranslatableInterface && count($entity->getTranslationLanguages()) > 1) {
+      if ($entity instanceof TranslatableDataInterface && count($entity->getTranslationLanguages()) > 1) {
         $build['#cache']['keys'][] = $entity->language()->getId();
       }
     }
@@ -213,7 +232,7 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
    * @return array
    *   The updated renderable array.
    *
-   * @see drupal_render()
+   * @see \Drupal\Core\Render\RendererInterface::render()
    */
   public function build(array $build) {
     $build_list = [$build];
@@ -237,7 +256,7 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
    * @return array
    *   The updated renderable array.
    *
-   * @see drupal_render()
+   * @see \Drupal\Core\Render\RendererInterface::render()
    */
   public function buildMultiple(array $build_list) {
     // Build the view modes and display objects.
@@ -269,6 +288,7 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
         $this->moduleHandler()->invokeAll($view_hook, [&$build_list[$key], $entity, $display, $view_mode]);
         $this->moduleHandler()->invokeAll('entity_view', [&$build_list[$key], $entity, $display, $view_mode]);
 
+        $this->addContextualLinks($build_list[$key], $entity);
         $this->alterBuild($build_list[$key], $entity, $display, $view_mode);
 
         // Assign the weights configured in the display.
@@ -320,6 +340,36 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
       $display_build = $displays[$bundle]->buildMultiple($bundle_entities);
       foreach ($bundle_entities as $id => $entity) {
         $build[$id] += $display_build[$id];
+      }
+    }
+  }
+
+  /**
+   * Add contextual links.
+   *
+   * @param array $build
+   *   The render array that is being created.
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity to be prepared.
+   */
+  protected function addContextualLinks(array &$build, EntityInterface $entity) {
+    if ($entity->isNew()) {
+      return;
+    }
+    $key = $entity->getEntityTypeId();
+    $rel = 'canonical';
+    if ($entity instanceof ContentEntityInterface && !$entity->isDefaultRevision()) {
+      $rel = 'revision';
+      $key .= '_revision';
+    }
+    if ($entity->hasLinkTemplate($rel)) {
+      $build['#contextual_links'][$key] = [
+        'route_parameters' => $entity->toUrl($rel)->getRouteParameters(),
+      ];
+      if ($entity instanceof EntityChangedInterface) {
+        $build['#contextual_links'][$key]['metadata'] = [
+          'changed' => $entity->getChangedTime(),
+        ];
       }
     }
   }
@@ -387,7 +437,7 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
       // The 'default' is not an actual view mode.
       return TRUE;
     }
-    $view_modes_info = $this->entityManager->getViewModes($this->entityTypeId);
+    $view_modes_info = $this->entityDisplayRepository->getViewModes($this->entityTypeId);
     return !empty($view_modes_info[$view_mode]['cache']);
   }
 
@@ -395,7 +445,15 @@ class EntityViewBuilder extends EntityHandlerBase implements EntityHandlerInterf
    * {@inheritdoc}
    */
   public function viewField(FieldItemListInterface $items, $display_options = []) {
+    /** @var \Drupal\Core\Entity\FieldableEntityInterface $entity */
     $entity = $items->getEntity();
+    // If the field is not translatable and the entity is, then the field item
+    // list always points to the default translation of the entity. Attempt to
+    // fetch it in the current content language.
+    if (!$items->getFieldDefinition()->isTranslatable() && $entity->isTranslatable()) {
+      $entity = $this->entityRepository->getTranslationFromContext($entity);
+    }
+
     $field_name = $items->getFieldDefinition()->getName();
     $display = $this->getSingleFieldDisplay($entity, $field_name, $display_options);
 

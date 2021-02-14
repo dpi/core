@@ -29,7 +29,9 @@ class ExtensionInstallStorage extends InstallStorage {
   /**
    * The name of the currently active installation profile.
    *
-   * @var string
+   * In the early installer this value can be NULL.
+   *
+   * @var string|NULL
    */
   protected $installProfile;
 
@@ -40,27 +42,20 @@ class ExtensionInstallStorage extends InstallStorage {
    *   The active configuration store where the list of enabled modules and
    *   themes is stored.
    * @param string $directory
-   *   The directory to scan in each extension to scan for files. Defaults to
-   *   'config/install'.
+   *   The directory to scan in each extension to scan for files.
    * @param string $collection
-   *   (optional) The collection to store configuration in. Defaults to the
-   *   default collection.
+   *   The collection to store configuration in.
    * @param bool $include_profile
-   *   (optional) Whether to include the install profile in extensions to
+   *   Whether to include the install profile in extensions to
    *   search and to get overrides from.
    * @param string $profile
-   *   (optional) The current installation profile. This parameter will be
-   *   mandatory in Drupal 9.0.0. In Drupal 8.3.0 not providing this parameter
-   *   will trigger a silenced deprecation warning.
+   *   The current installation profile.
    */
-  public function __construct(StorageInterface $config_storage, $directory = self::CONFIG_INSTALL_DIRECTORY, $collection = StorageInterface::DEFAULT_COLLECTION, $include_profile = TRUE, $profile = NULL) {
+  public function __construct(StorageInterface $config_storage, $directory, $collection, $include_profile, $profile) {
     parent::__construct($directory, $collection);
     $this->configStorage = $config_storage;
     $this->includeProfile = $include_profile;
-    if (is_null($profile)) {
-      @trigger_error('Install profile will be a mandatory parameter in Drupal 9.0.', E_USER_DEPRECATED);
-    }
-    $this->installProfile = $profile ?: \Drupal::installProfile();
+    $this->installProfile = $profile;
   }
 
   /**
@@ -70,7 +65,9 @@ class ExtensionInstallStorage extends InstallStorage {
     return new static(
       $this->configStorage,
       $this->directory,
-      $collection
+      $collection,
+      $this->includeProfile,
+      $this->installProfile
     );
   }
 

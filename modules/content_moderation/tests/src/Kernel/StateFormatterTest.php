@@ -5,7 +5,7 @@ namespace Drupal\Tests\content_moderation\Kernel;
 use Drupal\Core\Render\RenderContext;
 use Drupal\entity_test\Entity\EntityTestRev;
 use Drupal\KernelTests\KernelTestBase;
-use Drupal\workflows\Entity\Workflow;
+use Drupal\Tests\content_moderation\Traits\ContentModerationTestTrait;
 
 /**
  * Test the state field formatter.
@@ -14,12 +14,14 @@ use Drupal\workflows\Entity\Workflow;
  */
 class StateFormatterTest extends KernelTestBase {
 
+  use ContentModerationTestTrait;
+
   /**
    * Modules to enable.
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'workflows',
     'content_moderation',
     'entity_test',
@@ -29,14 +31,14 @@ class StateFormatterTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('entity_test_rev');
     $this->installEntitySchema('content_moderation_state');
     $this->installConfig('content_moderation');
 
-    $workflow = Workflow::load('editorial');
+    $workflow = $this->createEditorialWorkflow();
     $workflow->getTypePlugin()->addEntityTypeAndBundle('entity_test_rev', 'entity_test_rev');
     $workflow->save();
   }
@@ -52,7 +54,7 @@ class StateFormatterTest extends KernelTestBase {
     ]);
     $entity->save();
 
-    $field_output = $this->container->get('renderer')->executeInRenderContext(new RenderContext(), function() use ($entity, $formatter_settings) {
+    $field_output = $this->container->get('renderer')->executeInRenderContext(new RenderContext(), function () use ($entity, $formatter_settings) {
       return $entity->moderation_state->view($formatter_settings);
     });
 
@@ -60,7 +62,7 @@ class StateFormatterTest extends KernelTestBase {
   }
 
   /**
-   * Test cases for ::
+   * Test cases for testStateFieldFormatter().
    */
   public function formatterTestCases() {
     return [

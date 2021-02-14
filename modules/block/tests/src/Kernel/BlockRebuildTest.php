@@ -5,7 +5,7 @@ namespace Drupal\Tests\block\Kernel;
 use Drupal\block\Entity\Block;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\KernelTests\KernelTestBase;
-use Drupal\simpletest\BlockCreationTrait;
+use Drupal\Tests\block\Traits\BlockCreationTrait;
 
 /**
  * Tests block_rebuild().
@@ -19,12 +19,12 @@ class BlockRebuildTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['block', 'system'];
+  protected static $modules = ['block', 'system'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->container->get('theme_installer')->install(['stable', 'classy']);
@@ -34,7 +34,7 @@ class BlockRebuildTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static function setUpBeforeClass() {
+  public static function setUpBeforeClass(): void {
     parent::setUpBeforeClass();
 
     // @todo Once block_rebuild() is refactored to auto-loadable code, remove
@@ -47,7 +47,8 @@ class BlockRebuildTest extends KernelTestBase {
    */
   public function testRebuildNoBlocks() {
     block_rebuild();
-    $messages = drupal_get_messages();
+    $messages = \Drupal::messenger()->all();
+    \Drupal::messenger()->deleteAll();
     $this->assertEquals([], $messages);
   }
 
@@ -58,7 +59,8 @@ class BlockRebuildTest extends KernelTestBase {
     $this->placeBlock('system_powered_by_block', ['region' => 'content']);
 
     block_rebuild();
-    $messages = drupal_get_messages();
+    $messages = \Drupal::messenger()->all();
+    \Drupal::messenger()->deleteAll();
     $this->assertEquals([], $messages);
   }
 
@@ -89,7 +91,8 @@ class BlockRebuildTest extends KernelTestBase {
     $block1 = Block::load($block1->id());
     $block2 = Block::load($block2->id());
 
-    $messages = drupal_get_messages();
+    $messages = \Drupal::messenger()->all();
+    \Drupal::messenger()->deleteAll();
     $expected = ['warning' => [new TranslatableMarkup('The block %info was assigned to the invalid region %region and has been disabled.', ['%info' => $block1->id(), '%region' => 'INVALID'])]];
     $this->assertEquals($expected, $messages);
 

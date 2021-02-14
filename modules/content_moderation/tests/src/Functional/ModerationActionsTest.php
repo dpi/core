@@ -3,9 +3,9 @@
 namespace Drupal\Tests\content_moderation\Functional;
 
 use Drupal\node\Entity\Node;
-use Drupal\simpletest\ContentTypeCreationTrait;
 use Drupal\Tests\BrowserTestBase;
-use Drupal\workflows\Entity\Workflow;
+use Drupal\Tests\content_moderation\Traits\ContentModerationTestTrait;
+use Drupal\Tests\node\Traits\ContentTypeCreationTrait;
 
 /**
  * Test the content moderation actions.
@@ -15,13 +15,14 @@ use Drupal\workflows\Entity\Workflow;
 class ModerationActionsTest extends BrowserTestBase {
 
   use ContentTypeCreationTrait;
+  use ContentModerationTestTrait;
 
   /**
    * Modules to enable.
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'content_moderation',
     'node',
     'views',
@@ -30,7 +31,12 @@ class ModerationActionsTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp(): void {
     parent::setUp();
 
     $moderated_bundle = $this->createContentType(['type' => 'moderated_bundle']);
@@ -38,7 +44,7 @@ class ModerationActionsTest extends BrowserTestBase {
     $standard_bundle = $this->createContentType(['type' => 'standard_bundle']);
     $standard_bundle->save();
 
-    $workflow = Workflow::load('editorial');
+    $workflow = $this->createEditorialWorkflow();
     $workflow->getTypePlugin()->addEntityTypeAndBundle('node', 'moderated_bundle');
     $workflow->save();
 

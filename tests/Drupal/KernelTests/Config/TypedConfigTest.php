@@ -21,12 +21,12 @@ class TypedConfigTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['config_test'];
+  protected static $modules = ['config_test'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installConfig('config_test');
@@ -66,7 +66,7 @@ class TypedConfigTest extends KernelTestBase {
     $this->assertInstanceOf(StringInterface::class, $sequence->get('hum1'));
     $this->assertEquals('hum1', $sequence->get('hum1')->getValue());
     $this->assertEquals('hum2', $sequence->get('hum2')->getValue());
-    $this->assertEquals(2, count($sequence->getIterator()));
+    $this->assertCount(2, $sequence->getIterator());
     // Verify the item metadata is available.
     $this->assertInstanceOf(SequenceDataDefinition::class, $sequence->getDataDefinition());
 
@@ -155,11 +155,12 @@ class TypedConfigTest extends KernelTestBase {
     $value = $typed_config->getValue();
     unset($value['giraffe']);
     $value['elephant'] = 'foo';
+    $value['zebra'] = 'foo';
     $typed_config->setValue($value);
     $result = $typed_config->validate();
     $this->assertCount(1, $result);
     $this->assertEquals('', $result->get(0)->getPropertyPath());
-    $this->assertEquals('Missing giraffe.', $result->get(0)->getMessage());
+    $this->assertEquals('Unexpected keys: elephant, zebra', $result->get(0)->getMessage());
   }
 
 }

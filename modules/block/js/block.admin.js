@@ -10,7 +10,7 @@
     attach: function attach(context, settings) {
       var $input = $('input.block-filter-text').once('block-filter-text');
       var $table = $($input.attr('data-element'));
-      var $filter_rows = void 0;
+      var $filterRows;
 
       function filterBlockList(e) {
         var query = $(e.target).val().toLowerCase();
@@ -23,28 +23,26 @@
         }
 
         if (query.length >= 2) {
-          $filter_rows.each(toggleBlockEntry);
+          $filterRows.each(toggleBlockEntry);
           Drupal.announce(Drupal.formatPlural($table.find('tr:visible').length - 1, '1 block is available in the modified list.', '@count blocks are available in the modified list.'));
         } else {
-          $filter_rows.each(function (index) {
+          $filterRows.each(function (index) {
             $(this).parent().parent().show();
           });
         }
       }
 
       if ($table.length) {
-        $filter_rows = $table.find('div.block-filter-text-source');
+        $filterRows = $table.find('div.block-filter-text-source');
         $input.on('keyup', debounce(filterBlockList, 200));
       }
     }
   };
-
   Drupal.behaviors.blockHighlightPlacement = {
     attach: function attach(context, settings) {
-      if (settings.blockPlacement) {
+      if (settings.blockPlacement && $('.js-block-placed').length) {
         $(context).find('[data-drupal-selector="edit-blocks"]').once('block-highlight').each(function () {
           var $container = $(this);
-
           $('html, body').animate({
             scrollTop: $('.js-block-placed').offset().top - $container.offset().top + $container.scrollTop()
           }, 500);

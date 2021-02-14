@@ -14,7 +14,17 @@ class HelpBlockTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['help', 'help_page_test', 'block', 'more_help_page_test'];
+  protected static $modules = [
+    'help',
+    'help_page_test',
+    'block',
+    'more_help_page_test',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * The help block instance.
@@ -23,7 +33,7 @@ class HelpBlockTest extends BrowserTestBase {
    */
   protected $helpBlock;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->helpBlock = $this->placeBlock('help_block');
   }
@@ -33,7 +43,7 @@ class HelpBlockTest extends BrowserTestBase {
    */
   public function testHelp() {
     $this->drupalGet('help_page_test/has_help');
-    $this->assertText(t('I have help!'));
+    $this->assertText('I have help!');
     $this->assertText($this->helpBlock->label());
 
     $this->drupalGet('help_page_test/no_help');

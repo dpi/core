@@ -15,7 +15,7 @@ class UserTest extends MigrateSqlSourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['user', 'migrate_drupal'];
+  protected static $modules = ['user', 'migrate_drupal'];
 
   /**
    * {@inheritdoc}
@@ -24,6 +24,12 @@ class UserTest extends MigrateSqlSourceTestBase {
     $tests = [];
 
     // The source data.
+    $tests[0]['source_data']['field_config'] = [
+      [
+        'id' => '11',
+        'translatable' => '0',
+      ],
+    ];
     $tests[0]['source_data']['field_config_instance'] = [
       [
         'id' => '33',

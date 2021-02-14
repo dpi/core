@@ -16,14 +16,41 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
  *
  * DrupalDateTime::createFromArray( array('year' => 2010, 'month' => 9, 'day' => 28) )
  *
- * @see \Drupal/Component/Datetime/DateTimePlus.php
+ * @see \Drupal\Component\Datetime\DateTimePlus
  */
 class DrupalDateTime extends DateTimePlus {
 
   use StringTranslationTrait;
 
   /**
-   * Format string translation cache.
+   * Formatted strings translation cache.
+   *
+   * Translation cache represents an instance storage for formatted date
+   * strings. It contains a multidimensional array where:
+   * - first level keys - are drupal language codes;
+   * - second level keys - are each symbols of given format string (like 'F');
+   * - third level keys - are original matched strings related to the symbol;
+   * - values - are translated or not-translated original strings (depends on
+   *   if a particular symbol represents translatable value according to PHP's
+   *   date() format character).
+   *
+   * For example:
+   * @code
+   *   [
+   *     'en' => [
+   *       'F' => [
+   *         'November' => t('November'),
+   *         'December' => t('December'),
+   *       ],
+   *       'd' => [
+   *         '10' => '10',
+   *         '31' => '31',
+   *       ],
+   *     ],
+   *   ]
+   * @endcode
+   *
+   * @var array
    */
   protected $formatTranslationCache;
 
@@ -38,7 +65,7 @@ class DrupalDateTime extends DateTimePlus {
    *   timezone are ignored when the $time parameter either is a UNIX timestamp
    *   (e.g. @946684800) or specifies a timezone
    *   (e.g. 2010-01-28T15:00:00+02:00).
-   *   @see http://php.net/manual/en/datetime.construct.php
+   *   @see http://php.net/manual/datetime.construct.php
    * @param array $settings
    *   - validate_format: (optional) Boolean choice to validate the
    *     created date using the input format. The format used in
@@ -71,7 +98,7 @@ class DrupalDateTime extends DateTimePlus {
   protected function prepareTimezone($timezone) {
     if (empty($timezone)) {
       // Fallback to user or system default timezone.
-      $timezone = drupal_get_user_timezone();
+      $timezone = date_default_timezone_get();
     }
     return parent::prepareTimezone($timezone);
   }
@@ -108,7 +135,7 @@ class DrupalDateTime extends DateTimePlus {
       $format = parent::format($format, $settings);
 
       // Translates a formatted date string.
-      $translation_callback = function($matches) use ($langcode) {
+      $translation_callback = function ($matches) use ($langcode) {
         $code = $matches[1];
         $string = $matches[2];
         if (!isset($this->formatTranslationCache[$langcode][$code][$string])) {

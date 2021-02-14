@@ -12,24 +12,12 @@ use Drupal\Tests\UnitTestCase;
 class StaticMenuLinkOverridesTest extends UnitTestCase {
 
   /**
-   * Tests the constructor.
-   *
-   * @covers ::__construct
-   */
-  public function testConstruct() {
-    $config_factory = $this->getConfigFactoryStub(['core.menu.static_menu_link_overrides' => []]);
-    $static_override = new StaticMenuLinkOverrides($config_factory);
-
-    $this->assertAttributeEquals($config_factory, 'configFactory', $static_override);
-  }
-
-  /**
    * Tests the reload method.
    *
    * @covers ::reload
    */
   public function testReload() {
-    $config_factory = $this->getMock('Drupal\Core\Config\ConfigFactoryInterface');
+    $config_factory = $this->createMock('Drupal\Core\Config\ConfigFactoryInterface');
     $config_factory->expects($this->at(0))
       ->method('reset')
       ->with('core.menu.static_menu_link_overrides');
@@ -111,14 +99,14 @@ class StaticMenuLinkOverridesTest extends UnitTestCase {
 
     $definition_save_1 = [
       'definitions' => [
-        'test1' => ['parent' => 'test0', 'menu_name' => '', 'weight' => 0, 'expanded' => FALSE, 'enabled' => FALSE]
-      ]
+        'test1' => ['parent' => 'test0', 'menu_name' => '', 'weight' => 0, 'expanded' => FALSE, 'enabled' => FALSE],
+      ],
     ];
     $definitions_save_2 = [
       'definitions' => [
         'test1' => ['parent' => 'test0', 'menu_name' => '', 'weight' => 0, 'expanded' => FALSE, 'enabled' => FALSE],
-        'test1__la___ma' => ['parent' => 'test1', 'menu_name' => '', 'weight' => 0, 'expanded' => FALSE, 'enabled' => FALSE]
-      ]
+        'test1__la___ma' => ['parent' => 'test1', 'menu_name' => '', 'weight' => 0, 'expanded' => FALSE, 'enabled' => FALSE],
+      ],
     ];
     $config->expects($this->at(2))
       ->method('set')
@@ -141,7 +129,7 @@ class StaticMenuLinkOverridesTest extends UnitTestCase {
     $config->expects($this->at(7))
       ->method('save');
 
-    $config_factory = $this->getMock('Drupal\Core\Config\ConfigFactoryInterface');
+    $config_factory = $this->createMock('Drupal\Core\Config\ConfigFactoryInterface');
     $config_factory->expects($this->once())
       ->method('getEditable')
       ->will($this->returnValue($config));
@@ -183,7 +171,7 @@ class StaticMenuLinkOverridesTest extends UnitTestCase {
         ->method('save');
     }
 
-    $config_factory = $this->getMock('Drupal\Core\Config\ConfigFactoryInterface');
+    $config_factory = $this->createMock('Drupal\Core\Config\ConfigFactoryInterface');
     $config_factory->expects($this->once())
       ->method('getEditable')
       ->will($this->returnValue($config));

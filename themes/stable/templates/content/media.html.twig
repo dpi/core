@@ -8,11 +8,10 @@
  * - content: Media content.
  *
  * @see template_preprocess_media()
- *
- * @ingroup themeable
  */
 #}
 <article{{ attributes }}>
+  {{ title_suffix.contextual_links }}
   {% if content %}
     {{ content }}
   {% endif %}

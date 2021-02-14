@@ -27,7 +27,7 @@ class FieldTypePluginManager extends DefaultPluginManager implements FieldTypePl
   protected $typedDataManager;
 
   /**
-   * Constructs the FieldTypePluginManager object
+   * Constructs the FieldTypePluginManager object.
    *
    * @param \Traversable $namespaces
    *   An object that implements \Traversable which contains the root paths
@@ -135,7 +135,7 @@ class FieldTypePluginManager extends DefaultPluginManager implements FieldTypePl
     // Add preconfigured definitions.
     foreach ($definitions as $id => $definition) {
       if (is_subclass_of($definition['class'], '\Drupal\Core\Field\PreconfiguredFieldUiOptionsInterface')) {
-        foreach ($definition['class']::getPreconfiguredOptions() as $key => $option) {
+        foreach ($this->getPreconfiguredOptions($definition['id']) as $key => $option) {
           $definitions['field_ui:' . $id . ':' . $key] = [
             'label' => $option['label'],
           ] + $definition;
@@ -153,9 +153,21 @@ class FieldTypePluginManager extends DefaultPluginManager implements FieldTypePl
   /**
    * {@inheritdoc}
    */
+  public function getPreconfiguredOptions($field_type) {
+    $options = [];
+    $class = $this->getPluginClass($field_type);
+    if (is_subclass_of($class, '\Drupal\Core\Field\PreconfiguredFieldUiOptionsInterface')) {
+      $options = $class::getPreconfiguredOptions();
+      $this->moduleHandler->alter('field_ui_preconfigured_options', $options, $field_type);
+    }
+    return $options;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getPluginClass($type) {
-    $plugin_definition = $this->getDefinition($type, FALSE);
-    return $plugin_definition['class'];
+    return $this->getDefinition($type)['class'];
   }
 
 }

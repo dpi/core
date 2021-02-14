@@ -69,7 +69,7 @@ class DiscoveryTraitTest extends TestCase {
     $method_ref = new \ReflectionMethod($trait, 'doGetDefinition');
     $method_ref->setAccessible(TRUE);
     // Call doGetDefinition, with $exception_on_invalid always TRUE.
-    $this->setExpectedException(PluginNotFoundException::class);
+    $this->expectException(PluginNotFoundException::class);
     $method_ref->invoke($trait, $definitions, $plugin_id, TRUE);
   }
 
@@ -106,7 +106,7 @@ class DiscoveryTraitTest extends TestCase {
       ->method('getDefinitions')
       ->willReturn($definitions);
     // Call getDefinition(), with $exception_on_invalid always TRUE.
-    $this->setExpectedException(PluginNotFoundException::class);
+    $this->expectException(PluginNotFoundException::class);
     $trait->getDefinition($plugin_id, TRUE);
   }
 

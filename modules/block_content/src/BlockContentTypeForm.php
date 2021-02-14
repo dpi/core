@@ -8,7 +8,9 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\language\Entity\ContentLanguageSettings;
 
 /**
- * Base form for category edit forms.
+ * The block content type entity form.
+ *
+ * @internal
  */
 class BlockContentTypeForm extends BundleEntityFormBase {
 
@@ -30,10 +32,10 @@ class BlockContentTypeForm extends BundleEntityFormBase {
 
     $form['label'] = [
       '#type' => 'textfield',
-      '#title' => t('Label'),
+      '#title' => $this->t('Label'),
       '#maxlength' => 255,
       '#default_value' => $block_type->label(),
-      '#description' => t("Provide a label for this block type to help identify it in the administration pages."),
+      '#description' => $this->t("Provide a label for this block type to help identify it in the administration pages."),
       '#required' => TRUE,
     ];
     $form['id'] = [
@@ -48,21 +50,21 @@ class BlockContentTypeForm extends BundleEntityFormBase {
     $form['description'] = [
       '#type' => 'textarea',
       '#default_value' => $block_type->getDescription(),
-      '#description' => t('Enter a description for this block type.'),
-      '#title' => t('Description'),
+      '#description' => $this->t('Enter a description for this block type.'),
+      '#title' => $this->t('Description'),
     ];
 
     $form['revision'] = [
       '#type' => 'checkbox',
-      '#title' => t('Create new revision'),
+      '#title' => $this->t('Create new revision'),
       '#default_value' => $block_type->shouldCreateNewRevision(),
-      '#description' => t('Create a new revision by default for this block type.'),
+      '#description' => $this->t('Create a new revision by default for this block type.'),
     ];
 
     if ($this->moduleHandler->moduleExists('language')) {
       $form['language'] = [
         '#type' => 'details',
-        '#title' => t('Language settings'),
+        '#title' => $this->t('Language settings'),
         '#group' => 'additional_settings',
       ];
 
@@ -82,7 +84,7 @@ class BlockContentTypeForm extends BundleEntityFormBase {
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = [
       '#type' => 'submit',
-      '#value' => t('Save'),
+      '#value' => $this->t('Save'),
     ];
 
     return $this->protectBundleIdElement($form);
@@ -95,19 +97,19 @@ class BlockContentTypeForm extends BundleEntityFormBase {
     $block_type = $this->entity;
     $status = $block_type->save();
 
-    $edit_link = $this->entity->link($this->t('Edit'));
+    $edit_link = $this->entity->toLink($this->t('Edit'), 'edit-form')->toString();
     $logger = $this->logger('block_content');
     if ($status == SAVED_UPDATED) {
-      drupal_set_message(t('Custom block type %label has been updated.', ['%label' => $block_type->label()]));
+      $this->messenger()->addStatus($this->t('Custom block type %label has been updated.', ['%label' => $block_type->label()]));
       $logger->notice('Custom block type %label has been updated.', ['%label' => $block_type->label(), 'link' => $edit_link]);
     }
     else {
       block_content_add_body_field($block_type->id());
-      drupal_set_message(t('Custom block type %label has been added.', ['%label' => $block_type->label()]));
+      $this->messenger()->addStatus($this->t('Custom block type %label has been added.', ['%label' => $block_type->label()]));
       $logger->notice('Custom block type %label has been added.', ['%label' => $block_type->label(), 'link' => $edit_link]);
     }
 
-    $form_state->setRedirectUrl($this->entity->urlInfo('collection'));
+    $form_state->setRedirectUrl($this->entity->toUrl('collection'));
   }
 
 }

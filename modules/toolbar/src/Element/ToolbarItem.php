@@ -18,7 +18,7 @@ class ToolbarItem extends RenderElement {
    * {@inheritdoc}
    */
   public function getInfo() {
-    $class = get_class($this);
+    $class = static::class;
     return [
       '#pre_render' => [
         [$class, 'preRenderToolbarItem'],
@@ -56,7 +56,6 @@ class ToolbarItem extends RenderElement {
       // Provide attributes necessary for trays.
       $attributes += [
         'data-toolbar-tray' => $id . '-tray',
-        'aria-owns' => $id . '-tray',
         'role' => 'button',
         'aria-pressed' => 'false',
       ];

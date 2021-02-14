@@ -7,7 +7,6 @@ use Drupal\Core\EventSubscriber\MainContentViewSubscriber;
 use Drupal\Tests\system\Functional\Cache\AssertPageCacheContextsAndTagsTrait;
 use Drupal\Tests\BrowserTestBase;
 
-
 /**
  * Tests the cache contexts for toolbar.
  *
@@ -22,7 +21,12 @@ class ToolbarCacheContextsTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['toolbar', 'test_page_test'];
+  protected static $modules = ['toolbar', 'test_page_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * An authenticated user to use for testing.
@@ -52,11 +56,23 @@ class ToolbarCacheContextsTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->adminUser = $this->drupalCreateUser($this->perms);
     $this->adminUser2 = $this->drupalCreateUser($this->perms);
+  }
+
+  /**
+   * Tests toolbar cache integration.
+   */
+  public function testCacheIntegration() {
+    $this->installExtraModules(['dynamic_page_cache']);
+    $this->drupalLogin($this->adminUser);
+    $this->drupalGet('test-page');
+    $this->assertSession()->responseHeaderEquals('X-Drupal-Dynamic-Cache', 'MISS');
+    $this->drupalGet('test-page');
+    $this->assertSession()->responseHeaderEquals('X-Drupal-Dynamic-Cache', 'HIT');
   }
 
   /**
@@ -82,11 +98,6 @@ class ToolbarCacheContextsTest extends BrowserTestBase {
     $this->adminUser2 = $this->drupalCreateUser(array_merge($this->perms, ['access tour']));
     $this->assertToolbarCacheContexts(['user.permissions'], 'Expected cache contexts found with tour module enabled.');
     \Drupal::service('module_installer')->uninstall(['tour']);
-
-    // Test with shortcut module enabled.
-    $this->installExtraModules(['shortcut']);
-    $this->adminUser2 = $this->drupalCreateUser(array_merge($this->perms, ['access shortcuts', 'administer shortcuts']));
-    $this->assertToolbarCacheContexts(['user'], 'Expected cache contexts found with shortcut module enabled.');
   }
 
   /**
@@ -120,12 +131,7 @@ class ToolbarCacheContextsTest extends BrowserTestBase {
     $this->drupalGet('test-page');
     $return = $return && $this->assertCacheContexts($cache_contexts);
 
-    if ($return) {
-      $this->pass($message);
-    }
-    else {
-      $this->fail($message);
-    }
+    $this->assertTrue($return, $message);
     return $return;
   }
 

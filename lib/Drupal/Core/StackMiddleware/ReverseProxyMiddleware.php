@@ -58,24 +58,16 @@ class ReverseProxyMiddleware implements HttpKernelInterface {
   public static function setSettingsOnRequest(Request $request, Settings $settings) {
     // Initialize proxy settings.
     if ($settings->get('reverse_proxy', FALSE)) {
-      $ip_header = $settings->get('reverse_proxy_header', 'X_FORWARDED_FOR');
-      $request::setTrustedHeaderName($request::HEADER_CLIENT_IP, $ip_header);
-
-      $proto_header = $settings->get('reverse_proxy_proto_header', 'X_FORWARDED_PROTO');
-      $request::setTrustedHeaderName($request::HEADER_CLIENT_PROTO, $proto_header);
-
-      $host_header = $settings->get('reverse_proxy_host_header', 'X_FORWARDED_HOST');
-      $request::setTrustedHeaderName($request::HEADER_CLIENT_HOST, $host_header);
-
-      $port_header = $settings->get('reverse_proxy_port_header', 'X_FORWARDED_PORT');
-      $request::setTrustedHeaderName($request::HEADER_CLIENT_PORT, $port_header);
-
-      $forwarded_header = $settings->get('reverse_proxy_forwarded_header', 'FORWARDED');
-      $request::setTrustedHeaderName($request::HEADER_FORWARDED, $forwarded_header);
-
       $proxies = $settings->get('reverse_proxy_addresses', []);
       if (count($proxies) > 0) {
-        $request::setTrustedProxies($proxies);
+        // Set the default value. This is the most relaxed setting possible and
+        // not recommended for production.
+        $trusted_header_set = Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_HOST | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO | Request::HEADER_FORWARDED;
+
+        $request::setTrustedProxies(
+          $proxies,
+          $settings->get('reverse_proxy_trusted_headers', $trusted_header_set)
+        );
       }
     }
   }

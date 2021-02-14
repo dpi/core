@@ -22,7 +22,7 @@ use Drupal\migrate\Row;
  * process:
  *   destination_field:
  *     plugin: callback
- *     callable: strtolower
+ *     callable: mb_strtolower
  *     source: source_field
  * @endcode
  *
@@ -34,7 +34,7 @@ use Drupal\migrate\Row;
  *     plugin: callback
  *     callable:
  *       - '\Drupal\Component\Utility\Unicode'
- *       - strtolower
+ *       - ucfirst
  *     source: source_field
  * @endcode
  *
@@ -49,11 +49,21 @@ class Callback extends ProcessPluginBase {
   /**
    * {@inheritdoc}
    */
-  public function transform($value, MigrateExecutableInterface $migrate_executable, Row $row, $destination_property) {
-    if (is_callable($this->configuration['callable'])) {
-      $value = call_user_func($this->configuration['callable'], $value);
+  public function __construct(array $configuration, $plugin_id, $plugin_definition) {
+    if (!isset($configuration['callable'])) {
+      throw new \InvalidArgumentException('The "callable" must be set.');
     }
-    return $value;
+    elseif (!is_callable($configuration['callable'])) {
+      throw new \InvalidArgumentException('The "callable" must be a valid function or method.');
+    }
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function transform($value, MigrateExecutableInterface $migrate_executable, Row $row, $destination_property) {
+    return call_user_func($this->configuration['callable'], $value);
   }
 
 }

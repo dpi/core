@@ -13,7 +13,9 @@ use Drupal\workflows\TransitionInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Class WorkflowTransitionEditForm.
+ * Entity form variant for editing workflow transitions.
+ *
+ * @internal
  */
 class WorkflowTransitionEditForm extends EntityForm {
 
@@ -78,10 +80,9 @@ class WorkflowTransitionEditForm extends EntityForm {
 
     $form['label'] = [
       '#type' => 'textfield',
-      '#title' => $this->t('Label'),
+      '#title' => $this->t('Transition label'),
       '#maxlength' => 255,
       '#default_value' => $transition->label(),
-      '#description' => $this->t('Label for the transition.'),
       '#required' => TRUE,
     ];
 
@@ -156,7 +157,7 @@ class WorkflowTransitionEditForm extends EntityForm {
   }
 
   /**
-   * Copies top-level form values to entity properties
+   * Copies top-level form values to entity properties.
    *
    * This form can only change values for a state, which is part of workflow.
    *
@@ -197,7 +198,7 @@ class WorkflowTransitionEditForm extends EntityForm {
     }
 
     $workflow->save();
-    drupal_set_message($this->t('Saved %label transition.', [
+    $this->messenger()->addStatus($this->t('Saved %label transition.', [
       '%label' => $workflow->getTypePlugin()->getTransition($this->transitionId)->label(),
     ]));
     $form_state->setRedirectUrl($workflow->toUrl('edit-form'));
@@ -223,8 +224,8 @@ class WorkflowTransitionEditForm extends EntityForm {
       ],
       '#url' => Url::fromRoute('entity.workflow.delete_transition_form', [
         'workflow' => $this->entity->id(),
-        'workflow_transition' => $this->transitionId
-      ])
+        'workflow_transition' => $this->transitionId,
+      ]),
     ];
 
     return $actions;

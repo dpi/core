@@ -15,20 +15,20 @@ class MigrationPluginManagerTest extends UnitTestCase {
   /**
    * A plugin manager.
    *
-   * @param \Drupal\migrate\Plugin\MigrationPluginManager $pluginManager
+   * @var \Drupal\migrate\Plugin\MigrationPluginManager
    */
   protected $pluginManager;
 
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  public function setUp(): void {
     parent::setUp();
 
     // Get a plugin manager for testing.
-    $module_handler = $this->getMock('Drupal\Core\Extension\ModuleHandlerInterface');
-    $cache_backend = $this->getMock('Drupal\Core\Cache\CacheBackendInterface');
-    $language_manager = $this->getMock('Drupal\Core\Language\LanguageManagerInterface');
+    $module_handler = $this->createMock('Drupal\Core\Extension\ModuleHandlerInterface');
+    $cache_backend = $this->createMock('Drupal\Core\Cache\CacheBackendInterface');
+    $language_manager = $this->createMock('Drupal\Core\Language\LanguageManagerInterface');
     $this->pluginManager = new MigrationPluginManager($module_handler, $cache_backend, $language_manager);
   }
 
@@ -57,7 +57,7 @@ class MigrationPluginManagerTest extends UnitTestCase {
       else {
         $requirements = array_combine($requirements, $requirements);
 
-        $this->assertEquals(1, count($migration->set));
+        $this->assertCount(1, $migration->set);
         list($set_prop, $set_requirements) = reset($migration->set);
         $this->assertEquals('requirements', $set_prop);
         $this->assertEquals($requirements, $set_requirements);
@@ -183,7 +183,7 @@ class TestMigrationMock extends Migration {
   /**
    * The values passed into set().
    *
-   * @var array $set
+   * @var array
    */
   public $set = [];
 

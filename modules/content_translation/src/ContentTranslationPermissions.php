@@ -3,7 +3,8 @@
 namespace Drupal\content_translation;
 
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
-use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -15,11 +16,18 @@ class ContentTranslationPermissions implements ContainerInjectionInterface {
   use StringTranslationTrait;
 
   /**
-   * The entity manager.
+   * The entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityManager;
+  protected $entityTypeManager;
+
+  /**
+   * The entity bundle info.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeBundleInfoInterface
+   */
+  protected $entityTypeBundleInfo;
 
   /**
    * The content translation manager.
@@ -31,14 +39,17 @@ class ContentTranslationPermissions implements ContainerInjectionInterface {
   /**
    * Constructs a ContentTranslationPermissions instance.
    *
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
-   *   The entity manager.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
    * @param \Drupal\content_translation\ContentTranslationManagerInterface $content_translation_manager
    *   The content translation manager.
+   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $entity_type_bundle_info
+   *   The entity type bundle info.
    */
-  public function __construct(EntityManagerInterface $entity_manager, ContentTranslationManagerInterface $content_translation_manager) {
-    $this->entityManager = $entity_manager;
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, ContentTranslationManagerInterface $content_translation_manager, EntityTypeBundleInfoInterface $entity_type_bundle_info) {
+    $this->entityTypeManager = $entity_type_manager;
     $this->contentTranslationManager = $content_translation_manager;
+    $this->entityTypeBundleInfo = $entity_type_bundle_info;
   }
 
   /**
@@ -46,8 +57,9 @@ class ContentTranslationPermissions implements ContainerInjectionInterface {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('entity.manager'),
-      $container->get('content_translation.manager')
+      $container->get('entity_type.manager'),
+      $container->get('content_translation.manager'),
+      $container->get('entity_type.bundle.info')
     );
   }
 
@@ -60,13 +72,13 @@ class ContentTranslationPermissions implements ContainerInjectionInterface {
     $permission = [];
     // Create a translate permission for each enabled entity type and (optionally)
     // bundle.
-    foreach ($this->entityManager->getDefinitions() as $entity_type_id => $entity_type) {
+    foreach ($this->entityTypeManager->getDefinitions() as $entity_type_id => $entity_type) {
       if ($permission_granularity = $entity_type->getPermissionGranularity()) {
-        $t_args = ['@entity_label' => $entity_type->getLowercaseLabel()];
+        $t_args = ['@entity_label' => $entity_type->getSingularLabel()];
 
         switch ($permission_granularity) {
           case 'bundle':
-            foreach ($this->entityManager->getBundleInfo($entity_type_id) as $bundle => $bundle_info) {
+            foreach ($this->entityTypeBundleInfo->getBundleInfo($entity_type_id) as $bundle => $bundle_info) {
               if ($this->contentTranslationManager->isEnabled($entity_type_id, $bundle)) {
                 $t_args['%bundle_label'] = isset($bundle_info['label']) ? $bundle_info['label'] : $bundle;
                 $permission["translate $bundle $entity_type_id"] = [

@@ -19,7 +19,14 @@ class FieldAccessTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['entity_test', 'field', 'system', 'text', 'filter', 'user'];
+  protected static $modules = [
+    'entity_test',
+    'field',
+    'system',
+    'text',
+    'filter',
+    'user',
+  ];
 
   /**
    * Holds the currently active global user ID that initiated the test run.
@@ -31,10 +38,19 @@ class FieldAccessTest extends KernelTestBase {
    */
   protected $activeUid;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     // Install field configuration.
     $this->installConfig(['field']);
+
+    $this->installEntitySchema('entity_test');
+    $this->installEntitySchema('entity_test_mul');
+    $this->installEntitySchema('entity_test_mul_langcode_key');
+    $this->installEntitySchema('entity_test_mul_changed');
+    $this->installEntitySchema('entity_test_rev');
+    $this->installEntitySchema('entity_test_mulrev');
+    $this->installEntitySchema('entity_test_mulrev_changed');
+
     // The users table is needed for creating dummy user accounts.
     $this->installEntitySchema('user');
     // Register entity_test text field.

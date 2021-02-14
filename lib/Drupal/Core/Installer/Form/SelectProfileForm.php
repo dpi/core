@@ -2,13 +2,24 @@
 
 namespace Drupal\Core\Installer\Form;
 
+use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Site\Settings;
 
 /**
  * Provides the profile selection form.
+ *
+ * @internal
  */
 class SelectProfileForm extends FormBase {
+
+  /**
+   * The key used in the profile list for the install from config option.
+   *
+   * This key must not be a valid profile extension name.
+   */
+  const CONFIG_INSTALL_PROFILE_KEY = '::existing_config::';
 
   /**
    * {@inheritdoc}
@@ -70,7 +81,47 @@ class SelectProfileForm extends FormBase {
     ];
     foreach (array_keys($names) as $profile_name) {
       $form['profile'][$profile_name]['#description'] = isset($profiles[$profile_name]['description']) ? $this->t($profiles[$profile_name]['description']) : '';
+      // @todo Remove hardcoding of 'demo_umami' profile for a generic warning
+      // system in https://www.drupal.org/project/drupal/issues/2822414.
+      if ($profile_name === 'demo_umami') {
+        $this->addUmamiWarning($form);
+      }
     }
+
+    $config_sync_directory = Settings::get('config_sync_directory');
+    if (!empty($config_sync_directory)) {
+      $sync = new FileStorage($config_sync_directory);
+      $extensions = $sync->read('core.extension');
+      $site = $sync->read('system.site');
+      if (isset($site['name']) && isset($extensions['profile']) && in_array($extensions['profile'], array_keys($names), TRUE)) {
+        // Ensure the profile can be installed from configuration. Install
+        // profile's which implement hook_INSTALL() are not supported.
+        // @todo https://www.drupal.org/project/drupal/issues/2982052 Remove
+        //   this restriction.
+        module_load_install($extensions['profile']);
+        if (!function_exists($extensions['profile'] . '_install')) {
+          $form['profile']['#options'][static::CONFIG_INSTALL_PROFILE_KEY] = $this->t('Use existing configuration');
+          $form['profile'][static::CONFIG_INSTALL_PROFILE_KEY]['#description'] = [
+            'description' => [
+              '#markup' => $this->t('Install %name using existing configuration.', ['%name' => $site['name']]),
+            ],
+            'info' => [
+              '#type' => 'item',
+              '#markup' => $this->t('The configuration from the directory %sync_directory will be used.', ['%sync_directory' => $config_sync_directory]),
+              '#wrapper_attributes' => [
+                'class' => ['messages', 'messages--status'],
+              ],
+              '#states' => [
+                'visible' => [
+                  ':input[name="profile"]' => ['value' => static::CONFIG_INSTALL_PROFILE_KEY],
+                ],
+              ],
+            ],
+          ];
+        }
+      }
+    }
+
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = [
       '#type' => 'submit',
@@ -85,7 +136,37 @@ class SelectProfileForm extends FormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     global $install_state;
-    $install_state['parameters']['profile'] = $form_state->getValue('profile');
+    $profile = $form_state->getValue('profile');
+    if ($profile === static::CONFIG_INSTALL_PROFILE_KEY) {
+      $sync = new FileStorage(Settings::get('config_sync_directory'));
+      $profile = $sync->read('core.extension')['profile'];
+      $install_state['parameters']['existing_config'] = TRUE;
+    }
+    $install_state['parameters']['profile'] = $profile;
+  }
+
+  /**
+   * Show profile warning if 'demo_umami' profile is selected.
+   */
+  protected function addUmamiWarning(array &$form) {
+    // Warning to show when this profile is selected.
+    $description = $form['profile']['demo_umami']['#description'];
+    // Re-defines radio #description to show warning when selected.
+    $form['profile']['demo_umami']['#description'] = [
+      'warning' => [
+        '#type' => 'item',
+        '#markup' => $this->t('This profile is intended for demonstration purposes only.'),
+        '#wrapper_attributes' => [
+          'class' => ['messages', 'messages--warning'],
+        ],
+        '#states' => [
+          'visible' => [
+            ':input[name="profile"]' => ['value' => 'demo_umami'],
+          ],
+        ],
+      ],
+      'description' => ['#markup' => $description],
+    ];
   }
 
 }

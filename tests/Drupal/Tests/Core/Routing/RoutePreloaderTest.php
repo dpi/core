@@ -4,7 +4,7 @@ namespace Drupal\Tests\Core\Routing;
 
 use Drupal\Core\Routing\RoutePreloader;
 use Drupal\Tests\UnitTestCase;
-use Symfony\Component\EventDispatcher\Event;
+use Drupal\Component\EventDispatcher\Event;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
@@ -18,14 +18,14 @@ class RoutePreloaderTest extends UnitTestCase {
   /**
    * The mocked route provider.
    *
-   * @var \Drupal\Core\Routing\RouteProviderInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Routing\RouteProviderInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $routeProvider;
 
   /**
    * The mocked state.
    *
-   * @var \Drupal\Core\State\StateInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\State\StateInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $state;
 
@@ -39,17 +39,17 @@ class RoutePreloaderTest extends UnitTestCase {
   /**
    * The mocked cache.
    *
-   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $cache;
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
-    $this->routeProvider = $this->getMock('Drupal\Core\Routing\PreloadableRouteProviderInterface');
-    $this->state = $this->getMock('\Drupal\Core\State\StateInterface');
-    $this->cache = $this->getMock('Drupal\Core\Cache\CacheBackendInterface');
+  protected function setUp(): void {
+    $this->routeProvider = $this->createMock('Drupal\Core\Routing\PreloadableRouteProviderInterface');
+    $this->state = $this->createMock('\Drupal\Core\State\StateInterface');
+    $this->cache = $this->createMock('Drupal\Core\Cache\CacheBackendInterface');
     $this->preloader = new RoutePreloader($this->routeProvider, $this->state, $this->cache);
   }
 
@@ -96,7 +96,6 @@ class RoutePreloaderTest extends UnitTestCase {
     $this->preloader->onAlterRoutes($event);
     $this->preloader->onFinishedRoutes(new Event());
   }
-
 
   /**
    * Tests onAlterRoutes with admin routes and non admin routes.

@@ -5,7 +5,7 @@ namespace Drupal\views\Plugin\views\filter;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
- * Simple filter to handle greater than/less than filters
+ * Simple filter to handle greater than/less than filters.
  *
  * @ingroup views_filter_handlers
  *
@@ -26,7 +26,67 @@ class NumericFilter extends FilterPluginBase {
       ],
     ];
 
+    $options['expose']['contains']['placeholder'] = ['default' => ''];
+    $options['expose']['contains']['min_placeholder'] = ['default' => ''];
+    $options['expose']['contains']['max_placeholder'] = ['default' => ''];
+
     return $options;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function defaultExposeOptions() {
+    parent::defaultExposeOptions();
+    $this->options['expose']['min_placeholder'] = NULL;
+    $this->options['expose']['max_placeholder'] = NULL;
+    $this->options['expose']['placeholder'] = NULL;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildExposeForm(&$form, FormStateInterface $form_state) {
+    parent::buildExposeForm($form, $form_state);
+
+    $form['expose']['min_placeholder'] = [
+      '#type' => 'textfield',
+      '#default_value' => $this->options['expose']['min_placeholder'],
+      '#title' => $this->t('Min placeholder'),
+      '#size' => 40,
+      '#description' => $this->t('Hint text that appears inside the Min field when empty.'),
+    ];
+    $form['expose']['max_placeholder'] = [
+      '#type' => 'textfield',
+      '#default_value' => $this->options['expose']['max_placeholder'],
+      '#title' => $this->t('Max placeholder'),
+      '#size' => 40,
+      '#description' => $this->t('Hint text that appears inside the Max field when empty.'),
+    ];
+    // Setup #states for all operators with two value.
+    $states = [[':input[name="options[expose][use_operator]"]' => ['checked' => TRUE]]];
+    foreach ($this->operatorValues(2) as $operator) {
+      $states[] = [
+        ':input[name="options[operator]"]' => ['value' => $operator],
+      ];
+    }
+    $form['expose']['min_placeholder']['#states']['visible'] = $states;
+    $form['expose']['max_placeholder']['#states']['visible'] = $states;
+
+    $form['expose']['placeholder'] = [
+      '#type' => 'textfield',
+      '#default_value' => $this->options['expose']['placeholder'],
+      '#title' => $this->t('Placeholder'),
+      '#size' => 40,
+      '#description' => $this->t('Hint text that appears inside the field when empty.'),
+    ];
+    // Setup #states for all operators with one value.
+    $form['expose']['placeholder']['#states']['visible'] = [[':input[name="options[expose][use_operator]"]' => ['checked' => TRUE]]];
+    foreach ($this->operatorValues(1) as $operator) {
+      $form['expose']['placeholder']['#states']['visible'][] = [
+        ':input[name="options[operator]"]' => ['value' => $operator],
+      ];
+    }
   }
 
   public function operators() {
@@ -109,7 +169,7 @@ class NumericFilter extends FilterPluginBase {
   }
 
   /**
-   * Provide a list of all the numeric operators
+   * Provide a list of all the numeric operators.
    */
   public function operatorOptions($which = 'title') {
     $options = [];
@@ -130,8 +190,9 @@ class NumericFilter extends FilterPluginBase {
 
     return $options;
   }
+
   /**
-   * Provide a simple textfield for equality
+   * Provide a simple textfield for equality.
    */
   protected function valueForm(&$form, FormStateInterface $form_state) {
     $form['value']['#tree'] = TRUE;
@@ -165,6 +226,9 @@ class NumericFilter extends FilterPluginBase {
         '#size' => 30,
         '#default_value' => $this->value['value'],
       ];
+      if (!empty($this->options['expose']['placeholder'])) {
+        $form['value']['value']['#attributes']['placeholder'] = $this->options['expose']['placeholder'];
+      }
       // Setup #states for all operators with one value.
       foreach ($this->operatorValues(1) as $operator) {
         $form['value']['value']['#states']['visible'][] = [
@@ -185,26 +249,50 @@ class NumericFilter extends FilterPluginBase {
         '#size' => 30,
         '#default_value' => $this->value['value'],
       ];
+      if (!empty($this->options['expose']['placeholder'])) {
+        $form['value']['#attributes']['placeholder'] = $this->options['expose']['placeholder'];
+      }
       if ($exposed && !isset($user_input[$identifier])) {
         $user_input[$identifier] = $this->value['value'];
         $form_state->setUserInput($user_input);
       }
     }
 
-    if ($which == 'all' || $which == 'minmax') {
+    // Minimum and maximum form fields are associated to some specific operators
+    // like 'between'. Ensure that min and max fields are only visible if
+    // the associated operator is not excluded from the operator list.
+    $two_value_operators_available = ($which == 'all' || $which == 'minmax');
+
+    if (!empty($this->options['expose']['operator_limit_selection']) &&
+        !empty($this->options['expose']['operator_list'])) {
+      $two_value_operators_available = FALSE;
+      foreach ($this->options['expose']['operator_list'] as $operator) {
+        if (in_array($operator, $this->operatorValues(2), TRUE)) {
+          $two_value_operators_available = TRUE;
+          break;
+        }
+      }
+    }
+
+    if ($two_value_operators_available) {
       $form['value']['min'] = [
         '#type' => 'textfield',
-        '#title' => !$exposed ? $this->t('Min') : $this->exposedInfo()['label'],
+        '#title' => $this->t('Min'),
         '#size' => 30,
         '#default_value' => $this->value['min'],
-        '#description' => !$exposed ? '' : $this->exposedInfo()['description']
       ];
+      if (!empty($this->options['expose']['min_placeholder'])) {
+        $form['value']['min']['#attributes']['placeholder'] = $this->options['expose']['min_placeholder'];
+      }
       $form['value']['max'] = [
         '#type' => 'textfield',
-        '#title' => !$exposed ? $this->t('And max') : $this->t('And'),
+        '#title' => $this->t('Max'),
         '#size' => 30,
         '#default_value' => $this->value['max'],
       ];
+      if (!empty($this->options['expose']['max_placeholder'])) {
+        $form['value']['max']['#attributes']['placeholder'] = $this->options['expose']['max_placeholder'];
+      }
       if ($which == 'all') {
         $states = [];
         // Setup #states for all operators with two values.
@@ -227,7 +315,7 @@ class NumericFilter extends FilterPluginBase {
         // Ensure there is something in the 'value'.
         $form['value'] = [
           '#type' => 'value',
-          '#value' => NULL
+          '#value' => NULL,
         ];
       }
     }
@@ -243,12 +331,24 @@ class NumericFilter extends FilterPluginBase {
     }
   }
 
+  /**
+   * Filters by operator between.
+   *
+   * @param object $field
+   *   The views field.
+   */
   protected function opBetween($field) {
-    if ($this->operator == 'between') {
-      $this->query->addWhere($this->options['group'], $field, [$this->value['min'], $this->value['max']], 'BETWEEN');
+    if (is_numeric($this->value['min']) && is_numeric($this->value['max'])) {
+      $operator = $this->operator == 'between' ? 'BETWEEN' : 'NOT BETWEEN';
+      $this->query->addWhere($this->options['group'], $field, [$this->value['min'], $this->value['max']], $operator);
     }
-    else {
-      $this->query->addWhere($this->options['group'], $field, [$this->value['min'], $this->value['max']], 'NOT BETWEEN');
+    elseif (is_numeric($this->value['min'])) {
+      $operator = $this->operator == 'between' ? '>=' : '<';
+      $this->query->addWhere($this->options['group'], $field, $this->value['min'], $operator);
+    }
+    elseif (is_numeric($this->value['max'])) {
+      $operator = $this->operator == 'between' ? '<=' : '>';
+      $this->query->addWhere($this->options['group'], $field, $this->value['max'], $operator);
     }
   }
 
@@ -297,7 +397,7 @@ class NumericFilter extends FilterPluginBase {
   }
 
   /**
-   * Do some minor translation of the exposed input
+   * Do some minor translation of the exposed input.
    */
   public function acceptExposedInput($input) {
     if (empty($this->options['exposed'])) {
@@ -327,6 +427,7 @@ class NumericFilter extends FilterPluginBase {
               return FALSE;
             }
             break;
+
           case 2:
             if ($value['min'] === '' && $value['max'] === '') {
               return FALSE;

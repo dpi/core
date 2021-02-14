@@ -5,9 +5,9 @@ namespace Drupal\views\Plugin\views\query;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Database\Database;
-use Drupal\Core\Database\Query\Condition;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
 use Drupal\Core\Database\DatabaseExceptionWrapper;
 use Drupal\views\Plugin\views\join\JoinPluginBase;
@@ -36,7 +36,7 @@ class Sql extends QueryPluginBase {
   protected $tableQueue = [];
 
   /**
-   * Holds an array of tables and counts added so that we can create aliases
+   * Holds an array of tables and counts added so that we can create aliases.
    */
   public $tables = [];
 
@@ -61,6 +61,8 @@ class Sql extends QueryPluginBase {
   /**
    * The default operator to use when connecting the WHERE groups. May be
    * AND or OR.
+   *
+   * @var string
    */
   protected $groupOperator = 'AND';
 
@@ -82,9 +84,14 @@ class Sql extends QueryPluginBase {
 
   /**
    * A flag as to whether or not to make the primary field distinct.
+   *
+   * @var bool
    */
   public $distinct = FALSE;
 
+  /**
+   * @var bool
+   */
   protected $hasAggregate = FALSE;
 
   /**
@@ -117,6 +124,20 @@ class Sql extends QueryPluginBase {
   protected $entityTypeManager;
 
   /**
+   * The database-specific date handler.
+   *
+   * @var \Drupal\views\Plugin\views\query\DateSqlInterface
+   */
+  protected $dateSql;
+
+  /**
+   * The messenger.
+   *
+   * @var \Drupal\Core\Messenger\MessengerInterface
+   */
+  protected $messenger;
+
+  /**
    * Constructs a Sql object.
    *
    * @param array $configuration
@@ -127,19 +148,30 @@ class Sql extends QueryPluginBase {
    *   The plugin implementation definition.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
+   * @param \Drupal\views\Plugin\views\query\DateSqlInterface $date_sql
+   *   The database-specific date handler.
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger
+   *   The messenger.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, DateSqlInterface $date_sql, MessengerInterface $messenger) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     $this->entityTypeManager = $entity_type_manager;
+    $this->dateSql = $date_sql;
+    $this->messenger = $messenger;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     return new static(
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('entity_type.manager')
+      $container->get('entity_type.manager'),
+      $container->get('views.date_sql'),
+      $container->get('messenger')
     );
   }
 
@@ -155,7 +187,7 @@ class Sql extends QueryPluginBase {
       'link' => NULL,
       'table' => $base_table,
       'alias' => $base_table,
-      'base' => $base_table
+      'base' => $base_table,
     ];
 
     // init the table queue with our primary table.
@@ -178,6 +210,27 @@ class Sql extends QueryPluginBase {
       'alias' => $base_field,
       'count' => TRUE,
     ];
+  }
+
+  /**
+   * Returns a reference to the table queue array for this query.
+   *
+   * Because this method returns by reference, alter hooks may edit the tables
+   * array directly to make their changes. If just adding tables, however, the
+   * use of the addTable() method is preferred.
+   *
+   * Note that if you want to manipulate the table queue array, this method must
+   * be called by reference as well:
+   *
+   * @code
+   * $tables =& $query->getTableQueue();
+   * @endcode
+   *
+   * @return array
+   *   A reference to the table queue array structure.
+   */
+  public function &getTableQueue() {
+    return $this->tableQueue;
   }
 
   /**
@@ -284,8 +337,8 @@ class Sql extends QueryPluginBase {
    * they must join either to the primary table or to a pre-existing
    * relationship.
    *
-   * An example of a relationship would be a nodereference table.
-   * If you have a nodereference named 'book_parent' which links to a
+   * An example of a relationship would be a node reference table.
+   * If you have a node reference named 'book_parent' which links to a
    * parent node, you could set up a relationship 'node_book_parent'
    * to 'node'. Then, anything that links to 'node' can link to
    * 'node_book_parent' instead, thus allowing all properties of
@@ -814,8 +867,8 @@ class Sql extends QueryPluginBase {
   }
 
   /**
-   * Remove all fields that may've been added; primarily used for summary
-   * mode where we're changing the query because we didn't get data we needed.
+   * Remove all fields that may have been added; primarily used for summary mode
+   * where we're changing the query because we didn't get data we needed.
    */
   public function clearFields() {
     $this->fields = [];
@@ -831,7 +884,7 @@ class Sql extends QueryPluginBase {
    * @code
    * $this->query->addWhere(
    *   $this->options['group'],
-   *   (new Condition('OR'))
+   *   ($this->query->getConnection()->condition('OR'))
    *     ->condition($field, $value, 'NOT IN')
    *     ->condition($field, $value, 'IS NULL')
    * );
@@ -991,7 +1044,7 @@ class Sql extends QueryPluginBase {
 
     $this->orderby[] = [
       'field' => $as,
-      'direction' => strtoupper($order)
+      'direction' => strtoupper($order),
     ];
   }
 
@@ -1057,13 +1110,16 @@ class Sql extends QueryPluginBase {
     $has_arguments = FALSE;
     $has_filter = FALSE;
 
-    $main_group = new Condition('AND');
-    $filter_group = $this->groupOperator == 'OR' ? new Condition('OR') : new Condition('AND');
+    /** @var \Drupal\Core\Database\Connection $connection */
+    $connection = $this->getConnection();
+
+    $main_group = $connection->condition('AND');
+    $filter_group = $this->groupOperator == 'OR' ? $connection->condition('OR') : $connection->condition('AND');
 
     foreach ($this->$where as $group => $info) {
 
       if (!empty($info['conditions'])) {
-        $sub_group = $info['type'] == 'OR' ? new Condition('OR') : new Condition('AND');
+        $sub_group = $info['type'] == 'OR' ? $connection->condition('OR') : $connection->condition('AND');
         foreach ($info['conditions'] as $clause) {
           if ($clause['operator'] == 'formula') {
             $has_condition = TRUE;
@@ -1195,6 +1251,24 @@ class Sql extends QueryPluginBase {
   }
 
   /**
+   * Gets the database connection to use for the view.
+   *
+   * The returned database connection does not have to be the default database
+   * connection. It can also be to another database connection when the view is
+   * to an external database or a replica database.
+   *
+   * @return \Drupal\Core\Database\Connection
+   *   The database connection to be used for the query.
+   */
+  public function getConnection() {
+    // Set the replica target if the replica option is set for the view.
+    $target = empty($this->options['replica']) ? 'default' : 'replica';
+    // Use an external database when the view configured to.
+    $key = $this->view->base_database ?? 'default';
+    return Database::getConnection($target, $key);
+  }
+
+  /**
    * Generate a query and a countquery from all of the information supplied
    * to the object.
    *
@@ -1228,23 +1302,9 @@ class Sql extends QueryPluginBase {
       $this->getCountOptimized = TRUE;
     }
 
-    $options = [];
-    $target = 'default';
-    $key = 'default';
-    // Detect an external database and set the
-    if (isset($this->view->base_database)) {
-      $key = $this->view->base_database;
-    }
-
-    // Set the replica target if the replica option is set
-    if (!empty($this->options['replica'])) {
-      $target = 'replica';
-    }
-
     // Go ahead and build the query.
-    // db_select doesn't support to specify the key, so use getConnection directly.
-    $query = Database::getConnection($target, $key)
-      ->select($this->view->storage->get('base_table'), $this->view->storage->get('base_table'), $options)
+    $query = $this->getConnection()
+      ->select($this->view->storage->get('base_table'), $this->view->storage->get('base_table'))
       ->addTag('views')
       ->addTag('views_' . $this->view->storage->id());
 
@@ -1292,7 +1352,7 @@ class Sql extends QueryPluginBase {
       }
 
       foreach ($entity_information as $entity_type_id => $info) {
-        $entity_type = \Drupal::entityManager()->getDefinition($info['entity_type']);
+        $entity_type = \Drupal::entityTypeManager()->getDefinition($info['entity_type']);
         $base_field = !$info['revision'] ? $entity_type->getKey('id') : $entity_type->getKey('revision');
         $this->addField($info['alias'], $base_field, '', $params);
       }
@@ -1431,8 +1491,7 @@ class Sql extends QueryPluginBase {
       // If not, then hook_query_node_access_alter() may munge the count by
       // adding a distinct against an empty query string
       // (e.g. COUNT DISTINCT(1) ...) and no pager will return.
-      // See pager.inc > PagerDefault::execute()
-      // http://api.drupal.org/api/drupal/includes--pager.inc/function/PagerDefault::execute/7
+      // See \Drupal\Core\Database\Query\PagerSelectExtender::execute()
       // See https://www.drupal.org/node/1046170.
       $count_query->preExecute();
 
@@ -1459,7 +1518,7 @@ class Sql extends QueryPluginBase {
 
         if (!empty($this->limit) || !empty($this->offset)) {
           // We can't have an offset without a limit, so provide a very large limit instead.
-          $limit  = intval(!empty($this->limit) ? $this->limit : 999999);
+          $limit = intval(!empty($this->limit) ? $this->limit : 999999);
           $offset = intval(!empty($this->offset) ? $this->offset : 0);
           $query->range($offset, $limit);
         }
@@ -1469,7 +1528,7 @@ class Sql extends QueryPluginBase {
 
         // Setup the result row objects.
         $view->result = iterator_to_array($result);
-        array_walk($view->result, function(ResultRow $row, $index) {
+        array_walk($view->result, function (ResultRow $row, $index) {
           $row->index = $index;
         });
 
@@ -1483,7 +1542,7 @@ class Sql extends QueryPluginBase {
       catch (DatabaseExceptionWrapper $e) {
         $view->result = [];
         if (!empty($view->live_preview)) {
-          drupal_set_message($e->getMessage(), 'error');
+          $this->messenger->addError($e->getMessage());
         }
         else {
           throw new DatabaseExceptionWrapper("Exception in {$view->storage->label()}[{$view->storage->id()}]: {$e->getMessage()}");
@@ -1499,7 +1558,7 @@ class Sql extends QueryPluginBase {
 
   /**
    * Loads all entities contained in the passed-in $results.
-   *.
+   *
    * If the entity belongs to the base table, then it gets stored in
    * $result->_entity. Otherwise, it gets stored in
    * $result->_relationship_entities[$relationship_id];
@@ -1739,7 +1798,7 @@ class Sql extends QueryPluginBase {
           'filter' => 'groupby_numeric',
           'sort' => 'groupby_numeric',
         ],
-      ]
+      ],
     ];
   }
 
@@ -1755,175 +1814,40 @@ class Sql extends QueryPluginBase {
   /**
    * {@inheritdoc}
    */
-  public function getDateField($field) {
-    $db_type = Database::getConnection()->databaseType();
-    $offset = $this->setupTimezone();
-    if (isset($offset) && !is_numeric($offset)) {
-      $dtz = new \DateTimeZone($offset);
-      $dt = new \DateTime('now', $dtz);
-      $offset_seconds = $dtz->getOffset($dt);
+  public function getDateField($field, $string_date = FALSE, $calculate_offset = TRUE) {
+    $field = $this->dateSql->getDateField($field, $string_date);
+    if ($calculate_offset && $offset = $this->getTimezoneOffset()) {
+      $this->setFieldTimezoneOffset($field, $offset);
     }
-
-    switch ($db_type) {
-      case 'mysql':
-        $field = "DATE_ADD('19700101', INTERVAL $field SECOND)";
-        if (!empty($offset)) {
-          $field = "($field + INTERVAL $offset_seconds SECOND)";
-        }
-        break;
-      case 'pgsql':
-        $field = "TO_TIMESTAMP($field)";
-        if (!empty($offset)) {
-          $field = "($field + INTERVAL '$offset_seconds SECONDS')";
-        }
-        break;
-      case 'sqlite':
-        if (!empty($offset)) {
-          $field = "($field + $offset_seconds)";
-        }
-        break;
-    }
-
     return $field;
   }
 
   /**
    * {@inheritdoc}
    */
+  public function setFieldTimezoneOffset(&$field, $offset) {
+    $this->dateSql->setFieldTimezoneOffset($field, $offset);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function setupTimezone() {
-    $timezone = drupal_get_user_timezone();
-
-    // set up the database timezone
-    $db_type = Database::getConnection()->databaseType();
-    if (in_array($db_type, ['mysql', 'pgsql'])) {
-      $offset = '+00:00';
-      static $already_set = FALSE;
-      if (!$already_set) {
-        if ($db_type == 'pgsql') {
-          Database::getConnection()->query("SET TIME ZONE INTERVAL '$offset' HOUR TO MINUTE");
-        }
-        elseif ($db_type == 'mysql') {
-          Database::getConnection()->query("SET @@session.time_zone = '$offset'");
-        }
-
-        $already_set = TRUE;
-      }
+    // Set the database timezone offset.
+    static $already_set = FALSE;
+    if (!$already_set) {
+      $this->dateSql->setTimezoneOffset('+00:00');
+      $already_set = TRUE;
     }
 
-    return $timezone;
+    return parent::setupTimezone();
   }
 
   /**
    * {@inheritdoc}
    */
   public function getDateFormat($field, $format, $string_date = FALSE) {
-    $db_type = Database::getConnection()->databaseType();
-    switch ($db_type) {
-      case 'mysql':
-        $replace = [
-          'Y' => '%Y',
-          'y' => '%y',
-          'M' => '%b',
-          'm' => '%m',
-          'n' => '%c',
-          'F' => '%M',
-          'D' => '%a',
-          'd' => '%d',
-          'l' => '%W',
-          'j' => '%e',
-          'W' => '%v',
-          'H' => '%H',
-          'h' => '%h',
-          'i' => '%i',
-          's' => '%s',
-          'A' => '%p',
-        ];
-        $format = strtr($format, $replace);
-        return "DATE_FORMAT($field, '$format')";
-      case 'pgsql':
-        $replace = [
-          'Y' => 'YYYY',
-          'y' => 'YY',
-          'M' => 'Mon',
-          'm' => 'MM',
-          // No format for Numeric representation of a month, without leading
-          // zeros.
-          'n' => 'MM',
-          'F' => 'Month',
-          'D' => 'Dy',
-          'd' => 'DD',
-          'l' => 'Day',
-          // No format for Day of the month without leading zeros.
-          'j' => 'DD',
-          'W' => 'IW',
-          'H' => 'HH24',
-          'h' => 'HH12',
-          'i' => 'MI',
-          's' => 'SS',
-          'A' => 'AM',
-        ];
-        $format = strtr($format, $replace);
-        if (!$string_date) {
-          return "TO_CHAR($field, '$format')";
-        }
-        // In order to allow for partials (eg, only the year), transform to a
-        // date, back to a string again.
-        return "TO_CHAR(TO_TIMESTAMP($field, 'YYYY-MM-DD HH24:MI:SS'), '$format')";
-      case 'sqlite':
-        $replace = [
-          'Y' => '%Y',
-          // No format for 2 digit year number.
-          'y' => '%Y',
-          // No format for 3 letter month name.
-          'M' => '%m',
-          'm' => '%m',
-          // No format for month number without leading zeros.
-          'n' => '%m',
-          // No format for full month name.
-          'F' => '%m',
-          // No format for 3 letter day name.
-          'D' => '%d',
-          'd' => '%d',
-          // No format for full day name.
-          'l' => '%d',
-          // no format for day of month number without leading zeros.
-          'j' => '%d',
-          'W' => '%W',
-          'H' => '%H',
-          // No format for 12 hour hour with leading zeros.
-          'h' => '%H',
-          'i' => '%M',
-          's' => '%S',
-          // No format for AM/PM.
-          'A' => '',
-        ];
-        $format = strtr($format, $replace);
-
-        // Don't use the 'unixepoch' flag for string date comparisons.
-        $unixepoch = $string_date ? '' : ", 'unixepoch'";
-
-        // SQLite does not have a ISO week substitution string, so it needs
-        // special handling.
-        // @see http://wikipedia.org/wiki/ISO_week_date#Calculation
-        // @see http://stackoverflow.com/a/15511864/1499564
-        if ($format === '%W') {
-          $expression = "((strftime('%j', date(strftime('%Y-%m-%d', $field" . $unixepoch . "), '-3 days', 'weekday 4')) - 1) / 7 + 1)";
-        }
-        else {
-          $expression = "strftime('$format', $field" . $unixepoch . ")";
-        }
-        // The expression yields a string, but the comparison value is an
-        // integer in case the comparison value is a float, integer, or numeric.
-        // All of the above SQLite format tokens only produce integers. However,
-        // the given $format may contain 'Y-m-d', which results in a string.
-        // @see \Drupal\Core\Database\Driver\sqlite\Connection::expandArguments()
-        // @see http://www.sqlite.org/lang_datefunc.html
-        // @see http://www.sqlite.org/lang_expr.html#castexpr
-        if (preg_match('/^(?:%\w)+$/', $format)) {
-          $expression = "CAST($expression AS NUMERIC)";
-        }
-        return $expression;
-    }
+    return $this->dateSql->getDateFormat($field, $format);
   }
 
 }

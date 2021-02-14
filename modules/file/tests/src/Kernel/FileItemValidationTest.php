@@ -20,7 +20,14 @@ class FileItemValidationTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['file', 'image', 'entity_test', 'field', 'user', 'system'];
+  protected static $modules = [
+    'file',
+    'image',
+    'entity_test',
+    'field',
+    'user',
+    'system',
+  ];
 
   /**
    * A user.
@@ -32,9 +39,10 @@ class FileItemValidationTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
+    $this->installEntitySchema('entity_test');
     $this->installEntitySchema('user');
     $this->installEntitySchema('file');
     $this->installSchema('file', 'file_usage');
@@ -78,9 +86,9 @@ class FileItemValidationTest extends KernelTestBase {
         'default' => [
           'files' => [
             'test.txt' => str_repeat('a', 3000),
-          ]
-        ]
-      ]
+          ],
+        ],
+      ],
     ]);
 
     // Test for max filesize.
@@ -95,7 +103,7 @@ class FileItemValidationTest extends KernelTestBase {
       'uid' => $this->user->id(),
       'field_test_file' => [
         'target_id' => $file->id(),
-      ]
+      ],
     ]);
     $result = $entity_test->validate();
     $this->assertCount(2, $result);
@@ -104,6 +112,18 @@ class FileItemValidationTest extends KernelTestBase {
     $this->assertEquals('The file is <em class="placeholder">2.93 KB</em> exceeding the maximum file size of <em class="placeholder">2 KB</em>.', (string) $result->get(0)->getMessage());
     $this->assertEquals('field_test_file.0', $result->get(1)->getPropertyPath());
     $this->assertEquals('Only files with the following extensions are allowed: <em class="placeholder">jpg|png</em>.', (string) $result->get(1)->getMessage());
+
+    // Refer to a file that does not exist.
+    $entity_test = EntityTest::create([
+      'uid' => $this->user->id(),
+      'field_test_file' => [
+        'target_id' => 2,
+      ],
+    ]);
+    $result = $entity_test->validate();
+    $this->assertCount(1, $result);
+    $this->assertEquals('field_test_file.0.target_id', $result->get(0)->getPropertyPath());
+    $this->assertEquals('The referenced entity (<em class="placeholder">file</em>: <em class="placeholder">2</em>) does not exist.', (string) $result->get(0)->getMessage());
   }
 
   /**

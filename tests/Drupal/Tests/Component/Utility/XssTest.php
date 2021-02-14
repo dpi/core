@@ -7,6 +7,10 @@ use Drupal\Component\Utility\UrlHelper;
 use Drupal\Component\Utility\Xss;
 use PHPUnit\Framework\TestCase;
 
+// cspell:ignore ascript barbaz ckers cript CVEs dynsrc fooÿñ metacharacters
+// cspell:ignore msgbox ncript nfocus nmedi nosuchscheme nosuchtag onmediaerror
+// cspell:ignore scrscriptipt tascript vbscript
+
 /**
  * XSS Filtering tests.
  *
@@ -25,7 +29,7 @@ class XssTest extends TestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $allowed_protocols = [
@@ -247,7 +251,7 @@ class XssTest extends TestCase {
       [
         '<blockquote><script>alert(0)</script></blockquote>',
         'script',
-        'HTML tag stripping evasion -- script in a blockqoute.',
+        'HTML tag stripping evasion -- script in a blockquote.',
         ['blockquote'],
       ],
       [
@@ -480,7 +484,7 @@ class XssTest extends TestCase {
    */
   public function testQuestionSign() {
     $value = Xss::filter('<?xml:namespace ns="urn:schemas-microsoft-com:time">');
-    $this->assertTrue(stripos($value, '<?xml') === FALSE, 'HTML tag stripping evasion -- starting with a question sign (processing instructions).');
+    $this->assertStringNotContainsStringIgnoringCase('<?xml', $value, 'HTML tag stripping evasion -- starting with a question sign (processing instructions).');
   }
 
   /**
@@ -503,31 +507,31 @@ class XssTest extends TestCase {
         '<img src="http://example.com/foo.jpg" title="Example: title" alt="Example: alt">',
         '<img src="http://example.com/foo.jpg" title="Example: title" alt="Example: alt">',
         'Image tag with alt and title attribute',
-        ['img']
+        ['img'],
       ],
       [
         '<a href="https://www.drupal.org/" rel="dc:publisher">Drupal</a>',
         '<a href="https://www.drupal.org/" rel="dc:publisher">Drupal</a>',
         'Link tag with rel attribute',
-        ['a']
+        ['a'],
       ],
       [
         '<span property="dc:subject">Drupal 8: The best release ever.</span>',
         '<span property="dc:subject">Drupal 8: The best release ever.</span>',
         'Span tag with property attribute',
-        ['span']
+        ['span'],
       ],
       [
         '<img src="http://example.com/foo.jpg" data-caption="Drupal 8: The best release ever.">',
         '<img src="http://example.com/foo.jpg" data-caption="Drupal 8: The best release ever.">',
         'Image tag with data attribute',
-        ['img']
+        ['img'],
       ],
       [
         '<a data-a2a-url="foo"></a>',
         '<a data-a2a-url="foo"></a>',
         'Link tag with numeric data attribute',
-        ['a']
+        ['a'],
       ],
     ];
   }
@@ -594,7 +598,7 @@ class XssTest extends TestCase {
    *   (optional) The group this message belongs to. Defaults to 'Other'.
    */
   protected function assertNormalized($haystack, $needle, $message = '', $group = 'Other') {
-    $this->assertTrue(strpos(strtolower(Html::decodeEntities($haystack)), $needle) !== FALSE, $message, $group);
+    $this->assertStringContainsString($needle, strtolower(Html::decodeEntities($haystack)), $message);
   }
 
   /**
@@ -616,7 +620,7 @@ class XssTest extends TestCase {
    *   (optional) The group this message belongs to. Defaults to 'Other'.
    */
   protected function assertNotNormalized($haystack, $needle, $message = '', $group = 'Other') {
-    $this->assertTrue(strpos(strtolower(Html::decodeEntities($haystack)), $needle) === FALSE, $message, $group);
+    $this->assertStringNotContainsString($needle, strtolower(Html::decodeEntities($haystack)), $message);
   }
 
 }

@@ -22,9 +22,17 @@ class ExperimentalModuleTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
-    $this->adminUser = $this->drupalCreateUser(['access administration pages', 'administer modules']);
+    $this->adminUser = $this->drupalCreateUser([
+      'access administration pages',
+      'administer modules',
+    ]);
     $this->drupalLogin($this->adminUser);
   }
 
@@ -37,7 +45,7 @@ class ExperimentalModuleTest extends BrowserTestBase {
     // There should be no confirmation form and no experimental module warning.
     $edit = [];
     $edit["modules[test_page_test][enable]"] = TRUE;
-    $this->drupalPostForm('admin/modules', $edit, t('Install'));
+    $this->drupalPostForm('admin/modules', $edit, 'Install');
     $this->assertText('Module Test page has been enabled.');
     $this->assertNoText('Experimental modules are provided for testing purposes only.');
 
@@ -61,7 +69,7 @@ class ExperimentalModuleTest extends BrowserTestBase {
     $this->assertNoText('You must enable');
 
     // Enable the module and confirm that it worked.
-    $this->drupalPostForm(NULL, [], 'Continue');
+    $this->submitForm([], 'Continue');
     $this->assertText('Experimental Test has been enabled.');
 
     // Uninstall the module.
@@ -88,7 +96,7 @@ class ExperimentalModuleTest extends BrowserTestBase {
     $this->assertText('You must enable the Experimental Test module to install Experimental Dependency Test');
 
     // Enable the module and confirm that it worked.
-    $this->drupalPostForm(NULL, [], 'Continue');
+    $this->submitForm([], 'Continue');
     $this->assertText('2 modules have been enabled: Experimental Dependency Test, Experimental Test');
 
     // Uninstall the modules.
@@ -117,7 +125,7 @@ class ExperimentalModuleTest extends BrowserTestBase {
     $this->assertNoText('You must enable');
 
     // Enable the module and confirm that it worked.
-    $this->drupalPostForm(NULL, [], 'Continue');
+    $this->submitForm([], 'Continue');
     $this->assertText('2 modules have been enabled: Experimental Dependency Test, Experimental Test');
 
     // Try to enable an experimental module that can not be due to
@@ -126,7 +134,9 @@ class ExperimentalModuleTest extends BrowserTestBase {
     $edit = [];
     $edit["modules[experimental_module_requirements_test][enable]"] = TRUE;
     $this->drupalPostForm('admin/modules', $edit, 'Install');
-    $this->assertUrl('admin/modules', [], 'If the module can not be installed we are not taken to the confirm form.');
+    // Verify that if the module can not be installed, we are not taken to the
+    // confirm form.
+    $this->assertSession()->addressEquals('admin/modules');
     $this->assertText('The Experimental Test Requirements module can not be installed.');
   }
 

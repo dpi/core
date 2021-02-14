@@ -5,7 +5,7 @@ namespace Drupal\Tests\Core\Enhancer;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Routing\Enhancer\EntityRevisionRouteEnhancer;
 use Drupal\Tests\UnitTestCase;
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
+use Drupal\Core\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Route;
 
@@ -16,34 +16,30 @@ use Symfony\Component\Routing\Route;
 class EntityRevisionRouteEnhancerTest extends UnitTestCase {
 
   /**
-   * @var \Drupal\entity\RouteEnhancer\EntityRevisionRouteEnhancer
+   * @var \Drupal\Core\Routing\RouteEnhancer\EntityRevisionRouteEnhancer
    */
   protected $routeEnhancer;
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->routeEnhancer = new EntityRevisionRouteEnhancer();
   }
 
   /**
-   * @covers ::applies
-   * @dataProvider providerTestApplies
+   * @covers ::enhance
    */
-  public function testApplies(Route $route, $expected) {
-    $this->assertEquals($expected, $this->routeEnhancer->applies($route));
-  }
+  public function testEnhanceWithoutParameter() {
+    $route = new Route('/test-path/{entity_test}');
 
-  public function providerTestApplies() {
-    $data = [];
-    $data['no-parameter'] = [new Route('/test-path'), FALSE];
-    $data['none-revision-parameters'] = [new Route('/test-path/{entity_test}', [], [], ['parameters' => ['entity_test' => ['type' => 'entity:entity_test']]]), FALSE];
-    $data['with-revision-parameter'] = [new Route('/test-path/{entity_test_revision}', [], [], ['parameters' => ['entity_test_revision' => ['type' => 'entity_revision:entity_test']]]), TRUE];
+    $request = Request::create('/test-path');
 
-    return $data;
+    $defaults = [];
+    $defaults[RouteObjectInterface::ROUTE_OBJECT] = $route;
+    $this->assertEquals($defaults, $this->routeEnhancer->enhance($defaults, $request));
   }
 
   /**

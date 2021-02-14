@@ -79,7 +79,7 @@ class Select extends Query implements SelectInterface {
   protected $having;
 
   /**
-   * Whether or not this query should be DISTINCT
+   * Whether or not this query should be DISTINCT.
    *
    * @var bool
    */
@@ -112,28 +112,30 @@ class Select extends Query implements SelectInterface {
   protected $prepared = FALSE;
 
   /**
-   * The FOR UPDATE status
+   * The FOR UPDATE status.
+   *
+   * @var bool
    */
   protected $forUpdate = FALSE;
 
   /**
    * Constructs a Select object.
    *
+   * @param \Drupal\Core\Database\Connection $connection
+   *   Database connection object.
    * @param string $table
    *   The name of the table that is being queried.
    * @param string $alias
    *   The alias for the table.
-   * @param \Drupal\Core\Database\Connection $connection
-   *   Database connection object.
    * @param array $options
    *   Array of query options.
    */
-  public function __construct($table, $alias, Connection $connection, $options = []) {
+  public function __construct(Connection $connection, $table, $alias = NULL, $options = []) {
     $options['return'] = Database::RETURN_STATEMENT;
     parent::__construct($connection, $options);
     $conjunction = isset($options['conjunction']) ? $options['conjunction'] : 'AND';
-    $this->condition = new Condition($conjunction);
-    $this->having = new Condition($conjunction);
+    $this->condition = $this->connection->condition($conjunction);
+    $this->having = $this->connection->condition($conjunction);
     $this->addJoin(NULL, $table, $alias);
   }
 
@@ -316,9 +318,11 @@ class Select extends Query implements SelectInterface {
    * {@inheritdoc}
    */
   public function extend($extender_name) {
-    $override_class = $extender_name . '_' . $this->connection->driver();
-    if (class_exists($override_class)) {
-      $extender_name = $override_class;
+    $parts = explode('\\', $extender_name);
+    $class = end($parts);
+    $driver_class = $this->connection->getDriverClass($class);
+    if ($driver_class !== $class) {
+      return new $driver_class($this, $this->connection);
     }
     return new $extender_name($this, $this->connection);
   }
@@ -613,13 +617,6 @@ class Select extends Query implements SelectInterface {
   /**
    * {@inheritdoc}
    */
-  public function rightJoin($table, $alias = NULL, $condition = NULL, $arguments = []) {
-    return $this->addJoin('RIGHT OUTER', $table, $alias, $condition, $arguments);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function addJoin($type, $table, $alias = NULL, $condition = NULL, $arguments = []) {
     if (empty($alias)) {
       if ($table instanceof SelectInterface) {
@@ -812,22 +809,24 @@ class Select extends Query implements SelectInterface {
     $fields = [];
     foreach ($this->tables as $alias => $table) {
       if (!empty($table['all_fields'])) {
-        $fields[] = $this->connection->escapeTable($alias) . '.*';
+        $fields[] = $this->connection->escapeAlias($alias) . '.*';
       }
     }
     foreach ($this->fields as $field) {
+      // Note that $field['table'] holds the table_alias.
+      // @see \Drupal\Core\Database\Query\Select::addField
+      $table = isset($field['table']) ? $field['table'] . '.' : '';
       // Always use the AS keyword for field aliases, as some
       // databases require it (e.g., PostgreSQL).
-      $fields[] = (isset($field['table']) ? $this->connection->escapeTable($field['table']) . '.' : '') . $this->connection->escapeField($field['field']) . ' AS ' . $this->connection->escapeAlias($field['alias']);
+      $fields[] = $this->connection->escapeField($table . $field['field']) . ' AS ' . $this->connection->escapeAlias($field['alias']);
     }
     foreach ($this->expressions as $expression) {
       $fields[] = $expression['expression'] . ' AS ' . $this->connection->escapeAlias($expression['alias']);
     }
     $query .= implode(', ', $fields);
 
-
     // FROM - We presume all queries have a FROM, as any query that doesn't won't need the query builder anyway.
-    $query .= "\nFROM ";
+    $query .= "\nFROM";
     foreach ($this->tables as $table) {
       $query .= "\n";
       if (isset($table['join type'])) {
@@ -851,7 +850,7 @@ class Select extends Query implements SelectInterface {
 
       // Don't use the AS keyword for table aliases, as some
       // databases don't support it (e.g., Oracle).
-      $query .= $table_string . ' ' . $this->connection->escapeTable($table['alias']);
+      $query .= $table_string . ' ' . $this->connection->escapeAlias($table['alias']);
 
       if (!empty($table['condition'])) {
         $query .= ' ON ' . (string) $table['condition'];
@@ -913,6 +912,8 @@ class Select extends Query implements SelectInterface {
    * {@inheritdoc}
    */
   public function __clone() {
+    parent::__clone();
+
     // On cloning, also clone the dependent objects. However, we do not
     // want to clone the database connection object as that would duplicate the
     // connection itself.
@@ -921,6 +922,11 @@ class Select extends Query implements SelectInterface {
     $this->having = clone($this->having);
     foreach ($this->union as $key => $aggregate) {
       $this->union[$key]['query'] = clone($aggregate['query']);
+    }
+    foreach ($this->tables as $alias => $table) {
+      if ($table['table'] instanceof SelectInterface) {
+        $this->tables[$alias]['table'] = clone $table['table'];
+      }
     }
   }
 

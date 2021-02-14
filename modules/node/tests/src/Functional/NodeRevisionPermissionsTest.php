@@ -14,6 +14,11 @@ class NodeRevisionPermissionsTest extends NodeTestBase {
   use GeneratePermutationsTrait;
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * The node revisions.
    *
    * @var array
@@ -41,7 +46,7 @@ class NodeRevisionPermissionsTest extends NodeTestBase {
     'delete' => 'delete page revisions',
   ];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $types = ['page', 'article'];
@@ -82,7 +87,10 @@ class NodeRevisionPermissionsTest extends NodeTestBase {
     }
 
     // Create an admin account (returns TRUE for all revision permissions).
-    $admin_account = $this->drupalCreateUser(['access content', 'administer nodes']);
+    $admin_account = $this->drupalCreateUser([
+      'access content',
+      'administer nodes',
+    ]);
     $admin_account->is_admin = TRUE;
     $this->accounts['admin'] = $admin_account;
     $accounts['admin'] = $admin_account;
@@ -102,9 +110,14 @@ class NodeRevisionPermissionsTest extends NodeTestBase {
     $permutations = $this->generatePermutations($parameters);
 
     $node_revision_access = \Drupal::service('access_check.node.revision');
+    $vids = \Drupal::entityQuery('node')
+      ->allRevisions()
+      ->accessCheck(FALSE)
+      ->condition('nid', $revision->id())
+      ->execute();
     foreach ($permutations as $case) {
       // Skip this test if there are no revisions for the node.
-      if (!($revision->isDefaultRevision() && (db_query('SELECT COUNT(vid) FROM {node_field_revision} WHERE nid = :nid', [':nid' => $revision->id()])->fetchField() == 1 || $case['op'] == 'update' || $case['op'] == 'delete'))) {
+      if (!($revision->isDefaultRevision() && (count($vids) == 1 || $case['op'] == 'update' || $case['op'] == 'delete'))) {
         if (!empty($case['account']->is_admin) || $case['account']->hasPermission($this->map[$case['op']])) {
           $this->assertTrue($node_revision_access->checkAccess($revision, $case['account'], $case['op']), "{$this->map[$case['op']]} granted.");
         }
@@ -150,10 +163,15 @@ class NodeRevisionPermissionsTest extends NodeTestBase {
 
     $permutations = $this->generatePermutations($parameters);
     $node_revision_access = \Drupal::service('access_check.node.revision');
+    $vids = \Drupal::entityQuery('node')
+      ->allRevisions()
+      ->accessCheck(FALSE)
+      ->condition('nid', $revision->id())
+      ->execute();
     foreach ($permutations as $case) {
       // Skip this test if there are no revisions for the node.
-      if (!($revision->isDefaultRevision() && (db_query('SELECT COUNT(vid) FROM {node_field_revision} WHERE nid = :nid', [':nid' => $revision->id()])->fetchField() == 1 || $case['op'] == 'update' || $case['op'] == 'delete'))) {
-        if (!empty($case['account']->is_admin) || $case['account']->hasPermission($this->typeMap[$case['op']], $case['account'])) {
+      if (!($revision->isDefaultRevision() && (count($vids) == 1 || $case['op'] == 'update' || $case['op'] == 'delete'))) {
+        if (!empty($case['account']->is_admin) || $case['account']->hasPermission($this->typeMap[$case['op']])) {
           $this->assertTrue($node_revision_access->checkAccess($revision, $case['account'], $case['op']), "{$this->typeMap[$case['op']]} granted.");
         }
         else {

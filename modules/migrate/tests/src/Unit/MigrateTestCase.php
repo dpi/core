@@ -22,26 +22,26 @@ abstract class MigrateTestCase extends UnitTestCase {
   /**
    * The migration ID map.
    *
-   * @var \Drupal\migrate\Plugin\MigrateIdMapInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\migrate\Plugin\MigrateIdMapInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $idMap;
 
   /**
    * Local store for mocking setStatus()/getStatus().
    *
-   * @var \Drupal\migrate\Plugin\MigrationInterface::STATUS_*
+   * @var int
    */
   protected $migrationStatus = MigrationInterface::STATUS_IDLE;
 
   /**
    * Retrieves a mocked migration.
    *
-   * @return \Drupal\migrate\Plugin\MigrationInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @return \Drupal\migrate\Plugin\MigrationInterface|\PHPUnit\Framework\MockObject\MockObject
    *   The mocked migration.
    */
   protected function getMigration() {
     $this->migrationConfiguration += ['migrationClass' => 'Drupal\migrate\Plugin\Migration'];
-    $this->idMap = $this->getMock('Drupal\migrate\Plugin\MigrateIdMapInterface');
+    $this->idMap = $this->createMock('Drupal\migrate\Plugin\MigrateIdMapInterface');
 
     $this->idMap
       ->method('getQualifiedMapTableName')
@@ -61,12 +61,12 @@ abstract class MigrateTestCase extends UnitTestCase {
     // on the test class and use a return callback.
     $migration->expects($this->any())
       ->method('getStatus')
-      ->willReturnCallback(function() {
+      ->willReturnCallback(function () {
         return $this->migrationStatus;
       });
     $migration->expects($this->any())
       ->method('setStatus')
-      ->willReturnCallback(function($status) {
+      ->willReturnCallback(function ($status) {
         $this->migrationStatus = $status;
       });
 
@@ -77,11 +77,6 @@ abstract class MigrateTestCase extends UnitTestCase {
       ]);
 
     $configuration = &$this->migrationConfiguration;
-
-    $migration->method('getHighWaterProperty')
-      ->willReturnCallback(function () use ($configuration) {
-        return isset($configuration['high_water_property']) ? $configuration['high_water_property'] : '';
-      });
 
     $migration->method('set')
       ->willReturnCallback(function ($argument, $value) use (&$configuration) {
@@ -119,7 +114,7 @@ abstract class MigrateTestCase extends UnitTestCase {
 
     // Initialize the DIC with a fake module handler for alterable queries.
     $container = new ContainerBuilder();
-    $container->set('module_handler', $this->getMock('\Drupal\Core\Extension\ModuleHandlerInterface'));
+    $container->set('module_handler', $this->createMock('\Drupal\Core\Extension\ModuleHandlerInterface'));
     \Drupal::setContainer($container);
 
     // Create the tables and load them up with data, skipping empty ones.
@@ -147,7 +142,7 @@ abstract class MigrateTestCase extends UnitTestCase {
   protected function createSchemaFromRow(array $row) {
     // SQLite uses loose ("affinity") typing, so it is OK for every column to be
     // a text field.
-    $fields = array_map(function() {
+    $fields = array_map(function () {
       return ['type' => 'text'];
     }, $row);
     return ['fields' => $fields];
@@ -205,7 +200,7 @@ abstract class MigrateTestCase extends UnitTestCase {
       if (empty($expected_value && $actual_value)) {
         return;
       }
-      $this->assertArrayEquals($expected_value, $actual_value, $message);
+      $this->assertEquals($expected_value, $actual_value, $message);
     }
     else {
       $this->assertSame((string) $expected_value, (string) $actual_value, $message);

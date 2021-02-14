@@ -31,7 +31,7 @@ class MachineNameControllerTest extends UnitTestCase {
    */
   protected $tokenGenerator;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     // Create the machine name controller.
     $this->tokenGenerator = $this->prophesize(CsrfTokenGenerator::class);
@@ -103,7 +103,8 @@ class MachineNameControllerTest extends UnitTestCase {
   public function testMachineNameControllerWithInvalidReplacePattern() {
     $request = Request::create('', 'GET', ['text' => 'Bob', 'langcode' => 'en', 'replace' => 'Alice', 'replace_pattern' => 'Bob', 'replace_token' => 'invalid']);
 
-    $this->setExpectedException(AccessDeniedHttpException::class, "Invalid 'replace_token' query parameter.");
+    $this->expectException(AccessDeniedHttpException::class);
+    $this->expectExceptionMessage("Invalid 'replace_token' query parameter.");
     $this->machineNameController->transliterate($request);
   }
 
@@ -113,7 +114,8 @@ class MachineNameControllerTest extends UnitTestCase {
   public function testMachineNameControllerWithMissingToken() {
     $request = Request::create('', 'GET', ['text' => 'Bob', 'langcode' => 'en', 'replace' => 'Alice', 'replace_pattern' => 'Bob']);
 
-    $this->setExpectedException(AccessDeniedHttpException::class, "Missing 'replace_token' query parameter.");
+    $this->expectException(AccessDeniedHttpException::class);
+    $this->expectExceptionMessage("Missing 'replace_token' query parameter.");
     $this->machineNameController->transliterate($request);
   }
 

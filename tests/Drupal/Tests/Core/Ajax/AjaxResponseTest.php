@@ -6,7 +6,7 @@ use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\EventSubscriber\AjaxResponseSubscriber;
 use Drupal\Tests\UnitTestCase;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 /**
@@ -22,7 +22,7 @@ class AjaxResponseTest extends UnitTestCase {
    */
   protected $ajaxResponse;
 
-  protected function setUp() {
+  protected function setUp(): void {
     $this->ajaxResponse = new AjaxResponse();
   }
 
@@ -33,15 +33,15 @@ class AjaxResponseTest extends UnitTestCase {
    * @see \Drupal\Core\Ajax\AjaxResponse::getCommands()
    */
   public function testCommands() {
-    $command_one = $this->getMock('Drupal\Core\Ajax\CommandInterface');
+    $command_one = $this->createMock('Drupal\Core\Ajax\CommandInterface');
     $command_one->expects($this->once())
       ->method('render')
       ->will($this->returnValue(['command' => 'one']));
-    $command_two = $this->getMock('Drupal\Core\Ajax\CommandInterface');
+    $command_two = $this->createMock('Drupal\Core\Ajax\CommandInterface');
     $command_two->expects($this->once())
       ->method('render')
       ->will($this->returnValue(['command' => 'two']));
-    $command_three = $this->getMock('Drupal\Core\Ajax\CommandInterface');
+    $command_three = $this->createMock('Drupal\Core\Ajax\CommandInterface');
     $command_three->expects($this->once())
       ->method('render')
       ->will($this->returnValue(['command' => 'three']));
@@ -52,9 +52,9 @@ class AjaxResponseTest extends UnitTestCase {
 
     // Ensure that the added commands are in the right order.
     $commands =& $this->ajaxResponse->getCommands();
-    $this->assertSame($commands[1], ['command' => 'one']);
-    $this->assertSame($commands[2], ['command' => 'two']);
-    $this->assertSame($commands[0], ['command' => 'three']);
+    $this->assertSame(['command' => 'one'], $commands[1]);
+    $this->assertSame(['command' => 'two'], $commands[2]);
+    $this->assertSame(['command' => 'three'], $commands[0]);
 
     // Remove one and change one element from commands and ensure the reference
     // worked as expected.
@@ -62,9 +62,9 @@ class AjaxResponseTest extends UnitTestCase {
     $commands[0]['class'] = 'test-class';
 
     $commands = $this->ajaxResponse->getCommands();
-    $this->assertSame($commands[1], ['command' => 'one']);
+    $this->assertSame(['command' => 'one'], $commands[1]);
     $this->assertFalse(isset($commands[2]));
-    $this->assertSame($commands[0], ['command' => 'three', 'class' => 'test-class']);
+    $this->assertSame(['command' => 'three', 'class' => 'test-class'], $commands[0]);
   }
 
   /**
@@ -78,10 +78,10 @@ class AjaxResponseTest extends UnitTestCase {
     $response = new AjaxResponse([]);
     $response->headers->set('Content-Type', 'application/json; charset=utf-8');
 
-    $ajax_response_attachments_processor = $this->getMock('\Drupal\Core\Render\AttachmentsResponseProcessorInterface');
+    $ajax_response_attachments_processor = $this->createMock('\Drupal\Core\Render\AttachmentsResponseProcessorInterface');
     $subscriber = new AjaxResponseSubscriber($ajax_response_attachments_processor);
-    $event = new FilterResponseEvent(
-      $this->getMock('\Symfony\Component\HttpKernel\HttpKernelInterface'),
+    $event = new ResponseEvent(
+      $this->createMock('\Symfony\Component\HttpKernel\HttpKernelInterface'),
       $request,
       HttpKernelInterface::MASTER_REQUEST,
       $response

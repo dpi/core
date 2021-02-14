@@ -7,7 +7,7 @@
 
 namespace Drupal\Tests\Core\Entity;
 
-use Drupal\Core\Entity\Entity;
+use Drupal\Core\Entity\EntityBase;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityResolverManager;
 use Drupal\Core\Form\FormBase;
@@ -30,23 +30,23 @@ class EntityResolverManagerTest extends UnitTestCase {
   protected $entityResolverManager;
 
   /**
-   * The mocked entity manager.
+   * The mocked entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
-  protected $entityManager;
+  protected $entityTypeManager;
 
   /**
    * The mocked class resolver.
    *
-   * @var \Drupal\Core\DependencyInjection\ClassResolverInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\DependencyInjection\ClassResolverInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $classResolver;
 
   /**
    * The mocked dependency injection container.
    *
-   * @var \Symfony\Component\DependencyInjection\ContainerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Symfony\Component\DependencyInjection\ContainerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $container;
 
@@ -55,12 +55,12 @@ class EntityResolverManagerTest extends UnitTestCase {
    *
    * @covers ::__construct
    */
-  protected function setUp() {
-    $this->entityManager = $this->getMock('Drupal\Core\Entity\EntityManagerInterface');
-    $this->container = $this->getMock('Symfony\Component\DependencyInjection\ContainerInterface');
+  protected function setUp(): void {
+    $this->entityTypeManager = $this->createMock('Drupal\Core\Entity\EntityTypeManagerInterface');
+    $this->container = $this->createMock('Symfony\Component\DependencyInjection\ContainerInterface');
     $this->classResolver = $this->getClassResolverStub();
 
-    $this->entityResolverManager = new EntityResolverManager($this->entityManager, $this->classResolver);
+    $this->entityResolverManager = new EntityResolverManager($this->entityTypeManager, $this->classResolver);
   }
 
   /**
@@ -266,7 +266,7 @@ class EntityResolverManagerTest extends UnitTestCase {
   }
 
   /**
-   * Tests setRouteOptions() with an form parameter without interface.
+   * Tests setRouteOptions() with a form parameter without interface.
    *
    * @covers ::setRouteOptions
    * @covers ::getControllerClass
@@ -438,23 +438,37 @@ class EntityResolverManagerTest extends UnitTestCase {
   }
 
   /**
-   * Creates the entity manager mock returning entity type objects.
+   * Creates the entity type manager mock returning entity type objects.
    */
   protected function setupEntityTypes() {
-    $definition = $this->getMock('Drupal\Core\Entity\EntityTypeInterface');
+    $definition = $this->createMock('Drupal\Core\Entity\EntityTypeInterface');
     $definition->expects($this->any())
       ->method('getClass')
       ->will($this->returnValue('Drupal\Tests\Core\Entity\SimpleTestEntity'));
-    $this->entityManager->expects($this->any())
+    $definition->expects($this->any())
+      ->method('isRevisionable')
+      ->willReturn(FALSE);
+    $revisionable_definition = $this->createMock('Drupal\Core\Entity\EntityTypeInterface');
+    $revisionable_definition->expects($this->any())
+      ->method('getClass')
+      ->will($this->returnValue('Drupal\Tests\Core\Entity\SimpleTestEntity'));
+    $revisionable_definition->expects($this->any())
+      ->method('isRevisionable')
+      ->willReturn(TRUE);
+    $this->entityTypeManager->expects($this->any())
       ->method('getDefinitions')
       ->will($this->returnValue([
         'entity_test' => $definition,
+        'entity_test_rev' => $revisionable_definition,
       ]));
-    $this->entityManager->expects($this->any())
+    $this->entityTypeManager->expects($this->any())
       ->method('getDefinition')
-      ->will($this->returnCallback(function ($entity_type) use ($definition) {
+      ->will($this->returnCallback(function ($entity_type) use ($definition, $revisionable_definition) {
         if ($entity_type == 'entity_test') {
           return $definition;
+        }
+        elseif ($entity_type === 'entity_test_rev') {
+          return $revisionable_definition;
         }
         else {
           return NULL;
@@ -486,12 +500,14 @@ class BasicControllerClass {
 /**
  * A concrete entity.
  */
-class SimpleTestEntity extends Entity {
+class SimpleTestEntity extends EntityBase {
 
 }
 
 /**
  * A basic form with a passed entity with an interface.
+ *
+ * @internal
  */
 class BasicForm extends FormBase {
 

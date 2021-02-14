@@ -33,7 +33,7 @@ class BigPipeResponseAttachmentsProcessorTest extends UnitTestCase {
     $big_pipe_response_attachments_processor = $this->createBigPipeResponseAttachmentsProcessor($this->prophesize(AttachmentsResponseProcessorInterface::class));
 
     $non_html_response = new $response_class();
-    $this->setExpectedException(\AssertionError::class);
+    $this->expectException(\AssertionError::class);
     $big_pipe_response_attachments_processor->processAttachments($non_html_response);
   }
 
@@ -101,8 +101,8 @@ class BigPipeResponseAttachmentsProcessorTest extends UnitTestCase {
       'random attachment type (unofficial), with random assigned value, to prove BigPipeResponseAttachmentsProcessor is a perfect decorator' => [$random_attachments],
     ];
 
-    $big_pipe_placeholder_attachments = ['big_pipe_placeholders' => $this->randomMachineName()];
-    $big_pipe_nojs_placeholder_attachments = ['big_pipe_nojs_placeholders' => $this->randomMachineName()];
+    $big_pipe_placeholder_attachments = ['big_pipe_placeholders' => [$this->randomMachineName()]];
+    $big_pipe_nojs_placeholder_attachments = ['big_pipe_nojs_placeholders' => [$this->randomMachineName()]];
     $big_pipe_cases = [
       'only big_pipe_placeholders' => [$big_pipe_placeholder_attachments],
       'only big_pipe_nojs_placeholders' => [$big_pipe_nojs_placeholder_attachments],

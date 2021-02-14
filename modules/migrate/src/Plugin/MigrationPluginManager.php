@@ -60,19 +60,23 @@ class MigrationPluginManager extends DefaultPluginManager implements MigrationPl
   }
 
   /**
-   * {@inheritdoc}
+   * Gets the plugin discovery.
+   *
+   * This method overrides DefaultPluginManager::getDiscovery() in order to
+   * search for migration configurations in the MODULENAME/migrations
+   * directory.
    */
   protected function getDiscovery() {
     if (!isset($this->discovery)) {
-      $directories = array_map(function($directory) {
-        return [$directory . '/migration_templates', $directory . '/migrations'];
+      $directories = array_map(function ($directory) {
+        return [$directory . '/migrations'];
       }, $this->moduleHandler->getModuleDirectories());
 
       $yaml_discovery = new YamlDirectoryDiscovery($directories, 'migrate');
       // This gets rid of migrations which try to use a non-existent source
       // plugin. The common case for this is if the source plugin has, or
       // specifies, a non-existent provider.
-      $only_with_source_discovery  = new NoSourcePluginDecorator($yaml_discovery);
+      $only_with_source_discovery = new NoSourcePluginDecorator($yaml_discovery);
       // This gets rid of migrations with explicit providers set if one of the
       // providers do not exist before we try to use a potentially non-existing
       // deriver. This is a rare case.
@@ -116,19 +120,13 @@ class MigrationPluginManager extends DefaultPluginManager implements MigrationPl
   }
 
   /**
-   * Create migrations given a tag.
-   *
-   * @param string $tag
-   *   A migration tag we want to filter by.
-   *
-   * @return array|\Drupal\migrate\Plugin\MigrationInterface[]
-   *   An array of migration objects with the given tag.
+   * {@inheritdoc}
    */
   public function createInstancesByTag($tag) {
-    $migrations = array_filter($this->getDefinitions(), function($migration) use ($tag) {
+    $migrations = array_filter($this->getDefinitions(), function ($migration) use ($tag) {
       return !empty($migration['migration_tags']) && in_array($tag, $migration['migration_tags']);
     });
-    return $this->createInstances(array_keys($migrations));
+    return $migrations ? $this->createInstances(array_keys($migrations)) : [];
   }
 
   /**
@@ -154,7 +152,6 @@ class MigrationPluginManager extends DefaultPluginManager implements MigrationPl
     }
     return $plugin_ids;
   }
-
 
   /**
    * {@inheritdoc}
@@ -204,7 +201,14 @@ class MigrationPluginManager extends DefaultPluginManager implements MigrationPl
         $migration->set('requirements', $required_dependency_graph[$migration_id]['paths']);
       }
     }
-    array_multisort($weights, SORT_DESC, SORT_NUMERIC, $migrations);
+    // Sort weights, labels, and keys in the same order as each other.
+    array_multisort(
+      // Use the numerical weight as the primary sort.
+      $weights, SORT_DESC, SORT_NUMERIC,
+      // When migrations have the same weight, sort them alphabetically by ID.
+      array_keys($migrations), SORT_ASC, SORT_NATURAL,
+      $migrations
+    );
 
     return $migrations;
   }

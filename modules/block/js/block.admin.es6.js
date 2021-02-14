@@ -24,7 +24,7 @@
     attach(context, settings) {
       const $input = $('input.block-filter-text').once('block-filter-text');
       const $table = $($input.attr('data-element'));
-      let $filter_rows;
+      let $filterRows;
 
       /**
        * Filters the block list.
@@ -52,24 +52,23 @@
 
         // Filter if the length of the query is at least 2 characters.
         if (query.length >= 2) {
-          $filter_rows.each(toggleBlockEntry);
+          $filterRows.each(toggleBlockEntry);
           Drupal.announce(
             Drupal.formatPlural(
               $table.find('tr:visible').length - 1,
               '1 block is available in the modified list.',
-              '@count blocks are available in the modified list.'
-            )
+              '@count blocks are available in the modified list.',
+            ),
           );
-        }
-        else {
-          $filter_rows.each(function (index) {
+        } else {
+          $filterRows.each(function (index) {
             $(this).parent().parent().show();
           });
         }
       }
 
       if ($table.length) {
-        $filter_rows = $table.find('div.block-filter-text-source');
+        $filterRows = $table.find('div.block-filter-text-source');
         $input.on('keyup', debounce(filterBlockList, 200));
       }
     },
@@ -85,16 +84,26 @@
    */
   Drupal.behaviors.blockHighlightPlacement = {
     attach(context, settings) {
-      if (settings.blockPlacement) {
-        $(context).find('[data-drupal-selector="edit-blocks"]').once('block-highlight').each(function () {
-          const $container = $(this);
-          // Just scrolling the document.body will not work in Firefox. The html
-          // element is needed as well.
-          $('html, body').animate({
-            scrollTop: $('.js-block-placed').offset().top - $container.offset().top + $container.scrollTop(),
-          }, 500);
-        });
+      // Ensure that the block we are attempting to scroll to actually exists.
+      if (settings.blockPlacement && $('.js-block-placed').length) {
+        $(context)
+          .find('[data-drupal-selector="edit-blocks"]')
+          .once('block-highlight')
+          .each(function () {
+            const $container = $(this);
+            // Just scrolling the document.body will not work in Firefox. The html
+            // element is needed as well.
+            $('html, body').animate(
+              {
+                scrollTop:
+                  $('.js-block-placed').offset().top -
+                  $container.offset().top +
+                  $container.scrollTop(),
+              },
+              500,
+            );
+          });
       }
     },
   };
-}(jQuery, Drupal, Drupal.debounce));
+})(jQuery, Drupal, Drupal.debounce);

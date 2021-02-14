@@ -1,6 +1,6 @@
 /**
  * @file
- * Javascript behaviors for the Book module.
+ * JavaScript behaviors for the Book module.
  */
 
 (function ($, Drupal) {
@@ -14,19 +14,21 @@
    */
   Drupal.behaviors.bookDetailsSummaries = {
     attach(context) {
-      $(context).find('.book-outline-form').drupalSetSummary((context) => {
-        const $select = $(context).find('.book-title-select');
-        const val = $select.val();
+      $(context)
+        .find('.book-outline-form')
+        .drupalSetSummary((context) => {
+          const $select = $(context).find('.book-title-select');
+          const val = $select.val();
 
-        if (val === '0') {
-          return Drupal.t('Not in book');
-        }
-        else if (val === 'new') {
-          return Drupal.t('New book');
-        }
+          if (val === '0') {
+            return Drupal.t('Not in book');
+          }
+          if (val === 'new') {
+            return Drupal.t('New book');
+          }
 
-        return Drupal.checkPlain($select.find(':selected').text());
-      });
+          return Drupal.checkPlain($select.find(':selected').text());
+        });
     },
   };
-}(jQuery, Drupal));
+})(jQuery, Drupal);

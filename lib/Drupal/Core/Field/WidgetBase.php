@@ -6,7 +6,9 @@ use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Component\Utility\SortArray;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Render\Element;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
 
@@ -15,9 +17,7 @@ use Symfony\Component\Validator\ConstraintViolationListInterface;
  *
  * @ingroup field_widget
  */
-abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface {
-
-  use AllowedTagsXssTrait;
+abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface, ContainerFactoryPluginInterface {
 
   /**
    * The field definition.
@@ -57,6 +57,13 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
   /**
    * {@inheritdoc}
    */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static($plugin_id, $plugin_definition, $configuration['field_definition'], $configuration['settings'], $configuration['third_party_settings']);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function form(FieldItemListInterface $items, array &$form, FormStateInterface $form_state, $get_delta = NULL) {
     $field_name = $this->fieldDefinition->getName();
     $parents = $form['#parents'];
@@ -80,7 +87,7 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
       $delta = isset($get_delta) ? $get_delta : 0;
       $element = [
         '#title' => $this->fieldDefinition->getLabel(),
-        '#description' => FieldFilteredMarkup::create(\Drupal::token()->replace($this->fieldDefinition->getDescription())),
+        '#description' => $this->getFilteredDescription(),
       ];
       $element = $this->formSingleElement($items, $delta, $element, $form, $form_state);
 
@@ -104,10 +111,23 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
       $elements = $this->formMultipleElements($items, $form, $form_state);
     }
 
+    // Allow modules to alter the field multi-value widget form element.
+    // This hook can also be used for single-value fields.
+    $context = [
+      'form' => $form,
+      'widget' => $this,
+      'items' => $items,
+      'default' => $this->isDefaultValueWidget($form_state),
+    ];
+    \Drupal::moduleHandler()->alterDeprecated('Deprecated in drupal:9.2.0 and is removed from drupal:10.0.0. Use hook_field_widget_complete_form_alter or hook_field_widget_complete_WIDGET_TYPE_form_alter instead. See https://www.drupal.org/node/3180429.', [
+      'field_widget_multivalue_form',
+      'field_widget_multivalue_' . $this->getPluginId() . '_form',
+    ], $elements, $form_state, $context);
+
     // Populate the 'array_parents' information in $form_state->get('field')
     // after the form is built, so that we catch changes in the form structure
     // performed in alter() hooks.
-    $elements['#after_build'][] = [get_class($this), 'afterBuild'];
+    $elements['#after_build'][] = [static::class, 'afterBuild'];
     $elements['#field_name'] = $field_name;
     $elements['#field_parents'] = $parents;
     // Enforce the structure of submitted values.
@@ -115,7 +135,7 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
     // Most widgets need their internal structure preserved in submitted values.
     $elements += ['#tree' => TRUE];
 
-    return [
+    $field_widget_complete_form = [
       // Aid in theming of widgets by rendering a classified container.
       '#type' => 'container',
       // Assign a different parent, to keep the main id for the widget itself.
@@ -129,6 +149,17 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
       ],
       'widget' => $elements,
     ];
+
+    // Allow modules to alter the field widget form element.
+    $context = [
+      'form' => $form,
+      'widget' => $this,
+      'items' => $items,
+      'default' => $this->isDefaultValueWidget($form_state),
+    ];
+    \Drupal::moduleHandler()->alter(['field_widget_complete_form', 'field_widget_complete_' . $this->getPluginId() . '_form'], $field_widget_complete_form, $form_state, $context);
+
+    return $field_widget_complete_form;
   }
 
   /**
@@ -159,7 +190,7 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
     }
 
     $title = $this->fieldDefinition->getLabel();
-    $description = FieldFilteredMarkup::create(\Drupal::token()->replace($this->fieldDefinition->getDescription()));
+    $description = $this->getFilteredDescription();
 
     $elements = [];
 
@@ -233,9 +264,9 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
           '#value' => t('Add another item'),
           '#attributes' => ['class' => ['field-add-more-submit']],
           '#limit_validation_errors' => [array_merge($parents, [$field_name])],
-          '#submit' => [[get_class($this), 'addMoreSubmit']],
+          '#submit' => [[static::class, 'addMoreSubmit']],
           '#ajax' => [
-            'callback' => [get_class($this), 'addMoreAjax'],
+            'callback' => [static::class, 'addMoreAjax'],
             'wrapper' => $wrapper_id,
             'effect' => 'fade',
           ],
@@ -330,7 +361,8 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
         'delta' => $delta,
         'default' => $this->isDefaultValueWidget($form_state),
       ];
-      \Drupal::moduleHandler()->alter(['field_widget_form', 'field_widget_' . $this->getPluginId() . '_form'], $element, $form_state, $context);
+      \Drupal::moduleHandler()->alterDeprecated('Deprecated in drupal:9.2.0 and is removed from drupal:10.0.0. Use hook_field_widget_single_element_form_alter or hook_field_widget_single_element_WIDGET_TYPE_form_alter instead. See https://www.drupal.org/node/3180429.', ['field_widget_form', 'field_widget_' . $this->getPluginId() . '_form'], $element, $form_state, $context);
+      \Drupal::moduleHandler()->alter(['field_widget_single_element_form', 'field_widget_single_element_' . $this->getPluginId() . '_form'], $element, $form_state, $context);
     }
 
     return $element;
@@ -410,21 +442,26 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
       if (Element::isVisibleElement($element)) {
         $handles_multiple = $this->handlesMultipleValues();
 
-        $violations_by_delta = [];
+        $violations_by_delta = $item_list_violations = [];
         foreach ($violations as $violation) {
           // Separate violations by delta.
           $property_path = explode('.', $violation->getPropertyPath());
           $delta = array_shift($property_path);
-          $violations_by_delta[$delta][] = $violation;
+          if (is_numeric($delta)) {
+            $violations_by_delta[$delta][] = $violation;
+          }
+          // Violations at the ItemList level are not associated to any delta.
+          else {
+            $item_list_violations[] = $violation;
+          }
           $violation->arrayPropertyPath = $property_path;
         }
 
         /** @var \Symfony\Component\Validator\ConstraintViolationInterface[] $delta_violations */
         foreach ($violations_by_delta as $delta => $delta_violations) {
-          // Pass violations to the main element:
-          // - if this is a multiple-value widget,
-          // - or if the violations are at the ItemList level.
-          if ($handles_multiple || !is_numeric($delta)) {
+          // Pass violations to the main element if this is a multiple-value
+          // widget.
+          if ($handles_multiple) {
             $delta_element = $element;
           }
           // Otherwise, pass errors by delta to the corresponding sub-element.
@@ -439,6 +476,13 @@ abstract class WidgetBase extends PluginSettingsBase implements WidgetInterface 
               $form_state->setError($error_element, $violation->getMessage());
             }
           }
+        }
+
+        /** @var \Symfony\Component\Validator\ConstraintViolationInterface[] $item_list_violations */
+        // Pass violations to the main element without going through
+        // errorElement() if the violations are at the ItemList level.
+        foreach ($item_list_violations as $violation) {
+          $form_state->setError($element, $violation->getMessage());
         }
       }
     }

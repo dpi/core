@@ -3,9 +3,14 @@
 namespace Drupal\hal\Normalizer;
 
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityInterface;
-use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityTypeRepositoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\TypedData\TypedDataInternalPropertiesHelper;
+use Drupal\Core\Url;
 use Drupal\hal\LinkManager\LinkManagerInterface;
 use Drupal\serialization\Normalizer\FieldableEntityNormalizerTrait;
 use Symfony\Component\Serializer\Exception\UnexpectedValueException;
@@ -14,15 +19,12 @@ use Symfony\Component\Serializer\Exception\UnexpectedValueException;
  * Converts the Drupal entity object structure to a HAL array structure.
  */
 class ContentEntityNormalizer extends NormalizerBase {
-
   use FieldableEntityNormalizerTrait;
 
   /**
-   * The interface or class that this Normalizer supports.
-   *
-   * @var string
+   * {@inheritdoc}
    */
-  protected $supportedInterfaceOrClass = 'Drupal\Core\Entity\ContentEntityInterface';
+  protected $supportedInterfaceOrClass = ContentEntityInterface::class;
 
   /**
    * The hypermedia link manager.
@@ -39,15 +41,26 @@ class ContentEntityNormalizer extends NormalizerBase {
   protected $moduleHandler;
 
   /**
-   * Constructs an ContentEntityNormalizer object.
+   * Constructs a ContentEntityNormalizer object.
    *
    * @param \Drupal\hal\LinkManager\LinkManagerInterface $link_manager
    *   The hypermedia link manager.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   *   The module handler.
+   * @param \Drupal\Core\Entity\EntityTypeRepositoryInterface $entity_type_repository
+   *   The entity type repository.
+   * @param \Drupal\Core\Entity\EntityFieldManagerInterface $entity_field_manager
+   *   The entity field manager.
    */
-  public function __construct(LinkManagerInterface $link_manager, EntityManagerInterface $entity_manager, ModuleHandlerInterface $module_handler) {
+  public function __construct(LinkManagerInterface $link_manager, EntityTypeManagerInterface $entity_type_manager, ModuleHandlerInterface $module_handler, EntityTypeRepositoryInterface $entity_type_repository, EntityFieldManagerInterface $entity_field_manager) {
     $this->linkManager = $link_manager;
-    $this->entityManager = $entity_manager;
+    $this->entityTypeManager = $entity_type_manager;
     $this->moduleHandler = $module_handler;
+    $this->entityTypeRepository = $entity_type_repository;
+    $this->entityTypeRepository = $entity_type_repository;
+    $this->entityFieldManager = $entity_field_manager;
   }
 
   /**
@@ -72,15 +85,10 @@ class ContentEntityNormalizer extends NormalizerBase {
       ],
     ];
 
+    $field_items = TypedDataInternalPropertiesHelper::getNonInternalProperties($entity->getTypedData());
     // If the fields to use were specified, only output those field values.
     if (isset($context['included_fields'])) {
-      $field_items = [];
-      foreach ($context['included_fields'] as $field_name) {
-        $field_items[] = $entity->get($field_name);
-      }
-    }
-    else {
-      $field_items = $entity->getFields();
+      $field_items = array_intersect_key($field_items, array_flip($context['included_fields']));
     }
     foreach ($field_items as $field) {
       // Continue if the current user does not have access to view this field.
@@ -101,7 +109,7 @@ class ContentEntityNormalizer extends NormalizerBase {
    * @param array $data
    *   Entity data to restore.
    * @param string $class
-   *   Unused, entity_create() is used to instantiate entity objects.
+   *   Unused parameter.
    * @param string $format
    *   Format the given data was extracted from.
    * @param array $context
@@ -130,7 +138,7 @@ class ContentEntityNormalizer extends NormalizerBase {
 
     // Figure out the language to use.
     if (isset($data[$default_langcode_key])) {
-      // Find the field item for which the default_lancode value is set to 1 and
+      // Find the field item for which the default_langcode value is set to 1 and
       // set the langcode the right default language.
       foreach ($data[$default_langcode_key] as $item) {
         if (!empty($item['value']) && isset($item['lang'])) {
@@ -149,7 +157,7 @@ class ContentEntityNormalizer extends NormalizerBase {
       unset($data[$bundle_key]);
     }
 
-    $entity = $this->entityManager->getStorage($typed_data_ids['entity_type'])->create($values);
+    $entity = $this->entityTypeManager->getStorage($typed_data_ids['entity_type'])->create($values);
 
     // Remove links from data array.
     unset($data['_links']);
@@ -183,17 +191,36 @@ class ContentEntityNormalizer extends NormalizerBase {
    *
    * @param \Drupal\Core\Entity\EntityInterface $entity
    *   The entity.
+   * @param array $context
+   *   Normalization/serialization context.
+   *
    * @return string
    *   The entity URI.
    */
-  protected function getEntityUri(EntityInterface $entity) {
-    // Some entity types don't provide a canonical link template, at least call
-    // out to ->url().
-    if ($entity->isNew() || !$entity->hasLinkTemplate('canonical')) {
-      return $entity->url('canonical', []);
+  protected function getEntityUri(EntityInterface $entity, array $context = []) {
+    // Some entity types don't provide a canonical link template.
+    if ($entity->isNew()) {
+      return '';
     }
-    $url = $entity->urlInfo('canonical', ['absolute' => TRUE]);
-    return $url->setRouteParameter('_format', 'hal_json')->toString();
+
+    $route_name = 'rest.entity.' . $entity->getEntityTypeId() . '.GET';
+    if ($entity->hasLinkTemplate('canonical')) {
+      $url = $entity->toUrl('canonical');
+    }
+    elseif (\Drupal::service('router.route_provider')->getRoutesByNames([$route_name])) {
+      $url = Url::fromRoute('rest.entity.' . $entity->getEntityTypeId() . '.GET', [$entity->getEntityTypeId() => $entity->id()]);
+    }
+    else {
+      return '';
+    }
+
+    $url->setAbsolute(TRUE);
+    if (!$url->isExternal()) {
+      $url->setRouteParameter('_format', 'hal_json');
+    }
+    $generated_url = $url->toString(TRUE);
+    $this->addCacheableDependency($context, $generated_url);
+    return $generated_url->getGeneratedUrl();
   }
 
   /**

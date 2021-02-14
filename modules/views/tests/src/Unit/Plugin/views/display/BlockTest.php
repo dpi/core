@@ -13,28 +13,28 @@ class BlockTest extends UnitTestCase {
   /**
    * The view executable.
    *
-   * @var \Drupal\views\ViewExecutable|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\views\ViewExecutable|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $executable;
 
   /**
    * The views block plugin.
    *
-   * @var \Drupal\views\Plugin\Block\ViewsBlock|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\views\Plugin\Block\ViewsBlock|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $blockPlugin;
 
   /**
    * The tested block display plugin.
    *
-   * @var \Drupal\views\Plugin\views\display\Block|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\views\Plugin\views\display\Block|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $blockDisplay;
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->executable = $this->getMockBuilder('Drupal\views\ViewExecutable')

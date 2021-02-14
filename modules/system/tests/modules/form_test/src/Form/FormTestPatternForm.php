@@ -7,6 +7,8 @@ use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Builds a simple form using the FAPI #pattern property.
+ *
+ * @internal
  */
 class FormTestPatternForm extends FormBase {
 
@@ -39,7 +41,7 @@ class FormTestPatternForm extends FormBase {
     $form['url'] = [
       '#type' => 'url',
       '#title' => 'Client side validation',
-      '#decription' => 'Just client side validation, using the #pattern attribute.',
+      '#description' => 'Just client side validation, using the #pattern attribute.',
       '#attributes' => [
         'pattern' => '.*foo.*',
       ],

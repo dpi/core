@@ -6,6 +6,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\Event;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Contracts\EventDispatcher\Event as ContractsEvent;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface as ContractsEventDispatcherInterface;
 
 /**
  * A performance optimized container aware event dispatcher.
@@ -36,7 +38,7 @@ class ContainerAwareEventDispatcher implements EventDispatcherInterface {
   /**
    * The service container.
    *
-   * @var \Symfony\Component\DependencyInjection\ContainerInterface;
+   * @var \Symfony\Component\DependencyInjection\ContainerInterface
    */
   protected $container;
 
@@ -86,9 +88,38 @@ class ContainerAwareEventDispatcher implements EventDispatcherInterface {
   /**
    * {@inheritdoc}
    */
-  public function dispatch($event_name, Event $event = NULL) {
-    if ($event === NULL) {
-      $event = new Event();
+  public function dispatch($event/*, string $event_name = NULL*/) {
+    $event_name = 1 < \func_num_args() ? func_get_arg(1) : NULL;
+    if (\is_object($event)) {
+      $class_name = get_class($event);
+      $event_name = $event_name ?? $class_name;
+
+      $deprecation_message = 'Symfony\Component\EventDispatcher\Event is deprecated in drupal:9.1.0 and will be replaced by Symfony\Contracts\EventDispatcher\Event in drupal:10.0.0. A new Drupal\Component\EventDispatcher\Event class is available to bridge the two versions of the class. See https://www.drupal.org/node/3159012';
+
+      // Trigger a deprecation error if the deprecated Event class is used
+      // directly.
+      if ($class_name === 'Symfony\Component\EventDispatcher\Event') {
+        @trigger_error($deprecation_message, E_USER_DEPRECATED);
+      }
+      // Also try to trigger deprecation errors when classes are in the Drupal
+      // namespace and inherit directly from the deprecated class. If a class is
+      // in the Symfony namespace or a different one, we have to assume those
+      // will be updated by the dependency itself. Exclude the Drupal Event
+      // bridge class as a special case, otherwise it's pointless.
+      elseif ($class_name !== 'Drupal\Component\EventDispatcher\Event' && strpos($class_name, 'Drupal') !== FALSE) {
+        if (get_parent_class($event) === 'Symfony\Component\EventDispatcher\Event') {
+          @trigger_error($deprecation_message, E_USER_DEPRECATED);
+        }
+      }
+    }
+    elseif (\is_string($event) && (NULL === $event_name || $event_name instanceof ContractsEvent || $event_name instanceof Event)) {
+      @trigger_error('Calling the Symfony\Component\EventDispatcher\EventDispatcherInterface::dispatch() method with a string event name as the first argument is deprecated in drupal:9.1.0, an Event object will be required instead in drupal:10.0.0. See https://www.drupal.org/node/3154407', E_USER_DEPRECATED);
+      $swap = $event;
+      $event = $event_name ?? new Event();
+      $event_name = $swap;
+    }
+    else {
+      throw new \TypeError(sprintf('Argument 1 passed to "%s::dispatch()" must be an object, %s given.', ContractsEventDispatcherInterface::class, \gettype($event)));
     }
 
     if (isset($this->listeners[$event_name])) {
@@ -104,8 +135,11 @@ class ContainerAwareEventDispatcher implements EventDispatcherInterface {
           if (!isset($definition['callable'])) {
             $definition['callable'] = [$this->container->get($definition['service'][0]), $definition['service'][1]];
           }
+          if (is_array($definition['callable']) && isset($definition['callable'][0]) && $definition['callable'][0] instanceof \Closure) {
+            $definition['callable'][0] = $definition['callable'][0]();
+          }
 
-          $definition['callable']($event, $event_name, $this);
+          call_user_func($definition['callable'], $event, $event_name, $this);
           if ($event->isPropagationStopped()) {
             return $event;
           }
@@ -144,6 +178,9 @@ class ContainerAwareEventDispatcher implements EventDispatcherInterface {
           if (!isset($definition['callable'])) {
             $definition['callable'] = [$this->container->get($definition['service'][0]), $definition['service'][1]];
           }
+          if (is_array($definition['callable']) && isset($definition['callable'][0]) && $definition['callable'][0] instanceof \Closure) {
+            $definition['callable'][0] = $definition['callable'][0]();
+          }
 
           $result[] = $definition['callable'];
         }
@@ -156,27 +193,29 @@ class ContainerAwareEventDispatcher implements EventDispatcherInterface {
   /**
    * {@inheritdoc}
    */
-  public function getListenerPriority($eventName, $listener) {
-    // Parts copied from \Symfony\Component\EventDispatcher, that's why you see
-    // a yoda condition here.
-    if (!isset($this->listeners[$eventName])) {
+  public function getListenerPriority($event_name, $listener) {
+    if (!isset($this->listeners[$event_name])) {
       return;
     }
-    foreach ($this->listeners[$eventName] as $priority => $listeners) {
-      if (FALSE !== ($key = array_search(['callable' => $listener], $listeners, TRUE))) {
-        return $priority;
-      }
+    if (is_array($listener) && isset($listener[0]) && $listener[0] instanceof \Closure) {
+      $listener[0] = $listener[0]();
     }
     // Resolve service definitions if the listener has not been found so far.
-    foreach ($this->listeners[$eventName] as $priority => &$definitions) {
+    foreach ($this->listeners[$event_name] as $priority => &$definitions) {
       foreach ($definitions as $key => &$definition) {
         if (!isset($definition['callable'])) {
           // Once the callable is retrieved we keep it for subsequent method
           // invocations on this class.
-          $definition['callable'] = [$this->container->get($definition['service'][0]), $definition['service'][1]];
-          if ($definition['callable'] === $listener) {
-            return $priority;
-          }
+          $definition['callable'] = [
+            $this->container->get($definition['service'][0]),
+            $definition['service'][1],
+          ];
+        }
+        if (is_array($definition['callable']) && isset($definition['callable'][0]) && $definition['callable'][0] instanceof \Closure) {
+          $definition['callable'][0] = $definition['callable'][0]();
+        }
+        if ($definition['callable'] === $listener) {
+          return $priority;
         }
       }
     }
@@ -186,7 +225,17 @@ class ContainerAwareEventDispatcher implements EventDispatcherInterface {
    * {@inheritdoc}
    */
   public function hasListeners($event_name = NULL) {
-    return (bool) count($this->getListeners($event_name));
+    if ($event_name !== NULL) {
+      return !empty($this->listeners[$event_name]);
+    }
+
+    foreach ($this->listeners as $event_listeners) {
+      if ($event_listeners) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
   }
 
   /**
@@ -214,9 +263,22 @@ class ContainerAwareEventDispatcher implements EventDispatcherInterface {
           $definition['callable'] = [$this->container->get($definition['service'][0]), $definition['service'][1]];
         }
 
-        if ($definition['callable'] === $listener) {
-          unset($this->listeners[$event_name][$priority][$key]);
+        if (is_array($definition['callable']) && isset($definition['callable'][0]) && $definition['callable'][0] instanceof \Closure && !$listener instanceof \Closure) {
+          $definition['callable'][0] = $definition['callable'][0]();
         }
+
+        if (is_array($definition['callable']) && isset($definition['callable'][0]) && !$definition['callable'][0] instanceof \Closure && is_array($listener) && isset($listener[0]) && $listener[0] instanceof \Closure) {
+          $listener[0] = $listener[0]();
+        }
+        if ($definition['callable'] === $listener) {
+          unset($definitions[$key]);
+        }
+      }
+      if ($definitions) {
+        $this->listeners[$event_name][$priority] = $definitions;
+      }
+      else {
+        unset($this->listeners[$event_name][$priority]);
       }
     }
   }

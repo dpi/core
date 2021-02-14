@@ -8,12 +8,14 @@
  */
 
 use Drupal\Component\Assertion\Handle;
+use Drupal\TestTools\PhpUnitCompatibility\PhpUnit8\ClassWriter;
 
 /**
  * Finds all valid extension directories recursively within a given directory.
  *
  * @param string $scan_directory
  *   The directory that should be recursively scanned.
+ *
  * @return array
  *   An associative array of extension directories found within the scanned
  *   directory, keyed by extension name.
@@ -44,7 +46,7 @@ function drupal_phpunit_find_extension_directories($scan_directory) {
  */
 function drupal_phpunit_contrib_extension_directory_roots($root = NULL) {
   if ($root === NULL) {
-    $root = dirname(dirname(__DIR__));
+    $root = dirname(__DIR__, 2);
   }
   $paths = [
     $root . '/core/modules',
@@ -64,7 +66,7 @@ function drupal_phpunit_contrib_extension_directory_roots($root = NULL) {
     $paths[] = is_dir("$path/profiles") ? realpath("$path/profiles") : NULL;
     $paths[] = is_dir("$path/themes") ? realpath("$path/themes") : NULL;
   }
-  return array_filter($paths);
+  return array_filter($paths, 'file_exists');
 }
 
 /**
@@ -77,7 +79,7 @@ function drupal_phpunit_contrib_extension_directory_roots($root = NULL) {
  *   An associative array of extension directories, keyed by their namespace.
  */
 function drupal_phpunit_get_extension_namespaces($dirs) {
-  $suite_names = ['Unit', 'Kernel', 'Functional', 'FunctionalJavascript'];
+  $suite_names = ['Unit', 'Kernel', 'Functional', 'Build', 'FunctionalJavascript'];
   $namespaces = [];
   foreach ($dirs as $extension => $dir) {
     if (is_dir($dir . '/src')) {
@@ -126,10 +128,13 @@ function drupal_phpunit_populate_class_loader() {
   $loader = require __DIR__ . '/../../autoload.php';
 
   // Start with classes in known locations.
+  $loader->add('Drupal\\BuildTests', __DIR__);
   $loader->add('Drupal\\Tests', __DIR__);
+  $loader->add('Drupal\\TestSite', __DIR__);
   $loader->add('Drupal\\KernelTests', __DIR__);
   $loader->add('Drupal\\FunctionalTests', __DIR__);
   $loader->add('Drupal\\FunctionalJavascriptTests', __DIR__);
+  $loader->add('Drupal\\TestTools', __DIR__);
 
   if (!isset($GLOBALS['namespaces'])) {
     // Scan for arbitrary extension namespaces from core and contrib.
@@ -144,15 +149,21 @@ function drupal_phpunit_populate_class_loader() {
   }
 
   return $loader;
-};
+}
 
 // Do class loader population.
-drupal_phpunit_populate_class_loader();
+$loader = drupal_phpunit_populate_class_loader();
+
+ClassWriter::mutateTestBase($loader);
 
 // Set sane locale settings, to ensure consistent string, dates, times and
 // numbers handling.
 // @see \Drupal\Core\DrupalKernel::bootEnvironment()
 setlocale(LC_ALL, 'C');
+
+// Set appropriate configuration for multi-byte strings.
+mb_internal_encoding('utf-8');
+mb_language('uni');
 
 // Set the default timezone. While this doesn't cause any tests to fail, PHP
 // complains if 'date.timezone' is not set in php.ini. The Australia/Sydney
@@ -162,7 +173,7 @@ setlocale(LC_ALL, 'C');
 date_default_timezone_set('Australia/Sydney');
 
 // Runtime assertions. PHPUnit follows the php.ini assert.active setting for
-// runtime assertions. By default this setting is on. Here we make a call to
-// make PHP 5 and 7 handle assertion failures the same way, but this call does
-// not turn runtime assertions on if they weren't on already.
+// runtime assertions. By default this setting is on. Ensure exceptions are
+// thrown if an assert fails, but this call does not turn runtime assertions on
+// if they weren't on already.
 Handle::register();

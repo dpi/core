@@ -29,7 +29,7 @@ class PageCache implements HttpKernelInterface {
   /**
    * The cache bin.
    *
-   * @var \Drupal\Core\Cache\CacheBackendInterface.
+   * @var \Drupal\Core\Cache\CacheBackendInterface
    */
   protected $cache;
 
@@ -46,6 +46,13 @@ class PageCache implements HttpKernelInterface {
    * @var \Drupal\Core\PageCache\ResponsePolicyInterface
    */
   protected $responsePolicy;
+
+  /**
+   * The cache ID for the (master) request.
+   *
+   * @var string
+   */
+  protected $cid;
 
   /**
    * Constructs a PageCache object.
@@ -143,8 +150,10 @@ class PageCache implements HttpKernelInterface {
       $if_none_match = $request->server->has('HTTP_IF_NONE_MATCH') ? stripslashes($request->server->get('HTTP_IF_NONE_MATCH')) : FALSE;
 
       if ($if_modified_since && $if_none_match
-        && $if_none_match == $response->getEtag() // etag must match
-        && $if_modified_since == $last_modified->getTimestamp()) {// if-modified-since must match
+        // etag must match.
+        && $if_none_match == $response->getEtag()
+        // if-modified-since must match.
+        && $if_modified_since == $last_modified->getTimestamp()) {
         $response->setStatusCode(304);
         $response->setContent(NULL);
 
@@ -258,9 +267,14 @@ class PageCache implements HttpKernelInterface {
         $expire = $request_time + $cache_ttl_4xx;
       }
     }
-    else {
-      $date = $response->getExpires()->getTimestamp();
+    // The getExpires method could return NULL if Expires header is not set, so
+    // the returned value needs to be checked before calling getTimestamp.
+    elseif ($expires = $response->getExpires()) {
+      $date = $expires->getTimestamp();
       $expire = ($date > $request_time) ? $date : Cache::PERMANENT;
+    }
+    else {
+      $expire = Cache::PERMANENT;
     }
 
     if ($expire === Cache::PERMANENT || $expire > $request_time) {
@@ -332,11 +346,20 @@ class PageCache implements HttpKernelInterface {
    *   The cache ID for this request.
    */
   protected function getCacheId(Request $request) {
-    $cid_parts = [
-      $request->getSchemeAndHttpHost() . $request->getRequestUri(),
-      $request->getRequestFormat(),
-    ];
-    return implode(':', $cid_parts);
+    // Once a cache ID is determined for the request, reuse it for the duration
+    // of the request. This ensures that when the cache is written, it is only
+    // keyed on request data that was available when it was read. For example,
+    // the request format might be NULL during cache lookup and then set during
+    // routing, in which case we want to key on NULL during writing, since that
+    // will be the value during lookups for subsequent requests.
+    if (!isset($this->cid)) {
+      $cid_parts = [
+        $request->getSchemeAndHttpHost() . $request->getRequestUri(),
+        $request->getRequestFormat(NULL),
+      ];
+      $this->cid = implode(':', $cid_parts);
+    }
+    return $this->cid;
   }
 
 }

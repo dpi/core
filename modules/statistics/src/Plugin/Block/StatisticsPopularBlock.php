@@ -50,7 +50,7 @@ class StatisticsPopularBlock extends BlockBase implements ContainerFactoryPlugin
   protected $renderer;
 
   /**
-   * Constructs an StatisticsPopularBlock object.
+   * Constructs a StatisticsPopularBlock object.
    *
    * @param array $configuration
    *   A configuration array containing information about the plugin instance.
@@ -95,7 +95,7 @@ class StatisticsPopularBlock extends BlockBase implements ContainerFactoryPlugin
     return [
       'top_day_num' => 0,
       'top_all_num' => 0,
-      'top_last_num' => 0
+      'top_last_num' => 0,
     ];
   }
 
@@ -194,11 +194,7 @@ class StatisticsPopularBlock extends BlockBase implements ContainerFactoryPlugin
     $items = [];
     foreach ($nids as $nid) {
       $node = $this->entityRepository->getTranslationFromContext($nodes[$nid]);
-      $item = [
-        '#type' => 'link',
-        '#title' => $node->getTitle(),
-        '#url' => $node->urlInfo('canonical'),
-      ];
+      $item = $node->toLink()->toRenderable();
       $this->renderer->addCacheableDependency($item, $node);
       $items[] = $item;
     }

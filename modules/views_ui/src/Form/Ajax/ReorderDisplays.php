@@ -2,12 +2,14 @@
 
 namespace Drupal\views_ui\Form\Ajax;
 
-use Drupal\Component\Utility\SafeMarkup;
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 
 /**
  * Displays the display reorder form.
+ *
+ * @internal
  */
 class ReorderDisplays extends ViewsFormBase {
 
@@ -35,14 +37,14 @@ class ReorderDisplays extends ViewsFormBase {
 
     $form['#title'] = $this->t('Reorder displays');
     $form['#section'] = 'reorder';
-    $form['#action'] = $this->url('views_ui.form_reorder_displays', [
+    $form['#action'] = Url::fromRoute('views_ui.form_reorder_displays', [
       'js' => 'nojs',
       'view' => $view->id(),
       'display_id' => $display_id,
-    ]);
+    ])->toString();
     $form['view'] = [
       '#type' => 'value',
-      '#value' => $view
+      '#value' => $view,
     ];
 
     $displays = $view->get('display');
@@ -66,7 +68,7 @@ class ReorderDisplays extends ViewsFormBase {
           'action' => 'order',
           'relationship' => 'sibling',
           'group' => 'weight',
-        ]
+        ],
       ],
       '#tree' => TRUE,
       '#prefix' => '<div class="scroll" data-drupal-views-scroll>',
@@ -104,7 +106,7 @@ class ReorderDisplays extends ViewsFormBase {
 
       $form['displays'][$id]['removed'] = [
         'checkbox' => [
-          '#title' => t('Remove @id', ['@id' => $id]),
+          '#title' => $this->t('Remove @id', ['@id' => $id]),
           '#title_display' => 'invisible',
           '#type' => 'checkbox',
           '#id' => 'display-removed-' . $id,
@@ -115,7 +117,7 @@ class ReorderDisplays extends ViewsFormBase {
         ],
         'link' => [
           '#type' => 'link',
-          '#title' => SafeMarkup::format('<span>@text</span>', ['@text' => $this->t('Remove')]),
+          '#title' => new FormattableMarkup('<span>@text</span>', ['@text' => $this->t('Remove')]),
           '#url' => Url::fromRoute('<none>'),
           '#attributes' => [
             'id' => 'display-remove-link-' . $id,
@@ -191,7 +193,7 @@ class ReorderDisplays extends ViewsFormBase {
 
     // Store in cache.
     $view->cacheSet();
-    $url = $view->urlInfo('edit-form')
+    $url = $view->toUrl('edit-form')
       ->setOption('fragment', 'views-tab-default');
     $form_state->setRedirectUrl($url);
   }

@@ -6,10 +6,11 @@ use Drupal\Core\Cache\Cache;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Menu\MenuTreeParameters;
 use Drupal\Core\Render\BubbleableMetadata;
-use Drupal\menu_link_content\Entity\MenuLinkContent;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\menu_link_content\Entity\MenuLinkContent;
+use Drupal\Tests\user\Traits\UserCreationTrait;
 use Drupal\user\Entity\User;
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
+use Drupal\Core\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Route;
 
@@ -21,19 +22,28 @@ use Symfony\Component\Routing\Route;
  */
 class MenuLinkContentCacheabilityBubblingTest extends KernelTestBase {
 
-  /**
-   * {@inheritdoc}
-   */
-  public static $modules = ['menu_link_content', 'system', 'link', 'outbound_processing_test', 'url_alter_test', 'user'];
+  use UserCreationTrait;
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected static $modules = [
+    'menu_link_content',
+    'system',
+    'link',
+    'outbound_processing_test',
+    'url_alter_test',
+    'user',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
+    $this->setUpCurrentUser(['uid' => 0]);
     $this->installEntitySchema('menu_link_content');
-    $this->installEntitySchema('user');
 
     // Ensure that the weight of module_link_content is higher than system.
     // @see menu_link_content_install()
@@ -44,8 +54,6 @@ class MenuLinkContentCacheabilityBubblingTest extends KernelTestBase {
    * Tests bubbleable metadata of menu links' outbound route/path processing.
    */
   public function testOutboundPathAndRouteProcessing() {
-    \Drupal::service('router.builder')->rebuild();
-
     $request_stack = \Drupal::requestStack();
     /** @var \Symfony\Component\Routing\RequestContext $request_context */
     $request_context = \Drupal::service('router.request_context');
@@ -58,7 +66,6 @@ class MenuLinkContentCacheabilityBubblingTest extends KernelTestBase {
 
     $menu_tree = \Drupal::menuTree();
     $renderer = \Drupal::service('renderer');
-
 
     $default_menu_cacheability = (new BubbleableMetadata())
       ->setCacheMaxAge(Cache::PERMANENT)
@@ -109,6 +116,7 @@ class MenuLinkContentCacheabilityBubblingTest extends KernelTestBase {
       $menu_link_content = MenuLinkContent::create([
         'link' => ['uri' => $expectation['uri']],
         'menu_name' => 'tools',
+        'title' => 'Link test',
       ]);
       $menu_link_content->save();
       $tree = $menu_tree->load('tools', new MenuTreeParameters());
@@ -129,6 +137,7 @@ class MenuLinkContentCacheabilityBubblingTest extends KernelTestBase {
       $menu_link_content = MenuLinkContent::create([
         'link' => ['uri' => $expectation['uri']],
         'menu_name' => 'tools',
+        'title' => 'Link test',
       ]);
       $menu_link_content->save();
       $expected_cacheability = $expected_cacheability->merge($expectation['cacheability']);

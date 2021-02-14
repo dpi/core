@@ -2,7 +2,6 @@
 
 namespace Drupal\Core\Database\Driver\mysql;
 
-use Drupal\Core\Database\Query\Condition;
 use Drupal\Core\Database\SchemaException;
 use Drupal\Core\Database\SchemaObjectExistsException;
 use Drupal\Core\Database\SchemaObjectDoesNotExistException;
@@ -75,7 +74,7 @@ class Schema extends DatabaseSchema {
   protected function buildTableNameCondition($table_name, $operator = '=', $add_prefix = TRUE) {
     $table_info = $this->getPrefixInfo($table_name, $add_prefix);
 
-    $condition = new Condition('AND');
+    $condition = $this->connection->condition('AND');
     $condition->condition('table_schema', $table_info['database']);
     $condition->condition('table_name', $table_info['table'], $operator);
     return $condition;
@@ -88,6 +87,7 @@ class Schema extends DatabaseSchema {
    *   The name of the table to create.
    * @param $table
    *   A Schema API table definition array.
+   *
    * @return
    *   An array of SQL statements to create the table.
    */
@@ -108,6 +108,9 @@ class Schema extends DatabaseSchema {
     }
 
     // Process keys & indexes.
+    if (!empty($table['primary key']) && is_array($table['primary key'])) {
+      $this->ensureNotNullPrimaryKey($table['primary key'], $table['fields']);
+    }
     $keys = $this->createKeysSql($table);
     if (count($keys)) {
       $sql .= implode(", \n", $keys) . ", \n";
@@ -118,8 +121,9 @@ class Schema extends DatabaseSchema {
 
     $sql .= 'ENGINE = ' . $table['mysql_engine'] . ' DEFAULT CHARACTER SET ' . $table['mysql_character_set'];
     // By default, MySQL uses the default collation for new tables, which is
-    // 'utf8mb4_general_ci' for utf8mb4. If an alternate collation has been
-    // set, it needs to be explicitly specified.
+    // 'utf8mb4_general_ci' (MySQL 5) or 'utf8mb4_0900_ai_ci' (MySQL 8) for
+    // utf8mb4. If an alternate collation has been set, it needs to be
+    // explicitly specified.
     // @see \Drupal\Core\Database\Driver\mysql\Schema
     if (!empty($info['collation'])) {
       $sql .= ' COLLATE ' . $info['collation'];
@@ -136,9 +140,6 @@ class Schema extends DatabaseSchema {
   /**
    * Create an SQL string for a field to be used in table creation or alteration.
    *
-   * Before passing a field out of a schema definition into this function it has
-   * to be processed by _db_process_field().
-   *
    * @param string $name
    *   Name of the field.
    * @param array $spec
@@ -151,12 +152,15 @@ class Schema extends DatabaseSchema {
       if (isset($spec['length'])) {
         $sql .= '(' . $spec['length'] . ')';
       }
+      if (isset($spec['type']) && $spec['type'] == 'varchar_ascii') {
+        $sql .= ' CHARACTER SET ascii';
+      }
       if (!empty($spec['binary'])) {
         $sql .= ' BINARY';
       }
       // Note we check for the "type" key here. "mysql_type" is VARCHAR:
-      if (isset($spec['type']) && $spec['type'] == 'varchar_ascii') {
-        $sql .= ' CHARACTER SET ascii COLLATE ascii_general_ci';
+      elseif (isset($spec['type']) && $spec['type'] == 'varchar_ascii') {
+        $sql .= ' COLLATE ascii_general_ci';
       }
     }
     elseif (isset($spec['precision']) && isset($spec['scale'])) {
@@ -212,7 +216,7 @@ class Schema extends DatabaseSchema {
     // Set the correct database-engine specific datatype.
     // In case one is already provided, force it to uppercase.
     if (isset($field['mysql_type'])) {
-      $field['mysql_type'] = Unicode::strtoupper($field['mysql_type']);
+      $field['mysql_type'] = mb_strtoupper($field['mysql_type']);
     }
     else {
       $map = $this->getFieldTypeMap();
@@ -374,14 +378,14 @@ class Schema extends DatabaseSchema {
    */
   public function renameTable($table, $new_name) {
     if (!$this->tableExists($table)) {
-      throw new SchemaObjectDoesNotExistException(t("Cannot rename @table to @table_new: table @table doesn't exist.", ['@table' => $table, '@table_new' => $new_name]));
+      throw new SchemaObjectDoesNotExistException("Cannot rename '$table' to '$new_name': table '$table' doesn't exist.");
     }
     if ($this->tableExists($new_name)) {
-      throw new SchemaObjectExistsException(t("Cannot rename @table to @table_new: table @table_new already exists.", ['@table' => $table, '@table_new' => $new_name]));
+      throw new SchemaObjectExistsException("Cannot rename '$table' to '$new_name': table '$new_name' already exists.");
     }
 
     $info = $this->getPrefixInfo($new_name);
-    return $this->connection->query('ALTER TABLE {' . $table . '} RENAME TO `' . $info['table'] . '`');
+    $this->connection->query('ALTER TABLE {' . $table . '} RENAME TO `' . $info['table'] . '`');
   }
 
   /**
@@ -401,14 +405,17 @@ class Schema extends DatabaseSchema {
    */
   public function addField($table, $field, $spec, $keys_new = []) {
     if (!$this->tableExists($table)) {
-      throw new SchemaObjectDoesNotExistException(t("Cannot add field @table.@field: table doesn't exist.", ['@field' => $field, '@table' => $table]));
+      throw new SchemaObjectDoesNotExistException("Cannot add field '$table.$field': table doesn't exist.");
     }
     if ($this->fieldExists($table, $field)) {
-      throw new SchemaObjectExistsException(t("Cannot add field @table.@field: field already exists.", ['@field' => $field, '@table' => $table]));
+      throw new SchemaObjectExistsException("Cannot add field '$table.$field': field already exists.");
     }
 
     // Fields that are part of a PRIMARY KEY must be added as NOT NULL.
     $is_primary_key = isset($keys_new['primary key']) && in_array($field, $keys_new['primary key'], TRUE);
+    if ($is_primary_key) {
+      $this->ensureNotNullPrimaryKey($keys_new['primary key'], [$field => $spec]);
+    }
 
     $fixnull = FALSE;
     if (!empty($spec['not null']) && !isset($spec['default']) && !$is_primary_key) {
@@ -428,14 +435,22 @@ class Schema extends DatabaseSchema {
       $query .= ', ADD ' . implode(', ADD ', $keys_sql);
     }
     $this->connection->query($query);
-    if (isset($spec['initial'])) {
+    if (isset($spec['initial_from_field'])) {
+      if (isset($spec['initial'])) {
+        $expression = 'COALESCE(' . $spec['initial_from_field'] . ', :default_initial_value)';
+        $arguments = [':default_initial_value' => $spec['initial']];
+      }
+      else {
+        $expression = $spec['initial_from_field'];
+        $arguments = [];
+      }
       $this->connection->update($table)
-        ->fields([$field => $spec['initial']])
+        ->expression($field, $expression, $arguments)
         ->execute();
     }
-    if (isset($spec['initial_from_field'])) {
+    elseif (isset($spec['initial'])) {
       $this->connection->update($table)
-        ->expression($field, $spec['initial_from_field'])
+        ->fields([$field => $spec['initial']])
         ->execute();
     }
     if ($fixnull) {
@@ -452,30 +467,20 @@ class Schema extends DatabaseSchema {
       return FALSE;
     }
 
+    // When dropping a field that is part of a composite primary key MySQL
+    // automatically removes the field from the primary key, which can leave the
+    // table in an invalid state. MariaDB 10.2.8 requires explicitly dropping
+    // the primary key first for this reason. We perform this deletion
+    // explicitly which also makes the behavior on both MySQL and MariaDB
+    // consistent with PostgreSQL.
+    // @see https://mariadb.com/kb/en/library/alter-table
+    $primary_key = $this->findPrimaryKeyColumns($table);
+    if ((count($primary_key) > 1) && in_array($field, $primary_key, TRUE)) {
+      $this->dropPrimaryKey($table);
+    }
+
     $this->connection->query('ALTER TABLE {' . $table . '} DROP `' . $field . '`');
     return TRUE;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function fieldSetDefault($table, $field, $default) {
-    if (!$this->fieldExists($table, $field)) {
-      throw new SchemaObjectDoesNotExistException(t("Cannot set default value of field @table.@field: field doesn't exist.", ['@table' => $table, '@field' => $field]));
-    }
-
-    $this->connection->query('ALTER TABLE {' . $table . '} ALTER COLUMN `' . $field . '` SET DEFAULT ' . $this->escapeDefaultValue($default));
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function fieldSetNoDefault($table, $field) {
-    if (!$this->fieldExists($table, $field)) {
-      throw new SchemaObjectDoesNotExistException(t("Cannot remove default value of field @table.@field: field doesn't exist.", ['@table' => $table, '@field' => $field]));
-    }
-
-    $this->connection->query('ALTER TABLE {' . $table . '} ALTER COLUMN `' . $field . '` DROP DEFAULT');
   }
 
   /**
@@ -493,10 +498,10 @@ class Schema extends DatabaseSchema {
    */
   public function addPrimaryKey($table, $fields) {
     if (!$this->tableExists($table)) {
-      throw new SchemaObjectDoesNotExistException(t("Cannot add primary key to table @table: table doesn't exist.", ['@table' => $table]));
+      throw new SchemaObjectDoesNotExistException("Cannot add primary key to table '$table': table doesn't exist.");
     }
     if ($this->indexExists($table, 'PRIMARY')) {
-      throw new SchemaObjectExistsException(t("Cannot add primary key to table @table: primary key already exists.", ['@table' => $table]));
+      throw new SchemaObjectExistsException("Cannot add primary key to table '$table': primary key already exists.");
     }
 
     $this->connection->query('ALTER TABLE {' . $table . '} ADD PRIMARY KEY (' . $this->createKeySql($fields) . ')');
@@ -517,12 +522,23 @@ class Schema extends DatabaseSchema {
   /**
    * {@inheritdoc}
    */
+  protected function findPrimaryKeyColumns($table) {
+    if (!$this->tableExists($table)) {
+      return FALSE;
+    }
+    $result = $this->connection->query("SHOW KEYS FROM {" . $table . "} WHERE Key_name = 'PRIMARY'")->fetchAllAssoc('Column_name');
+    return array_keys($result);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function addUniqueKey($table, $name, $fields) {
     if (!$this->tableExists($table)) {
-      throw new SchemaObjectDoesNotExistException(t("Cannot add unique key @name to table @table: table doesn't exist.", ['@table' => $table, '@name' => $name]));
+      throw new SchemaObjectDoesNotExistException("Cannot add unique key '$name' to table '$table': table doesn't exist.");
     }
     if ($this->indexExists($table, $name)) {
-      throw new SchemaObjectExistsException(t("Cannot add unique key @name to table @table: unique key already exists.", ['@table' => $table, '@name' => $name]));
+      throw new SchemaObjectExistsException("Cannot add unique key '$name' to table '$table': unique key already exists.");
     }
 
     $this->connection->query('ALTER TABLE {' . $table . '} ADD UNIQUE KEY `' . $name . '` (' . $this->createKeySql($fields) . ')');
@@ -545,10 +561,10 @@ class Schema extends DatabaseSchema {
    */
   public function addIndex($table, $name, $fields, array $spec) {
     if (!$this->tableExists($table)) {
-      throw new SchemaObjectDoesNotExistException(t("Cannot add index @name to table @table: table doesn't exist.", ['@table' => $table, '@name' => $name]));
+      throw new SchemaObjectDoesNotExistException("Cannot add index '$name' to table '$table': table doesn't exist.");
     }
     if ($this->indexExists($table, $name)) {
-      throw new SchemaObjectExistsException(t("Cannot add index @name to table @table: index already exists.", ['@table' => $table, '@name' => $name]));
+      throw new SchemaObjectExistsException("Cannot add index '$name' to table '$table': index already exists.");
     }
 
     $spec['indexes'][$name] = $fields;
@@ -572,12 +588,45 @@ class Schema extends DatabaseSchema {
   /**
    * {@inheritdoc}
    */
+  protected function introspectIndexSchema($table) {
+    if (!$this->tableExists($table)) {
+      throw new SchemaObjectDoesNotExistException("The table $table doesn't exist.");
+    }
+
+    $index_schema = [
+      'primary key' => [],
+      'unique keys' => [],
+      'indexes' => [],
+    ];
+
+    $result = $this->connection->query('SHOW INDEX FROM {' . $table . '}')->fetchAll();
+    foreach ($result as $row) {
+      if ($row->Key_name === 'PRIMARY') {
+        $index_schema['primary key'][] = $row->Column_name;
+      }
+      elseif ($row->Non_unique == 0) {
+        $index_schema['unique keys'][$row->Key_name][] = $row->Column_name;
+      }
+      else {
+        $index_schema['indexes'][$row->Key_name][] = $row->Column_name;
+      }
+    }
+
+    return $index_schema;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function changeField($table, $field, $field_new, $spec, $keys_new = []) {
     if (!$this->fieldExists($table, $field)) {
-      throw new SchemaObjectDoesNotExistException(t("Cannot change the definition of field @table.@name: field doesn't exist.", ['@table' => $table, '@name' => $field]));
+      throw new SchemaObjectDoesNotExistException("Cannot change the definition of field '$table.$field': field doesn't exist.");
     }
     if (($field != $field_new) && $this->fieldExists($table, $field_new)) {
-      throw new SchemaObjectExistsException(t("Cannot rename field @table.@name to @name_new: target field already exists.", ['@table' => $table, '@name' => $field, '@name_new' => $field_new]));
+      throw new SchemaObjectExistsException("Cannot rename field '$table.$field' to '$field_new': target field already exists.");
+    }
+    if (isset($keys_new['primary key']) && in_array($field_new, $keys_new['primary key'], TRUE)) {
+      $this->ensureNotNullPrimaryKey($keys_new['primary key'], [$field_new => $spec]);
     }
 
     $sql = 'ALTER TABLE {' . $table . '} CHANGE `' . $field . '` ' . $this->createFieldSql($field_new, $this->processField($spec));
@@ -610,11 +659,11 @@ class Schema extends DatabaseSchema {
       $condition->condition('column_name', $column);
       $condition->compile($this->connection, $this);
       // Don't use {} around information_schema.columns table.
-      return $this->connection->query("SELECT column_comment FROM information_schema.columns WHERE " . (string) $condition, $condition->arguments())->fetchField();
+      return $this->connection->query("SELECT column_comment AS column_comment FROM information_schema.columns WHERE " . (string) $condition, $condition->arguments())->fetchField();
     }
     $condition->compile($this->connection, $this);
     // Don't use {} around information_schema.tables table.
-    $comment = $this->connection->query("SELECT table_comment FROM information_schema.tables WHERE " . (string) $condition, $condition->arguments())->fetchField();
+    $comment = $this->connection->query("SELECT table_comment AS table_comment FROM information_schema.tables WHERE " . (string) $condition, $condition->arguments())->fetchField();
     // Work-around for MySQL 5.0 bug http://bugs.mysql.com/bug.php?id=11379
     return preg_replace('/; InnoDB free:.*$/', '', $comment);
   }

@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\content_translation\Functional;
 
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\Sql\SqlContentEntityStorage;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\language\Entity\ConfigurableLanguage;
@@ -18,7 +19,7 @@ abstract class ContentTranslationTestBase extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['text'];
+  protected static $modules = ['text'];
 
   /**
    * The entity type being tested.
@@ -120,7 +121,7 @@ abstract class ContentTranslationTestBase extends BrowserTestBase {
    * Returns the translate permissions for the current entity and bundle.
    */
   protected function getTranslatePermission() {
-    $entity_type = \Drupal::entityManager()->getDefinition($this->entityTypeId);
+    $entity_type = \Drupal::entityTypeManager()->getDefinition($this->entityTypeId);
     if ($permission_granularity = $entity_type->getPermissionGranularity()) {
       return $permission_granularity == 'bundle' ? "translate {$this->bundle} {$this->entityTypeId}" : "translate {$this->entityTypeId}";
     }
@@ -138,7 +139,7 @@ abstract class ContentTranslationTestBase extends BrowserTestBase {
    * Returns an array of permissions needed for the administrator.
    */
   protected function getAdministratorPermissions() {
-    return array_merge($this->getEditorPermissions(), $this->getTranslatorPermissions(), ['administer content translation']);
+    return array_merge($this->getEditorPermissions(), $this->getTranslatorPermissions(), ['administer languages', 'administer content translation']);
   }
 
   /**
@@ -167,10 +168,6 @@ abstract class ContentTranslationTestBase extends BrowserTestBase {
     // Enable translation for the current entity type and ensure the change is
     // picked up.
     \Drupal::service('content_translation.manager')->setEnabled($this->entityTypeId, $this->bundle, TRUE);
-    drupal_static_reset();
-    \Drupal::entityManager()->clearCachedDefinitions();
-    \Drupal::service('router.builder')->rebuild();
-    \Drupal::service('entity.definition_update_manager')->applyUpdates();
   }
 
   /**
@@ -192,7 +189,9 @@ abstract class ContentTranslationTestBase extends BrowserTestBase {
       'bundle' => $this->bundle,
       'label' => 'Test translatable text-field',
     ])->save();
-    entity_get_form_display($this->entityTypeId, $this->bundle, 'default')
+    /** @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface $display_repository */
+    $display_repository = \Drupal::service('entity_display.repository');
+    $display_repository->getFormDisplay($this->entityTypeId, $this->bundle, 'default')
       ->setComponent($this->fieldName, [
         'type' => 'string_textfield',
         'weight' => 0,
@@ -217,12 +216,12 @@ abstract class ContentTranslationTestBase extends BrowserTestBase {
   protected function createEntity($values, $langcode, $bundle_name = NULL) {
     $entity_values = $values;
     $entity_values['langcode'] = $langcode;
-    $entity_type = \Drupal::entityManager()->getDefinition($this->entityTypeId);
+    $entity_type = \Drupal::entityTypeManager()->getDefinition($this->entityTypeId);
     if ($bundle_key = $entity_type->getKey('bundle')) {
       $entity_values[$bundle_key] = $bundle_name ?: $this->bundle;
     }
-    $controller = $this->container->get('entity.manager')->getStorage($this->entityTypeId);
-    if (!($controller instanceof SqlContentEntityStorage)) {
+    $storage = $this->container->get('entity_type.manager')->getStorage($this->entityTypeId);
+    if (!($storage instanceof SqlContentEntityStorage)) {
       foreach ($values as $property => $value) {
         if (is_array($value)) {
           $entity_values[$property] = [$langcode => $value];
@@ -234,6 +233,26 @@ abstract class ContentTranslationTestBase extends BrowserTestBase {
       ->create($entity_values);
     $entity->save();
     return $entity->id();
+  }
+
+  /**
+   * Returns the edit URL for the specified entity.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   The entity being edited.
+   *
+   * @return \Drupal\Core\Url
+   *   The edit URL.
+   */
+  protected function getEditUrl(ContentEntityInterface $entity) {
+    if ($entity->access('update', $this->loggedInUser)) {
+      $url = $entity->toUrl('edit-form');
+    }
+    else {
+      $url = $entity->toUrl('drupal:content-translation-edit');
+      $url->setRouteParameter('language', $entity->language()->getId());
+    }
+    return $url;
   }
 
 }

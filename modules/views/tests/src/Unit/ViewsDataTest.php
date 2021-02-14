@@ -16,35 +16,35 @@ class ViewsDataTest extends UnitTestCase {
   /**
    * The mocked cache backend.
    *
-   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Cache\CacheBackendInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $cacheBackend;
 
   /**
    * The mocked cache tags invalidator.
    *
-   * @var \Drupal\Core\Cache\CacheTagsInvalidatorInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Cache\CacheTagsInvalidatorInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $cacheTagsInvalidator;
 
   /**
    * The mocked module handler.
    *
-   * @var \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $moduleHandler;
 
   /**
    * The mocked config factory.
    *
-   * @var \Drupal\Core\Config\ConfigFactoryInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Config\ConfigFactoryInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $configFactory;
 
   /**
    * The mocked language manager.
    *
-   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Language\LanguageManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $languageManager;
 
@@ -58,16 +58,16 @@ class ViewsDataTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
-    $this->cacheTagsInvalidator = $this->getMock('Drupal\Core\Cache\CacheTagsInvalidatorInterface');
-    $this->cacheBackend = $this->getMock('Drupal\Core\Cache\CacheBackendInterface');
+  protected function setUp(): void {
+    $this->cacheTagsInvalidator = $this->createMock('Drupal\Core\Cache\CacheTagsInvalidatorInterface');
+    $this->cacheBackend = $this->createMock('Drupal\Core\Cache\CacheBackendInterface');
     $this->getContainerWithCacheTagsInvalidator($this->cacheTagsInvalidator);
 
     $configs = [];
     $configs['views.settings']['skip_cache'] = FALSE;
     $this->configFactory = $this->getConfigFactoryStub($configs);
-    $this->moduleHandler = $this->getMock('Drupal\Core\Extension\ModuleHandlerInterface');
-    $this->languageManager = $this->getMock('Drupal\Core\Language\LanguageManagerInterface');
+    $this->moduleHandler = $this->createMock('Drupal\Core\Extension\ModuleHandlerInterface');
+    $this->languageManager = $this->createMock('Drupal\Core\Language\LanguageManagerInterface');
     $this->languageManager->expects($this->any())
       ->method('getCurrentLanguage')
       ->will($this->returnValue(new Language(['id' => 'en'])));
@@ -92,8 +92,8 @@ class ViewsDataTest extends UnitTestCase {
     $data['views_test_data']['job']['area']['id'] = 'text';
     $data['views_test_data']['job']['area']['sub_type'] = ['header', 'footer'];
 
-    // Duplicate the example views test data for different weight, different title,
-    // and matching data.
+    // Duplicate the example views test data for different weight, different
+    // title and matching data.
     $data['views_test_data_2'] = $data['views_test_data'];
     $data['views_test_data_2']['table']['base']['weight'] = 50;
 
@@ -129,7 +129,7 @@ class ViewsDataTest extends UnitTestCase {
   /**
    * Mocks the basic module handler used for the test.
    *
-   * @return \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @return \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected function setupMockedModuleHandler() {
     $views_data = $this->viewsData();
@@ -163,7 +163,7 @@ class ViewsDataTest extends UnitTestCase {
     for ($i = 1; $i < count($base_tables); ++$i) {
       $prev = $base_tables[$base_tables_keys[$i - 1]];
       $current = $base_tables[$base_tables_keys[$i]];
-      $this->assertTrue($prev['weight'] <= $current['weight'] && $prev['title'] <= $prev['title'], 'The tables are sorted as expected.');
+      $this->assertGreaterThanOrEqual($prev['weight'], $current['weight']);
     }
 
     // Test the values returned for each base table.
@@ -235,7 +235,6 @@ class ViewsDataTest extends UnitTestCase {
     $this->moduleHandler->expects($this->at(5))
       ->method('alter')
       ->with('views_data', $expected_views_data);
-
 
     // The cache should only be called once (before the clear() call) as get
     // will get all table data in the first get().
@@ -387,7 +386,7 @@ class ViewsDataTest extends UnitTestCase {
   }
 
   /**
-   * Tests the cache backend behavior with requesting the same table multiple
+   * Tests the cache backend behavior with requesting the same table multiple.
    */
   public function testCacheCallsWithSameTableMultipleTimes() {
     $expected_views_data = $this->viewsDataWithProvider();
@@ -420,7 +419,9 @@ class ViewsDataTest extends UnitTestCase {
   }
 
   /**
-   * Tests the cache calls for a single table and warm cache for:
+   * Tests the cache calls for a single table and warm cache.
+   *
+   * Warm cache:
    *   - all tables
    *   - views_test_data
    */
@@ -446,7 +447,7 @@ class ViewsDataTest extends UnitTestCase {
   }
 
   /**
-   * Tests the cache calls for a different table than the one in cache:
+   * Tests the cache calls for a different table than the one in cache.
    *
    * Warm cache:
    *   - all tables
@@ -481,7 +482,7 @@ class ViewsDataTest extends UnitTestCase {
   }
 
   /**
-   * Tests the cache calls for an not existing table:
+   * Tests the cache calls for a non-existent table.
    *
    * Warm cache:
    *   - all tables
@@ -519,7 +520,7 @@ class ViewsDataTest extends UnitTestCase {
   }
 
   /**
-   * Tests the cache calls for an not existing table:
+   * Tests the cache calls for a non-existent table.
    *
    * Warm cache:
    *   - all tables
@@ -639,29 +640,24 @@ class ViewsDataTest extends UnitTestCase {
   }
 
   /**
-   * Tests that getting all data has same results as getting data with NULL
-   * logic.
+   * Tests that getting data with an empty key throws an exception.
    *
-   * @covers ::getAll
+   * @covers ::get
+   * @dataProvider providerTestGetEmptyKey
    */
-  public function testGetAllEqualsToGetNull() {
-    $expected_views_data = $this->viewsDataWithProvider();
-    $this->setupMockedModuleHandler();
+  public function testGetEmptyKey($key) {
+    $this->expectException(\InvalidArgumentException::class);
+    $this->expectExceptionMessage('A valid cache entry key is required. Use getAll() to get all table data.');
 
-    // Setup a warm cache backend for a single table.
-    $this->cacheBackend->expects($this->once())
-      ->method('get')
-      ->with("views_data:en");
-    $this->cacheBackend->expects($this->once())
-      ->method('set')
-      ->with('views_data:en', $expected_views_data);
+    $this->viewsData->get($key);
+  }
 
-    // Initialize the views data cache and repeat with no specified table. This
-    // should only load the cache entry for all tables.
-    for ($i = 0; $i < 5; $i++) {
-      $this->assertSame($expected_views_data, $this->viewsData->getAll());
-      $this->assertSame($expected_views_data, $this->viewsData->get());
-    }
+  public function providerTestGetEmptyKey() {
+    return [
+      [NULL],
+      [''],
+      [0],
+    ];
   }
 
 }

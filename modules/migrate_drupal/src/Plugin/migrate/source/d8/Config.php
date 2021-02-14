@@ -9,7 +9,8 @@ use Drupal\migrate_drupal\Plugin\migrate\source\DrupalSqlBase;
  * Drupal config source from database.
  *
  * @MigrateSource(
- *   id = "d8_config"
+ *   id = "d8_config",
+ *   source_module = "system",
  * )
  */
 class Config extends DrupalSqlBase {
@@ -34,6 +35,7 @@ class Config extends DrupalSqlBase {
    */
   public function prepareRow(Row $row) {
     $row->setSourceProperty('data', unserialize($row->getSourceProperty('data')));
+    return parent::prepareRow($row);
   }
 
   /**

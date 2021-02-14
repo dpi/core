@@ -16,7 +16,12 @@ class PathPluginTest extends NodeTestBase {
    *
    * @var array
    */
-  public static $modules = ['node'];
+  protected static $modules = ['node'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Views used by this test.
@@ -35,7 +40,7 @@ class PathPluginTest extends NodeTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->drupalCreateContentType(['type' => 'article']);
@@ -58,12 +63,18 @@ class PathPluginTest extends NodeTestBase {
   }
 
   /**
-   * Tests the node path plugin.
+   * Tests the node path plugin functionality when converted to entity link.
    */
   public function testPathPlugin() {
     /** @var \Drupal\Core\Render\RendererInterface $renderer */
     $renderer = $this->container->get('renderer');
     $view = Views::getView('test_node_path_plugin');
+
+    // The configured deprecated node path plugin should be converted to the
+    // entity link plugin.
+    $field = $view->getHandler('page_1', 'field', 'path');
+    $this->assertEqual('entity_link', $field['plugin_id']);
+
     $view->initDisplay();
     $view->setDisplay('page_1');
     $view->initStyle();
@@ -73,7 +84,7 @@ class PathPluginTest extends NodeTestBase {
     $output = $view->preview();
     $output = $renderer->renderRoot($output);
     foreach ($this->nodes as $node) {
-      $this->assertTrue(strpos($output, 'This is <strong>not escaped</strong> and this is ' . $node->link('the link')) !== FALSE, 'Make sure path field rewriting is not escaped.');
+      $this->assertStringContainsString('This is <strong>not escaped</strong> and this is ' . $node->toLink('the link')->toString(), $output, 'Make sure path field rewriting is not escaped.');
     }
   }
 

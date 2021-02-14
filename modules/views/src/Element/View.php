@@ -16,7 +16,7 @@ class View extends RenderElement {
    * {@inheritdoc}
    */
   public function getInfo() {
-    $class = get_class($this);
+    $class = static::class;
     return [
       '#pre_render' => [
         [$class, 'preRenderViewElement'],
@@ -52,7 +52,6 @@ class View extends RenderElement {
     // \Drupal\views\ViewExecutable::setCurrentPage knows that its no longer
     // possible to manipulate the $element.
     $view->element['#pre_rendered'] = TRUE;
-
 
     if (isset($element['#response'])) {
       $view->setResponse($element['#response']);

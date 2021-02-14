@@ -35,7 +35,7 @@ class MediaThumbnailFormatter extends ImageFormatter {
   protected $renderer;
 
   /**
-   * Constructs an MediaThumbnailFormatter object.
+   * Constructs a MediaThumbnailFormatter object.
    *
    * @param string $plugin_id
    *   The plugin_id for the formatter.
@@ -100,7 +100,7 @@ class MediaThumbnailFormatter extends ImageFormatter {
 
     $link_types = [
       'content' => $this->t('Content'),
-      'media' => $this->t('Media entity'),
+      'media' => $this->t('Media item'),
     ];
     $element['image_link']['#options'] = $link_types;
 

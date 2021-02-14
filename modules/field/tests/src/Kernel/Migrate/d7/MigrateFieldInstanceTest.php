@@ -2,12 +2,9 @@
 
 namespace Drupal\Tests\field\Kernel\Migrate\d7;
 
-use Drupal\comment\Entity\CommentType;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\field\FieldConfigInterface;
-use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\Tests\migrate_drupal\Kernel\d7\MigrateDrupal7TestBase;
-use Drupal\node\Entity\NodeType;
 
 /**
  * Migrates Drupal 7 field instances.
@@ -17,18 +14,15 @@ use Drupal\node\Entity\NodeType;
 class MigrateFieldInstanceTest extends MigrateDrupal7TestBase {
 
   /**
-   * The modules to be enabled during the test.
-   *
-   * @var array
+   * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'comment',
     'datetime',
-    'file',
     'image',
     'link',
+    'menu_ui',
     'node',
-    'system',
     'taxonomy',
     'telephone',
     'text',
@@ -37,36 +31,9 @@ class MigrateFieldInstanceTest extends MigrateDrupal7TestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
-    $this->installConfig(static::$modules);
-    $this->createType('page');
-    $this->createType('article');
-    $this->createType('blog');
-    $this->createType('book');
-    $this->createType('forum');
-    $this->createType('test_content_type');
-    Vocabulary::create(['vid' => 'test_vocabulary'])->save();
-    $this->executeMigrations(['d7_field', 'd7_field_instance']);
-  }
-
-  /**
-   * Creates a node type with a corresponding comment type.
-   *
-   * @param string $id
-   *   The node type ID.
-   */
-  protected function createType($id) {
-    NodeType::create([
-      'type' => $id,
-      'label' => $this->randomString(),
-    ])->save();
-
-    CommentType::create([
-      'id' => 'comment_node_' . $id,
-      'label' => $this->randomString(),
-      'target_entity_type_id' => 'node',
-    ])->save();
+    $this->migrateFields();
   }
 
   /**
@@ -113,6 +80,23 @@ class MigrateFieldInstanceTest extends MigrateDrupal7TestBase {
   }
 
   /**
+   * Asserts the settings of an entity reference field config entity.
+   *
+   * @param string $id
+   *   The entity ID in the form ENTITY_TYPE.BUNDLE.FIELD_NAME.
+   * @param string[] $target_bundles
+   *   An array of expected target bundles.
+   */
+  protected function assertEntityReferenceFields($id, array $target_bundles) {
+    $field = FieldConfig::load($id);
+    $handler_settings = $field->getSetting('handler_settings');
+    $this->assertArrayHasKey('target_bundles', $handler_settings);
+    foreach ($handler_settings['target_bundles'] as $target_bundle) {
+      $this->assertContains($target_bundle, $target_bundles);
+    }
+  }
+
+  /**
    * Tests migrating D7 field instances to field_config entities.
    */
   public function testFieldInstances() {
@@ -120,14 +104,14 @@ class MigrateFieldInstanceTest extends MigrateDrupal7TestBase {
     $this->assertEntity('node.page.body', 'Body', 'text_with_summary', FALSE, FALSE);
     $this->assertEntity('comment.comment_node_article.comment_body', 'Comment', 'text_long', TRUE, FALSE);
     $this->assertEntity('node.article.body', 'Body', 'text_with_summary', FALSE, TRUE);
-    $this->assertEntity('node.article.field_tags', 'Tags', 'entity_reference', FALSE, TRUE);
+    $this->assertEntity('node.article.field_tags', 'Tags', 'entity_reference', FALSE, FALSE);
     $this->assertEntity('node.article.field_image', 'Image', 'image', FALSE, TRUE);
     $this->assertEntity('comment.comment_node_blog.comment_body', 'Comment', 'text_long', TRUE, FALSE);
     $this->assertEntity('node.blog.body', 'Body', 'text_with_summary', FALSE, TRUE);
     $this->assertEntity('comment.comment_node_book.comment_body', 'Comment', 'text_long', TRUE, FALSE);
     $this->assertEntity('node.book.body', 'Body', 'text_with_summary', FALSE, FALSE);
     $this->assertEntity('node.forum.taxonomy_forums', 'Forums', 'entity_reference', TRUE, FALSE);
-    $this->assertEntity('comment.comment_node_forum.comment_body', 'Comment', 'text_long', TRUE, FALSE);
+    $this->assertEntity('comment.comment_forum.comment_body', 'Comment', 'text_long', TRUE, FALSE);
     $this->assertEntity('node.forum.body', 'Body', 'text_with_summary', FALSE, FALSE);
     $this->assertEntity('comment.comment_node_test_content_type.comment_body', 'Comment', 'text_long', TRUE, FALSE);
     $this->assertEntity('node.test_content_type.field_boolean', 'Boolean', 'boolean', FALSE, FALSE);
@@ -138,33 +122,82 @@ class MigrateFieldInstanceTest extends MigrateDrupal7TestBase {
     $this->assertEntity('node.test_content_type.field_file', 'File', 'file', FALSE, FALSE);
     $this->assertEntity('node.test_content_type.field_float', 'Float', 'float', FALSE, FALSE);
     $this->assertEntity('node.test_content_type.field_images', 'Images', 'image', TRUE, FALSE);
-    $this->assertEntity('node.test_content_type.field_integer', 'Integer', 'integer', TRUE, FALSE);
+    $this->assertEntity('node.test_content_type.field_integer', 'Integer', 'integer', TRUE, TRUE);
     $this->assertEntity('node.test_content_type.field_link', 'Link', 'link', FALSE, FALSE);
     $this->assertEntity('node.test_content_type.field_text_list', 'Text List', 'list_string', FALSE, FALSE);
     $this->assertEntity('node.test_content_type.field_integer_list', 'Integer List', 'list_integer', FALSE, FALSE);
+    $this->assertEntity('node.test_content_type.field_float_list', 'Float List', 'list_float', FALSE, FALSE);
     $this->assertEntity('node.test_content_type.field_long_text', 'Long text', 'text_with_summary', FALSE, FALSE);
     $this->assertEntity('node.test_content_type.field_term_reference', 'Term Reference', 'entity_reference', FALSE, FALSE);
     $this->assertEntity('node.test_content_type.field_text', 'Text', 'string', FALSE, FALSE);
-    $this->assertEntity('comment.comment_node_test_content_type.field_integer', 'Integer', 'integer', FALSE, FALSE);
+    $this->assertEntity('comment.comment_node_test_content_type.field_integer', 'Integer', 'integer', FALSE, TRUE);
+    $this->assertEntity('comment.comment_node_a_thirty_two_char.comment_body', 'Comment', 'text_long', TRUE, FALSE);
     $this->assertEntity('user.user.field_file', 'File', 'file', FALSE, FALSE);
-
 
     $this->assertLinkFields('node.test_content_type.field_link', DRUPAL_OPTIONAL);
     $this->assertLinkFields('node.article.field_link', DRUPAL_DISABLED);
     $this->assertLinkFields('node.blog.field_link', DRUPAL_REQUIRED);
-  }
 
-  /**
-   * Tests the migration of text field instances with different text processing.
-   */
-  public function testTextFieldInstances() {
+    $this->assertEntityReferenceFields('node.article.field_tags', ['tags']);
+    $this->assertEntityReferenceFields('node.forum.taxonomy_forums', ['forums']);
+    $this->assertEntityReferenceFields('node.test_content_type.field_term_reference', ['tags', 'test_vocabulary']);
+
+    // Tests that fields created by the Title module are not migrated.
+    $title_field = FieldConfig::load('node.test_content_type.title_field');
+    $this->assertNull($title_field);
+    $subject_field = FieldConfig::load('comment.comment_node_article.subject_field');
+    $this->assertNull($subject_field);
+    $name_field = FieldConfig::load('taxonomy_term.test_vocabulary.name_field');
+    $this->assertNull($name_field);
+    $description_field = FieldConfig::load('taxonomy_term.test_vocabulary.description_field');
+    $this->assertNull($description_field);
+
+    $boolean_field = FieldConfig::load('node.test_content_type.field_boolean');
+    $expected_settings = [
+      'on_label' => '1',
+      'off_label' => 'Off',
+    ];
+    $this->assertSame($expected_settings, $boolean_field->get('settings'));
+
+    // Test a synchronized field is not translatable.
+    $field = FieldConfig::load('node.article.field_text_plain');
+    $this->assertInstanceOf(FieldConfig::class, $field);
+    $this->assertFalse($field->isTranslatable());
+
+    // Test the translation settings for taxonomy fields.
+    $this->assertEntity('node.article.field_vocab_fixed', 'vocab_fixed', 'entity_reference', FALSE, TRUE);
+    $this->assertEntity('node.article.field_vocab_localize', 'vocab_localize', 'entity_reference', FALSE, FALSE);
+    $this->assertEntity('node.article.field_vocab_translate', 'vocab_translate', 'entity_reference', FALSE, TRUE);
+
+    // Test the node and user reference fields.
+    $this->assertEntity('node.article.field_node_reference', 'Node Reference', 'entity_reference', FALSE, TRUE);
+    $this->assertEntity('node.article.field_user_reference', 'User Reference', 'entity_reference', FALSE, TRUE);
+    $expected_handler_settings = [
+      'include_anonymous' => TRUE,
+      'filter' => [
+        'type' => 'role',
+        'role' => [
+          'authenticated user' => 'authenticated user',
+        ],
+      ],
+      'sort' => [
+        'field' => '_none',
+        'direction' => 'ASC',
+      ],
+      'auto_create' => FALSE,
+    ];
+    $field = FieldConfig::load('node.article.field_user_reference');
+    $actual = $field->getSetting('handler_settings');
+    $this->assertSame($expected_handler_settings, $actual);
+
+    // Test migration of text field instances with different text processing.
     // All text and text_long field instances using a field base that has only
     // plain text instances should be migrated to string and string_long fields.
     // All text_with_summary field instances using a field base that has only
     // plain text instances should not have been migrated since there's no such
     // thing as a string_with_summary field.
     $this->assertEntity('node.page.field_text_plain', 'Text plain', 'string', FALSE, FALSE);
-    $this->assertEntity('node.article.field_text_plain', 'Text plain', 'string', FALSE, TRUE);
+    $this->assertEntity('node.article.field_text_plain', 'Text plain', 'string', FALSE, FALSE);
     $this->assertEntity('node.page.field_text_long_plain', 'Text long plain', 'string_long', FALSE, FALSE);
     $this->assertEntity('node.article.field_text_long_plain', 'Text long plain', 'string_long', FALSE, TRUE);
     $this->assertNull(FieldConfig::load('node.page.field_text_sum_plain'));
@@ -193,10 +226,9 @@ class MigrateFieldInstanceTest extends MigrateDrupal7TestBase {
     // For each text field instances that were skipped, there should be a log
     // message with the required steps to fix this.
     $migration = $this->getMigration('d7_field_instance');
-    $messages = $migration->getIdMap()->getMessageIterator()->fetchAll();
-    $errors = array_map(function($message) {
+    $errors = array_map(function ($message) {
       return $message->message;
-    }, $messages);
+    }, iterator_to_array($migration->getIdMap()->getMessages()));
     $this->assertCount(8, $errors);
     sort($errors);
     $message = 'Can\'t migrate source field field_text_long_plain_filtered configured with both plain text and filtered text processing. See https://www.drupal.org/docs/8/upgrade/known-issues-when-upgrading-from-drupal-6-or-7-to-drupal-8#plain-text';

@@ -11,30 +11,38 @@ use Drupal\Tests\BrowserTestBase;
  */
 class UserRolesAssignmentTest extends BrowserTestBase {
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
-    $admin_user = $this->drupalCreateUser(['administer permissions', 'administer users']);
+    $admin_user = $this->drupalCreateUser([
+      'administer permissions',
+      'administer users',
+    ]);
     $this->drupalLogin($admin_user);
   }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests that a user can be assigned a role and that the role can be removed
    * again.
    */
-  public function testAssignAndRemoveRole()  {
+  public function testAssignAndRemoveRole() {
     $rid = $this->drupalCreateRole(['administer users']);
     $account = $this->drupalCreateUser();
 
     // Assign the role to the user.
-    $this->drupalPostForm('user/' . $account->id() . '/edit', ["roles[$rid]" => $rid], t('Save'));
-    $this->assertText(t('The changes have been saved.'));
-    $this->assertFieldChecked('edit-roles-' . $rid, 'Role is assigned.');
+    $this->drupalPostForm('user/' . $account->id() . '/edit', ["roles[$rid]" => $rid], 'Save');
+    $this->assertText('The changes have been saved.');
+    $this->assertSession()->checkboxChecked('edit-roles-' . $rid);
     $this->userLoadAndCheckRoleAssigned($account, $rid);
 
     // Remove the role from the user.
-    $this->drupalPostForm('user/' . $account->id() . '/edit', ["roles[$rid]" => FALSE], t('Save'));
-    $this->assertText(t('The changes have been saved.'));
-    $this->assertNoFieldChecked('edit-roles-' . $rid, 'Role is removed from user.');
+    $this->drupalPostForm('user/' . $account->id() . '/edit', ["roles[$rid]" => FALSE], 'Save');
+    $this->assertText('The changes have been saved.');
+    $this->assertSession()->checkboxNotChecked('edit-roles-' . $rid);
     $this->userLoadAndCheckRoleAssigned($account, $rid, FALSE);
   }
 
@@ -52,19 +60,19 @@ class UserRolesAssignmentTest extends BrowserTestBase {
       'pass[pass2]' => $pass,
       "roles[$rid]" => $rid,
     ];
-    $this->drupalPostForm('admin/people/create', $edit, t('Create new account'));
-    $this->assertText(t('Created a new user account for @name.', ['@name' => $edit['name']]));
+    $this->drupalPostForm('admin/people/create', $edit, 'Create new account');
+    $this->assertText('Created a new user account for ' . $edit['name'] . '.');
     // Get the newly added user.
     $account = user_load_by_name($edit['name']);
 
     $this->drupalGet('user/' . $account->id() . '/edit');
-    $this->assertFieldChecked('edit-roles-' . $rid, 'Role is assigned.');
+    $this->assertSession()->checkboxChecked('edit-roles-' . $rid);
     $this->userLoadAndCheckRoleAssigned($account, $rid);
 
     // Remove the role again.
-    $this->drupalPostForm('user/' . $account->id() . '/edit', ["roles[$rid]" => FALSE], t('Save'));
-    $this->assertText(t('The changes have been saved.'));
-    $this->assertNoFieldChecked('edit-roles-' . $rid, 'Role is removed from user.');
+    $this->drupalPostForm('user/' . $account->id() . '/edit', ["roles[$rid]" => FALSE], 'Save');
+    $this->assertText('The changes have been saved.');
+    $this->assertSession()->checkboxNotChecked('edit-roles-' . $rid);
     $this->userLoadAndCheckRoleAssigned($account, $rid, FALSE);
   }
 
@@ -80,14 +88,14 @@ class UserRolesAssignmentTest extends BrowserTestBase {
    *   Defaults to TRUE.
    */
   private function userLoadAndCheckRoleAssigned($account, $rid, $is_assigned = TRUE) {
-    $user_storage = $this->container->get('entity.manager')->getStorage('user');
+    $user_storage = $this->container->get('entity_type.manager')->getStorage('user');
     $user_storage->resetCache([$account->id()]);
     $account = $user_storage->load($account->id());
     if ($is_assigned) {
-      $this->assertFalse(array_search($rid, $account->getRoles()) === FALSE, 'The role is present in the user object.');
+      $this->assertContains($rid, $account->getRoles());
     }
     else {
-      $this->assertTrue(array_search($rid, $account->getRoles()) === FALSE, 'The role is not present in the user object.');
+      $this->assertNotContains($rid, $account->getRoles());
     }
   }
 

@@ -10,14 +10,16 @@ use Drupal\Core\TypedData\TypedDataTrait;
  */
 class ContextDefinition implements ContextDefinitionInterface {
 
-  use DependencySerializationTrait;
+  use DependencySerializationTrait {
+    __sleep as traitSleep;
+  }
 
   use TypedDataTrait;
 
   /**
    * The data type of the data.
    *
-   * @return string
+   * @var string
    *   The data type.
    */
   protected $dataType;
@@ -25,7 +27,7 @@ class ContextDefinition implements ContextDefinitionInterface {
   /**
    * The human-readable label.
    *
-   * @return string
+   * @var string
    *   The label.
    */
   protected $label;
@@ -33,7 +35,7 @@ class ContextDefinition implements ContextDefinitionInterface {
   /**
    * The human-readable description.
    *
-   * @return string|null
+   * @var string|null
    *   The description, or NULL if no description is available.
    */
   protected $description;
@@ -106,6 +108,8 @@ class ContextDefinition implements ContextDefinitionInterface {
     $this->isMultiple = $multiple;
     $this->description = $description;
     $this->defaultValue = $default_value;
+
+    assert(strpos($data_type, 'entity:') !== 0 || $this instanceof EntityContextDefinition);
   }
 
   /**
@@ -250,6 +254,101 @@ class ContextDefinition implements ContextDefinitionInterface {
     $constraints = $definition->getConstraints() + $this->getConstraints();
     $definition->setConstraints($constraints);
     return $definition;
+  }
+
+  /**
+   * Checks if this definition's data type matches that of the given context.
+   *
+   * @param \Drupal\Core\Plugin\Context\ContextInterface $context
+   *   The context to test against.
+   *
+   * @return bool
+   *   TRUE if the data types match, otherwise FALSE.
+   */
+  protected function dataTypeMatches(ContextInterface $context) {
+    $this_type = $this->getDataType();
+    $that_type = $context->getContextDefinition()->getDataType();
+
+    return (
+      // 'any' means all data types are supported.
+      $this_type === 'any' ||
+      $this_type === $that_type ||
+      // Allow a more generic data type like 'entity' to be fulfilled by a more
+      // specific data type like 'entity:user'. However, if this type is more
+      // specific, do not consider a more generic type to be a match.
+      strpos($that_type, "$this_type:") === 0
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isSatisfiedBy(ContextInterface $context) {
+    $definition = $context->getContextDefinition();
+    if (!$this->dataTypeMatches($context)) {
+      return FALSE;
+    }
+
+    // Get the value for this context, either directly if possible or by
+    // introspecting the definition.
+    if ($context->hasContextValue()) {
+      $values = [$context->getContextData()];
+    }
+    elseif ($definition instanceof self) {
+      $values = $definition->getSampleValues();
+    }
+    else {
+      $values = [];
+    }
+
+    $validator = $this->getTypedDataManager()->getValidator();
+    foreach ($values as $value) {
+      $constraints = array_values($this->getConstraintObjects());
+      $violations = $validator->validate($value, $constraints);
+      foreach ($violations as $delta => $violation) {
+        // Remove any violation that does not correspond to the constraints.
+        if (!in_array($violation->getConstraint(), $constraints)) {
+          $violations->remove($delta);
+        }
+      }
+      // If a value has no violations then the requirement is satisfied.
+      if (!$violations->count()) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Returns typed data objects representing this context definition.
+   *
+   * This should return as many objects as needed to reflect the variations of
+   * the constraints it supports.
+   *
+   * @yield \Drupal\Core\TypedData\TypedDataInterface
+   *   The set of typed data object.
+   */
+  protected function getSampleValues() {
+    yield $this->getTypedDataManager()->create($this->getDataDefinition());
+  }
+
+  /**
+   * Extracts an array of constraints for a context definition object.
+   *
+   * @return \Symfony\Component\Validator\Constraint[]
+   *   A list of applied constraints for the context definition.
+   */
+  protected function getConstraintObjects() {
+    $constraint_definitions = $this->getConstraints();
+
+    $validation_constraint_manager = $this->getTypedDataManager()->getValidationConstraintManager();
+    $constraints = [];
+    foreach ($constraint_definitions as $constraint_name => $constraint_definition) {
+      $constraints[$constraint_name] = $validation_constraint_manager->create($constraint_name, $constraint_definition);
+    }
+
+    return $constraints;
   }
 
 }

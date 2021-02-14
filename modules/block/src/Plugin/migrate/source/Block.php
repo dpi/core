@@ -120,7 +120,7 @@ class Block extends DrupalSqlBase {
       ->fields('br', ['rid'])
       ->condition('module', $module)
       ->condition('delta', $delta);
-    $query->join($this->userRoleTable, 'ur', 'br.rid = ur.rid');
+    $query->join($this->userRoleTable, 'ur', '[br].[rid] = [ur].[rid]');
     $roles = $query->execute()
       ->fetchCol();
     $row->setSourceProperty('roles', $roles);
@@ -145,23 +145,28 @@ class Block extends DrupalSqlBase {
         }
         $settings['aggregator']['item_count'] = $item_count;
         break;
+
       case 'book':
         $settings['book']['block_mode'] = $this->variableGet('book_block_mode', 'all pages');
         break;
+
       case 'forum':
         $settings['forum']['block_num'] = $this->variableGet('forum_block_num_' . $delta, 5);
         break;
+
       case 'statistics':
         foreach (['statistics_block_top_day_num', 'statistics_block_top_all_num', 'statistics_block_top_last_num'] as $name) {
           $settings['statistics'][$name] = $this->variableGet($name, 0);
         }
         break;
+
       case 'user':
         switch ($delta) {
           case 2:
           case 'new':
             $settings['user']['block_whois_new_count'] = $this->variableGet('user_block_whois_new_count', 5);
             break;
+
           case 3:
           case 'online':
             $settings['user']['block_seconds_online'] = $this->variableGet('user_block_seconds_online', 900);

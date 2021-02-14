@@ -9,13 +9,18 @@ use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerResolverInterface;
+use Drupal\Core\Form\FormHelper;
+use Drupal\Core\Render\Element\RenderCallbackInterface;
+use Drupal\Core\Security\TrustedCallbackInterface;
+use Drupal\Core\Security\DoTrustedCallbackTrait;
 use Drupal\Core\Theme\ThemeManagerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
- * Turns a render array into a HTML string.
+ * Turns a render array into an HTML string.
  */
 class Renderer implements RendererInterface {
+  use DoTrustedCallbackTrait;
 
   /**
    * The theme manager.
@@ -210,15 +215,12 @@ class Renderer implements RendererInterface {
     }
 
     if (!isset($elements['#access']) && isset($elements['#access_callback'])) {
-      if (is_string($elements['#access_callback']) && strpos($elements['#access_callback'], '::') === FALSE) {
-        $elements['#access_callback'] = $this->controllerResolver->getControllerFromDefinition($elements['#access_callback']);
-      }
-      $elements['#access'] = call_user_func($elements['#access_callback'], $elements);
+      $elements['#access'] = $this->doCallback('#access_callback', $elements['#access_callback'], [$elements]);
     }
 
     // Early-return nothing if user does not have access.
     if (isset($elements['#access'])) {
-      // If #access is an AccessResultInterface object, we must apply it's
+      // If #access is an AccessResultInterface object, we must apply its
       // cacheability metadata to the render array.
       if ($elements['#access'] instanceof AccessResultInterface) {
         $this->addCacheableDependency($elements, $elements['#access']);
@@ -309,7 +311,7 @@ class Renderer implements RendererInterface {
       if (count($elements['#lazy_builder']) !== 2) {
         throw new \DomainException('The #lazy_builder property must have an array as a value, containing two values: the callback, and the arguments for the callback.');
       }
-      if (count($elements['#lazy_builder'][1]) !== count(array_filter($elements['#lazy_builder'][1], function($v) {
+      if (count($elements['#lazy_builder'][1]) !== count(array_filter($elements['#lazy_builder'][1], function ($v) {
         return is_null($v) || is_scalar($v);
       }))) {
         throw new \DomainException("A #lazy_builder callback's context may only contain scalar values or NULL.");
@@ -326,7 +328,7 @@ class Renderer implements RendererInterface {
         // automatically by the Renderer. Adding them as though they are
         // supported allows us to avoid throwing an exception 100% of the time.
         '#weight',
-        '#printed'
+        '#printed',
       ];
       $unsupported_keys = array_diff(array_keys($elements), $supported_keys);
       if (count($unsupported_keys)) {
@@ -350,12 +352,7 @@ class Renderer implements RendererInterface {
     }
     // Build the element if it is still empty.
     if (isset($elements['#lazy_builder'])) {
-      $callable = $elements['#lazy_builder'][0];
-      $args = $elements['#lazy_builder'][1];
-      if (is_string($callable) && strpos($callable, '::') === FALSE) {
-        $callable = $this->controllerResolver->getControllerFromDefinition($callable);
-      }
-      $new_elements = call_user_func_array($callable, $args);
+      $new_elements = $this->doCallback('#lazy_builder', $elements['#lazy_builder'][0], $elements['#lazy_builder'][1]);
       // Retain the original cacheability metadata, plus cache keys.
       CacheableMetadata::createFromRenderArray($elements)
         ->merge(CacheableMetadata::createFromRenderArray($new_elements))
@@ -372,15 +369,12 @@ class Renderer implements RendererInterface {
     // element is rendered into the final text.
     if (isset($elements['#pre_render'])) {
       foreach ($elements['#pre_render'] as $callable) {
-        if (is_string($callable) && strpos($callable, '::') === FALSE) {
-          $callable = $this->controllerResolver->getControllerFromDefinition($callable);
-        }
-        $elements = call_user_func($callable, $elements);
+        $elements = $this->doCallback('#pre_render', $callable, [$elements]);
       }
     }
 
     // All render elements support #markup and #plain_text.
-    if (!empty($elements['#markup']) || !empty($elements['#plain_text'])) {
+    if (isset($elements['#markup']) || isset($elements['#plain_text'])) {
       $elements = $this->ensureMarkupIsSafe($elements);
     }
 
@@ -401,7 +395,7 @@ class Renderer implements RendererInterface {
 
     // Add any JavaScript state information associated with the element.
     if (!empty($elements['#states'])) {
-      drupal_process_states($elements);
+      FormHelper::processStates($elements);
     }
 
     // Get the children of the element, sorted by weight.
@@ -499,21 +493,24 @@ class Renderer implements RendererInterface {
     // outputted text to be filtered.
     if (isset($elements['#post_render'])) {
       foreach ($elements['#post_render'] as $callable) {
-        if (is_string($callable) && strpos($callable, '::') === FALSE) {
-          $callable = $this->controllerResolver->getControllerFromDefinition($callable);
-        }
-        $elements['#children'] = call_user_func($callable, $elements['#children'], $elements);
+        $elements['#children'] = $this->doCallback('#post_render', $callable, [$elements['#children'], $elements]);
       }
     }
 
     // We store the resulting output in $elements['#markup'], to be consistent
     // with how render cached output gets stored. This ensures that placeholder
     // replacement logic gets the same data to work with, no matter if #cache is
-    // disabled, #cache is enabled, there is a cache hit or miss.
-    $prefix = isset($elements['#prefix']) ? $this->xssFilterAdminIfUnsafe($elements['#prefix']) : '';
-    $suffix = isset($elements['#suffix']) ? $this->xssFilterAdminIfUnsafe($elements['#suffix']) : '';
-
-    $elements['#markup'] = Markup::create($prefix . $elements['#children'] . $suffix);
+    // disabled, #cache is enabled, there is a cache hit or miss. If
+    // #render_children is set the #prefix and #suffix will have already been
+    // added.
+    if (isset($elements['#render_children'])) {
+      $elements['#markup'] = Markup::create($elements['#children']);
+    }
+    else {
+      $prefix = isset($elements['#prefix']) ? $this->xssFilterAdminIfUnsafe($elements['#prefix']) : '';
+      $suffix = isset($elements['#suffix']) ? $this->xssFilterAdminIfUnsafe($elements['#suffix']) : '';
+      $elements['#markup'] = Markup::create($prefix . $elements['#children'] . $suffix);
+    }
 
     // We've rendered this element (and its subtree!), now update the context.
     $context->update($elements);
@@ -643,8 +640,8 @@ class Renderer implements RendererInterface {
     // being rendered: any code can add messages to render.
     // This violates the principle that each lazy builder must be able to render
     // itself in isolation, and therefore in any order. However, we cannot
-    // change the way drupal_set_message() works in the Drupal 8 cycle. So we
-    // have to accommodate its special needs.
+    // change the way \Drupal\Core\Messenger\Messenger works in the Drupal 8
+    // cycle. So we have to accommodate its special needs.
     // Allowing placeholders to be rendered in a particular order (in this case:
     // last) would violate this isolation principle. Thus a monopoly is granted
     // to this one special case, with this hard-coded solution.
@@ -738,20 +735,50 @@ class Renderer implements RendererInterface {
    * @see \Drupal\Component\Utility\Xss::filterAdmin()
    */
   protected function ensureMarkupIsSafe(array $elements) {
-    if (empty($elements['#markup']) && empty($elements['#plain_text'])) {
-      return $elements;
-    }
-
-    if (!empty($elements['#plain_text'])) {
+    if (isset($elements['#plain_text'])) {
       $elements['#markup'] = Markup::create(Html::escape($elements['#plain_text']));
     }
     elseif (!($elements['#markup'] instanceof MarkupInterface)) {
-      // The default behaviour is to XSS filter using the admin tag list.
+      // The default behavior is to XSS filter using the admin tag list.
       $tags = isset($elements['#allowed_tags']) ? $elements['#allowed_tags'] : Xss::getAdminTagList();
       $elements['#markup'] = Markup::create(Xss::filter($elements['#markup'], $tags));
     }
 
     return $elements;
+  }
+
+  /**
+   * Performs a callback.
+   *
+   * @param string $callback_type
+   *   The type of the callback. For example, '#post_render'.
+   * @param string|callable $callback
+   *   The callback to perform.
+   * @param array $args
+   *   The arguments to pass to the callback.
+   *
+   * @return mixed
+   *   The callback's return value.
+   *
+   * @see \Drupal\Core\Security\TrustedCallbackInterface
+   */
+  protected function doCallback($callback_type, $callback, array $args) {
+    if (is_string($callback)) {
+      $double_colon = strpos($callback, '::');
+      if ($double_colon === FALSE) {
+        $callback = $this->controllerResolver->getControllerFromDefinition($callback);
+      }
+      elseif ($double_colon > 0) {
+        $callback = explode('::', $callback, 2);
+      }
+    }
+    $message = sprintf('Render %s callbacks must be methods of a class that implements \Drupal\Core\Security\TrustedCallbackInterface or be an anonymous function. The callback was %s. See https://www.drupal.org/node/2966725', $callback_type, '%s');
+    // Add \Drupal\Core\Render\Element\RenderCallbackInterface as an extra
+    // trusted interface so that:
+    // - All public methods on Render elements are considered trusted.
+    // - Helper classes that contain only callback methods can implement this
+    //   instead of TrustedCallbackInterface.
+    return $this->doTrustedCallback($callback, $args, $message, TrustedCallbackInterface::THROW_EXCEPTION, RenderCallbackInterface::class);
   }
 
 }

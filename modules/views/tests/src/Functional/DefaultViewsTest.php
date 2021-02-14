@@ -2,17 +2,18 @@
 
 namespace Drupal\Tests\views\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\comment\CommentInterface;
 use Drupal\comment\Tests\CommentTestTrait;
-use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Language\LanguageInterface;
+use Drupal\Core\Link;
 use Drupal\Core\Url;
-use Drupal\field\Tests\EntityReference\EntityReferenceTestTrait;
 use Drupal\views\Views;
 use Drupal\comment\Entity\Comment;
 use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\taxonomy\Entity\Term;
+use Drupal\Tests\field\Traits\EntityReferenceTestTrait;
 
 /**
  * Tests the default views provided by views.
@@ -29,7 +30,20 @@ class DefaultViewsTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = ['views', 'node', 'search', 'comment', 'taxonomy', 'block', 'user'];
+  protected static $modules = [
+    'views',
+    'node',
+    'search',
+    'comment',
+    'taxonomy',
+    'block',
+    'user',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * An array of argument arrays to use for default views.
@@ -42,7 +56,7 @@ class DefaultViewsTest extends ViewTestBase {
     'glossary' => ['all'],
   ];
 
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->drupalPlaceBlock('page_title_block');
@@ -53,7 +67,7 @@ class DefaultViewsTest extends ViewTestBase {
     $vocabulary = Vocabulary::create([
       'name' => $this->randomMachineName(),
       'description' => $this->randomMachineName(),
-      'vid' => Unicode::strtolower($this->randomMachineName()),
+      'vid' => mb_strtolower($this->randomMachineName()),
       'langcode' => LanguageInterface::LANGCODE_NOT_SPECIFIED,
       'help' => '',
       'nodes' => ['page' => 'page'],
@@ -62,7 +76,7 @@ class DefaultViewsTest extends ViewTestBase {
     $vocabulary->save();
 
     // Create a field.
-    $field_name = Unicode::strtolower($this->randomMachineName());
+    $field_name = mb_strtolower($this->randomMachineName());
 
     $handler_settings = [
       'target_bundles' => [
@@ -88,7 +102,7 @@ class DefaultViewsTest extends ViewTestBase {
       if ($i % 2) {
         $values['promote'] = TRUE;
       }
-      $values['body'][]['value'] = \Drupal::l('Node ' . 1, new Url('entity.node.canonical', ['node' => 1]));
+      $values['body'][]['value'] = Link::fromTextAndUrl('Node ' . 1, Url::fromRoute('entity.node.canonical', ['node' => 1]))->toString();
 
       $node = $this->drupalCreateNode($values);
 
@@ -97,7 +111,7 @@ class DefaultViewsTest extends ViewTestBase {
         'status' => CommentInterface::PUBLISHED,
         'entity_id' => $node->id(),
         'entity_type' => 'node',
-        'field_name' => 'comment'
+        'field_name' => 'comment',
       ];
       Comment::create($comment)->save();
 
@@ -122,7 +136,7 @@ class DefaultViewsTest extends ViewTestBase {
    */
   public function testDefaultViews() {
     // Get all default views.
-    $controller = $this->container->get('entity.manager')->getStorage('view');
+    $controller = $this->container->get('entity_type.manager')->getStorage('view');
     $views = $controller->loadMultiple();
 
     foreach ($views as $name => $view_storage) {
@@ -136,14 +150,12 @@ class DefaultViewsTest extends ViewTestBase {
           $view->preExecute($this->viewArgMap[$name]);
         }
 
-        $this->assert(TRUE, format_string('View @view will be executed.', ['@view' => $view->storage->id()]));
         $view->execute();
 
         $tokens = ['@name' => $name, '@display_id' => $display_id];
-        $this->assertTrue($view->executed, format_string('@name:@display_id has been executed.', $tokens));
+        $this->assertTrue($view->executed, new FormattableMarkup('@name:@display_id has been executed.', $tokens));
 
-        $count = count($view->result);
-        $this->assertTrue($count > 0, format_string('@count results returned', ['@count' => $count]));
+        $this->assertNotEmpty($view->result);
         $view->destroy();
       }
     }
@@ -174,16 +186,19 @@ class DefaultViewsTest extends ViewTestBase {
     // Create additional nodes compared to the one in the setup method.
     // Create two nodes in the same month, and one in each following month.
     $node = [
-      'created' => 280299600, // Sun, 19 Nov 1978 05:00:00 GMT
+      // Sun, 19 Nov 1978 05:00:00 GMT.
+      'created' => 280299600,
     ];
     $this->drupalCreateNode($node);
     $this->drupalCreateNode($node);
     $node = [
-      'created' => 282891600, // Tue, 19 Dec 1978 05:00:00 GMT
+      // Tue, 19 Dec 1978 05:00:00 GMT.
+      'created' => 282891600,
     ];
     $this->drupalCreateNode($node);
     $node = [
-      'created' => 285570000, // Fri, 19 Jan 1979 05:00:00 GMT
+      // Fri, 19 Jan 1979 05:00:00 GMT.
+      'created' => 285570000,
     ];
     $this->drupalCreateNode($node);
 
@@ -223,7 +238,7 @@ class DefaultViewsTest extends ViewTestBase {
     \Drupal::service('router.builder')->rebuild();
 
     $this->drupalGet('archive');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
   }
 
 }

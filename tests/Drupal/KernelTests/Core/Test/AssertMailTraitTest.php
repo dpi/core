@@ -43,7 +43,13 @@ class AssertMailTraitTest extends KernelTestBase {
 
     // Ensure that there is one email in the captured emails array.
     $captured_emails = $this->getMails();
-    $this->assertEquals(count($captured_emails), 1, 'One email was captured.');
+    $this->assertCount(1, $captured_emails, 'One email was captured.');
+
+    // Asserts that the message fields have the pattern in it.
+    $this->assertMailPattern('id', $message['id']);
+    $this->assertMailPattern('subject', "^.{64}$");
+    $this->assertMailPattern('to', "[a-z]{6}@example\.com$");
+    $this->assertMailPattern('body', "^.{128}$");
 
     // Assert that the email was sent by iterating over the message properties
     // and ensuring that they are captured intact.

@@ -11,6 +11,7 @@ use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Render\RenderContext;
+use Drupal\Core\Url;
 use Drupal\views\Ajax\HighlightCommand;
 use Drupal\views\Ajax\ReplaceTitleCommand;
 use Drupal\views\Ajax\ShowButtonsCommand;
@@ -86,7 +87,7 @@ abstract class ViewsFormBase extends FormBase implements ViewsFormInterface {
   public function getForm(ViewEntityInterface $view, $display_id, $js) {
     $form_state = $this->getFormState($view, $display_id, $js);
     $view = $form_state->get('view');
-    $key = $form_state->get('form_key');
+    $form_key = $form_state->get('form_key');
 
     // @todo Remove the need for this.
     \Drupal::moduleHandler()->loadInclude('views_ui', 'inc', 'admin');
@@ -100,12 +101,14 @@ abstract class ViewsFormBase extends FormBase implements ViewsFormInterface {
     // it off; if it isn't, the user clicked somewhere else and the stack is
     // now irrelevant.
     if (!empty($view->stack)) {
-      $identifier = implode('-', array_filter([$key, $view->id(), $display_id, $form_state->get('type'), $form_state->get('id')]));
+      $identifier = implode('-', array_filter([$form_key, $view->id(), $display_id, $form_state->get('type'), $form_state->get('id')]));
       // Retrieve the first form from the stack without changing the integer keys,
       // as they're being used for the "2 of 3" progress indicator.
       reset($view->stack);
-      list($key, $top) = each($view->stack);
-      unset($view->stack[$key]);
+      $stack_key = key($view->stack);
+      $top = current($view->stack);
+      next($view->stack);
+      unset($view->stack[$stack_key]);
 
       if (array_shift($top) != $identifier) {
         $view->stack = [];
@@ -115,7 +118,7 @@ abstract class ViewsFormBase extends FormBase implements ViewsFormInterface {
     // Automatically remove the form cache if it is set and the key does
     // not match. This way navigating away from the form without hitting
     // update will work.
-    if (isset($view->form_cache) && $view->form_cache['key'] != $key) {
+    if (isset($view->form_cache) && $view->form_cache['key'] !== $form_key) {
       unset($view->form_cache);
     }
 
@@ -149,7 +152,7 @@ abstract class ViewsFormBase extends FormBase implements ViewsFormInterface {
     elseif (!$form_state->get('ajax')) {
       // if nothing on the stack, non-js forms just go back to the main view editor.
       $display_id = $form_state->get('display_id');
-      return new RedirectResponse($this->url('entity.view.edit_display_form', ['view' => $view->id(), 'display_id' => $display_id], ['absolute' => TRUE]));
+      return new RedirectResponse(Url::fromRoute('entity.view.edit_display_form', ['view' => $view->id(), 'display_id' => $display_id], ['absolute' => TRUE])->toString());
     }
     else {
       $response = new AjaxResponse();
@@ -163,7 +166,7 @@ abstract class ViewsFormBase extends FormBase implements ViewsFormInterface {
     // If this form was for view-wide changes, there's no need to regenerate
     // the display section of the form.
     if ($display_id !== '') {
-      \Drupal::entityManager()->getFormObject('view', 'edit')->rebuildCurrentTab($view, $response, $display_id);
+      \Drupal::entityTypeManager()->getFormObject('view', 'edit')->rebuildCurrentTab($view, $response, $display_id);
     }
 
     return $response;
@@ -250,7 +253,7 @@ abstract class ViewsFormBase extends FormBase implements ViewsFormInterface {
       // Views provides its own custom handling of AJAX form submissions.
       // Usually this happens at the same path, but custom paths may be
       // specified in $form_state.
-      $form_url = $form_state->has('url') ? $form_state->get('url')->toString() : $this->url('<current>');
+      $form_url = $form_state->has('url') ? $form_state->get('url')->toString() : Url::fromRoute('<current>')->toString();
       $response->addCommand(new SetFormCommand($form_url));
 
       if ($section = $form_state->get('#section')) {

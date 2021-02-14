@@ -2,7 +2,7 @@
 
 namespace Drupal\Core\Render;
 
-use Drupal\Component\Utility\SafeMarkup;
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Access\AccessResultInterface;
 
 /**
@@ -56,7 +56,7 @@ class Element {
   /**
    * Identifies the children of an element array, optionally sorted by weight.
    *
-   * The children of a element array are those key/value pairs whose key does
+   * The children of an element array are those key/value pairs whose key does
    * not start with a '#'. See drupal_render() for details.
    *
    * @param array $elements
@@ -78,7 +78,7 @@ class Element {
     $i = 0;
     $sortable = FALSE;
     foreach ($elements as $key => $value) {
-      if ($key === '' || $key[0] !== '#') {
+      if (is_int($key) || $key === '' || $key[0] !== '#') {
         if (is_array($value)) {
           if (isset($value['#weight'])) {
             $weight = $value['#weight'];
@@ -94,7 +94,7 @@ class Element {
         // Only trigger an error if the value is not null.
         // @see https://www.drupal.org/node/1283892
         elseif (isset($value)) {
-          trigger_error(SafeMarkup::format('"@key" is an invalid render array key', ['@key' => $key]), E_USER_ERROR);
+          trigger_error(new FormattableMarkup('"@key" is an invalid render array key', ['@key' => $key]), E_USER_ERROR);
         }
       }
       $i++;
@@ -166,9 +166,9 @@ class Element {
    * @param array $map
    *   An associative array whose keys are element property names and whose
    *   values are the HTML attribute names to set on the corresponding
-   *   property; e.g., array('#propertyname' => 'attributename'). If both names
-   *   are identical except for the leading '#', then an attribute name value is
-   *   sufficient and no property name needs to be specified.
+   *   property; e.g., array('#property_name' => 'attribute_name'). If both
+   *   names are identical except for the leading '#', then an attribute name
+   *   value is sufficient and no property name needs to be specified.
    */
   public static function setAttributes(array &$element, array $map) {
     foreach ($map as $property => $attribute) {

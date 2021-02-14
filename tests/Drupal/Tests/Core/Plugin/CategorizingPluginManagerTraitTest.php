@@ -22,15 +22,15 @@ class CategorizingPluginManagerTraitTest extends UnitTestCase {
   /**
    * The plugin manager to test.
    *
-   * @var \Drupal\Component\Plugin\CategorizingPluginManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Component\Plugin\CategorizingPluginManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $pluginManager;
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
-    $module_handler = $this->getMock('Drupal\Core\Extension\ModuleHandlerInterface');
+  protected function setUp(): void {
+    $module_handler = $this->createMock('Drupal\Core\Extension\ModuleHandlerInterface');
     $module_handler->expects($this->any())
       ->method('getModuleList')
       ->willReturn(['node' => []]);
@@ -47,10 +47,10 @@ class CategorizingPluginManagerTraitTest extends UnitTestCase {
    * @covers ::getCategories
    */
   public function testGetCategories() {
-    $this->assertSame(array_values($this->pluginManager->getCategories()), [
+    $this->assertSame([
         'fruits',
         'vegetables',
-      ]);
+      ], array_values($this->pluginManager->getCategories()));
   }
 
   /**
@@ -58,7 +58,7 @@ class CategorizingPluginManagerTraitTest extends UnitTestCase {
    */
   public function testGetSortedDefinitions() {
     $sorted = $this->pluginManager->getSortedDefinitions();
-    $this->assertSame(array_keys($sorted), ['apple', 'mango', 'cucumber']);
+    $this->assertSame(['apple', 'mango', 'cucumber'], array_keys($sorted));
   }
 
   /**
@@ -66,9 +66,9 @@ class CategorizingPluginManagerTraitTest extends UnitTestCase {
    */
   public function testGetGroupedDefinitions() {
     $grouped = $this->pluginManager->getGroupedDefinitions();
-    $this->assertSame(array_keys($grouped), ['fruits', 'vegetables']);
-    $this->assertSame(array_keys($grouped['fruits']), ['apple', 'mango']);
-    $this->assertSame(array_keys($grouped['vegetables']), ['cucumber']);
+    $this->assertSame(['fruits', 'vegetables'], array_keys($grouped));
+    $this->assertSame(['apple', 'mango'], array_keys($grouped['fruits']));
+    $this->assertSame(['cucumber'], array_keys($grouped['vegetables']));
   }
 
   /**
@@ -82,7 +82,7 @@ class CategorizingPluginManagerTraitTest extends UnitTestCase {
       'category' => 'bag',
     ];
     $this->pluginManager->processDefinition($definition, 'some');
-    $this->assertSame($definition['category'], 'bag');
+    $this->assertSame('bag', $definition['category']);
 
     // No category, provider without label.
     $definition = [
@@ -90,7 +90,7 @@ class CategorizingPluginManagerTraitTest extends UnitTestCase {
       'provider' => 'core',
     ];
     $this->pluginManager->processDefinition($definition, 'some');
-    $this->assertSame($definition['category'], 'core');
+    $this->assertSame('core', $definition['category']);
 
     // No category, provider is module with label.
     $definition = [
@@ -98,7 +98,7 @@ class CategorizingPluginManagerTraitTest extends UnitTestCase {
       'provider' => 'node',
     ];
     $this->pluginManager->processDefinition($definition, 'some');
-    $this->assertSame($definition['category'], 'Node');
+    $this->assertSame('Node', $definition['category']);
   }
 
 }
@@ -113,7 +113,7 @@ class CategorizingPluginManager extends DefaultPluginManager implements Categori
   /**
    * Replace the constructor so we can instantiate a stub.
    *
-   * @param \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit_Framework_MockObject_MockObject $module_handler
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit\Framework\MockObject\MockObject $module_handler
    *   The module handler.
    */
   public function __construct(ModuleHandlerInterface $module_handler) {

@@ -17,7 +17,7 @@
    */
   Drupal.theme.quickeditBackstage = function (settings) {
     let html = '';
-    html += `<div id="${settings.id}" />`;
+    html += `<div id="${settings.id}"></div>`;
     return html;
   };
 
@@ -37,10 +37,12 @@
     html += `<div id="${settings.id}" class="quickedit quickedit-toolbar-container clearfix">`;
     html += '<i class="quickedit-toolbar-pointer"></i>';
     html += '<div class="quickedit-toolbar-content">';
-    html += '<div class="quickedit-toolbar quickedit-toolbar-entity clearfix icon icon-pencil">';
-    html += '<div class="quickedit-toolbar-label" />';
+    html +=
+      '<div class="quickedit-toolbar quickedit-toolbar-entity clearfix icon icon-pencil">';
+    html += '<div class="quickedit-toolbar-label"></div>';
     html += '</div>';
-    html += '<div class="quickedit-toolbar quickedit-toolbar-field clearfix" />';
+    html +=
+      '<div class="quickedit-toolbar quickedit-toolbar-field clearfix"></div>';
     html += '</div><div class="quickedit-toolbar-lining"></div></div>';
     return html;
   };
@@ -60,7 +62,9 @@
    */
   Drupal.theme.quickeditEntityToolbarLabel = function (settings) {
     // @todo Add XSS regression test coverage in https://www.drupal.org/node/2547437
-    return `<span class="field">${Drupal.checkPlain(settings.fieldLabel)}</span>${Drupal.checkPlain(settings.entityLabel)}`;
+    return `<span class="field">${Drupal.checkPlain(
+      settings.fieldLabel,
+    )}</span>${Drupal.checkPlain(settings.entityLabel)}`;
   };
 
   /**
@@ -70,7 +74,7 @@
    *   The corresponding HTML.
    */
   Drupal.theme.quickeditEntityToolbarFence = function () {
-    return '<div id="quickedit-toolbar-fence" />';
+    return '<div id="quickedit-toolbar-fence"></div>';
   };
 
   /**
@@ -85,7 +89,7 @@
    *   The corresponding HTML.
    */
   Drupal.theme.quickeditFieldToolbar = function (settings) {
-    return `<div id="${settings.id}" />`;
+    return `<div id="${settings.id}"></div>`;
   };
 
   /**
@@ -105,7 +109,7 @@
    */
   Drupal.theme.quickeditToolgroup = function (settings) {
     // Classes.
-    const classes = (settings.classes || []);
+    const classes = settings.classes || [];
     classes.unshift('quickedit-toolgroup');
     let html = '';
     html += `<div class="${classes.join(' ')}"`;
@@ -144,14 +148,12 @@
       // Attributes.
       const attributes = [];
       const attrMap = settings.buttons[i].attributes || {};
-      for (const attr in attrMap) {
-        if (attrMap.hasOwnProperty(attr)) {
-          attributes.push(attr + ((attrMap[attr]) ? `="${attrMap[attr]}"` : ''));
-        }
-      }
-      html += `<button type="${button.type}" class="${button.classes}"` + ` ${attributes.join(' ')}>`;
-      html += button.label;
-      html += '</button>';
+      Object.keys(attrMap).forEach((attr) => {
+        attributes.push(attr + (attrMap[attr] ? `="${attrMap[attr]}"` : ''));
+      });
+      html += `<button type="${button.type}" class="${
+        button.classes
+      }" ${attributes.join(' ')}>${button.label}</button>`;
     }
     return html;
   };
@@ -180,4 +182,4 @@
     html += '</div>';
     return html;
   };
-}(jQuery, Drupal));
+})(jQuery, Drupal);

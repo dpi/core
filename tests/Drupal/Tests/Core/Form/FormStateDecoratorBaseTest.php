@@ -7,6 +7,7 @@ use Drupal\Core\Form\FormStateDecoratorBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\Tests\UnitTestCase;
+use Prophecy\Argument;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -34,7 +35,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  public function setUp(): void {
     parent::setUp();
 
     $this->decoratedFormState = $this->prophesize(FormStateInterface::class);
@@ -162,7 +163,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
   public function testSetCachedWithLogicException($cache) {
     $this->decoratedFormState->setCached($cache)
       ->willThrow(\LogicException::class);
-    $this->setExpectedException(\LogicException::class);
+    $this->expectException(\LogicException::class);
     $this->formStateDecoratorBase->setCached($cache);
   }
 
@@ -181,7 +182,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    */
   public function testSetExecuted() {
     $this->decoratedFormState->setExecuted()
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($this->formStateDecoratorBase, $this->formStateDecoratorBase->setExecuted());
   }
@@ -225,7 +226,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     // Use PHPUnit for mocking, because Prophecy cannot mock methods that return
     // by reference. See \Prophecy\Doubler\Generator\Node::getCode().
-    $decorated_form_state = $this->getMock(FormStateInterface::class);
+    $decorated_form_state = $this->createMock(FormStateInterface::class);
     $decorated_form_state->expects($this->once())
       ->method('getGroups')
       ->willReturn($groups);
@@ -276,7 +277,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    */
   public function testSetLimitValidationErrors($limit_validation_errors) {
     $this->decoratedFormState->setLimitValidationErrors($limit_validation_errors)
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($this->formStateDecoratorBase, $this->formStateDecoratorBase->setLimitValidationErrors($limit_validation_errors));
   }
@@ -287,7 +288,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    * @dataProvider providerLimitValidationErrors
    *
    * @param array[]|null $limit_validation_errors
-   *   Any valid vlaue for
+   *   Any valid value for
    *   \Drupal\Core\Form\FormStateInterface::getLimitValidationErrors()'s
    *   return value;
    */
@@ -322,7 +323,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    */
   public function testSetMethod($method) {
     $this->decoratedFormState->setMethod($method)
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($this->formStateDecoratorBase, $this->formStateDecoratorBase->setMethod($method));
   }
@@ -339,7 +340,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
   public function testIsMethodType($expected_return_value, $method_type) {
     $this->decoratedFormState->isMethodType($method_type)
       ->willReturn($expected_return_value)
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($expected_return_value, $this->formStateDecoratorBase->isMethodType($method_type));
   }
@@ -404,7 +405,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
   public function testIsValidationEnforced($must_validate) {
     $this->decoratedFormState->isValidationEnforced()
       ->willReturn($must_validate)
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($must_validate, $this->formStateDecoratorBase->isValidationEnforced());
   }
@@ -462,7 +463,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
   public function testIsProcessingInput($process_input) {
     $this->decoratedFormState->isProcessingInput()
       ->willReturn($process_input)
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($process_input, $this->formStateDecoratorBase->isProcessingInput());
   }
@@ -476,7 +477,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    */
   public function testSetProgrammed($programmed) {
     $this->decoratedFormState->setProgrammed($programmed)
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($this->formStateDecoratorBase, $this->formStateDecoratorBase->setProgrammed($programmed));
   }
@@ -491,7 +492,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
   public function testIsProgrammed($programmed) {
     $this->decoratedFormState->isProgrammed()
       ->willReturn($programmed)
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($programmed, $this->formStateDecoratorBase->isProgrammed());
   }
@@ -505,7 +506,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    */
   public function testSetProgrammedBypassAccessCheck($programmed_bypass_access_check) {
     $this->decoratedFormState->setProgrammedBypassAccessCheck($programmed_bypass_access_check)
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($this->formStateDecoratorBase, $this->formStateDecoratorBase->setProgrammedBypassAccessCheck($programmed_bypass_access_check));
   }
@@ -590,7 +591,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     // Use PHPUnit for mocking, because Prophecy cannot mock methods that return
     // by reference. See \Prophecy\Doubler\Generator\Node::getCode().
-    $decorated_form_state = $this->getMock(FormStateInterface::class);
+    $decorated_form_state = $this->createMock(FormStateInterface::class);
     $decorated_form_state->expects($this->once())
       ->method('getStorage')
       ->willReturn($storage);
@@ -718,7 +719,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
   public function testGetTemporaryValue($key, $value = NULL) {
     // Use PHPUnit for mocking, because Prophecy cannot mock methods that return
     // by reference. See \Prophecy\Doubler\Generator\Node::getCode().
-    $decorated_form_state = $this->getMock(FormStateInterface::class);
+    $decorated_form_state = $this->createMock(FormStateInterface::class);
     $decorated_form_state->expects($this->once())
       ->method('getTemporaryValue')
       ->with($key)
@@ -789,7 +790,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     // Use PHPUnit for mocking, because Prophecy cannot mock methods that return
     // by reference. See \Prophecy\Doubler\Generator\Node::getCode().
-    $decorated_form_state = $this->getMock(FormStateInterface::class);
+    $decorated_form_state = $this->createMock(FormStateInterface::class);
     $decorated_form_state->expects($this->once())
       ->method('getTriggeringElement')
       ->willReturn($triggering_element);
@@ -823,7 +824,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     $this->decoratedFormState->getValidateHandlers()
       ->willReturn($validate_handlers)
-      ->shouldBecalled();
+      ->shouldBeCalled();
 
     $this->assertSame($validate_handlers, $this->formStateDecoratorBase->getValidateHandlers());
   }
@@ -929,7 +930,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     // Use PHPUnit for mocking, because Prophecy cannot mock methods that return
     // by reference. See \Prophecy\Doubler\Generator\Node::getCode().
-    $decorated_form_state = $this->getMock(FormStateInterface::class);
+    $decorated_form_state = $this->createMock(FormStateInterface::class);
     $decorated_form_state->expects($this->once())
       ->method('getCompleteForm')
       ->willReturn($complete_form);
@@ -977,7 +978,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     // Use PHPUnit for mocking, because Prophecy cannot mock methods that return
     // by reference. See \Prophecy\Doubler\Generator\Node::getCode().
-    $decorated_form_state = $this->getMock(FormStateInterface::class);
+    $decorated_form_state = $this->createMock(FormStateInterface::class);
     $decorated_form_state->expects($this->once())
       ->method('get')
       ->with($key)
@@ -1090,7 +1091,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     // Use PHPUnit for mocking, because Prophecy cannot mock methods that return
     // by reference. See \Prophecy\Doubler\Generator\Node::getCode().
-    $decorated_form_state = $this->getMock(FormStateInterface::class);
+    $decorated_form_state = $this->createMock(FormStateInterface::class);
     $decorated_form_state->expects($this->once())
       ->method('getUserInput')
       ->willReturn($user_input);
@@ -1110,7 +1111,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     // Use PHPUnit for mocking, because Prophecy cannot mock methods that return
     // by reference. See \Prophecy\Doubler\Generator\Node::getCode().
-    $decorated_form_state = $this->getMock(FormStateInterface::class);
+    $decorated_form_state = $this->createMock(FormStateInterface::class);
     $decorated_form_state->expects($this->once())
       ->method('getValues')
       ->willReturn($values);
@@ -1119,6 +1120,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     $this->assertSame($values, $this->formStateDecoratorBase->getValues());
   }
+
   /**
    * @covers ::getValue
    */
@@ -1128,7 +1130,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
 
     // Use PHPUnit for mocking, because Prophecy cannot mock methods that return
     // by reference. See \Prophecy\Doubler\Generator\Node::getCode().
-    $decorated_form_state = $this->getMock(FormStateInterface::class);
+    $decorated_form_state = $this->createMock(FormStateInterface::class);
     $decorated_form_state->expects($this->once())
       ->method('getValue')
       ->with($key, $value)
@@ -1226,7 +1228,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    * @covers ::setResponse
    */
   public function testSetResponse() {
-    $response = $this->getMock(Response::class);
+    $response = $this->createMock(Response::class);
 
     $this->decoratedFormState->setResponse($response)
       ->shouldBeCalled();
@@ -1238,7 +1240,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    * @covers ::getResponse
    */
   public function testGetResponse() {
-    $response = $this->getMock(Response::class);
+    $response = $this->createMock(Response::class);
 
     $this->decoratedFormState->getResponse()
       ->willReturn($response)
@@ -1253,7 +1255,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
   public function testSetRedirect() {
     $route_name = 'foo';
     $route_parameters = [
-      'bar' => 'baz'
+      'bar' => 'baz',
     ];
     $options = [
       'qux' => 'foo',
@@ -1439,7 +1441,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    * @param callable $prepared_callback
    */
   public function testPrepareCallback($unprepared_callback, callable $prepared_callback) {
-    $this->decoratedFormState->prepareCallback($unprepared_callback)
+    $this->decoratedFormState->prepareCallback(Argument::is($unprepared_callback))
       ->willReturn($prepared_callback)
       ->shouldBeCalled();
 
@@ -1452,7 +1454,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
   public function providerPrepareCallback() {
     $function = 'sleep';
     $shorthand_form_method = '::submit()';
-    $closure = function() {};
+    $closure = function () {};
     $static_method_string = __METHOD__;
     $static_method_array = [__CLASS__, __FUNCTION__];
     $object_method_array = [$this, __FUNCTION__];
@@ -1473,10 +1475,10 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    * @covers ::setFormObject
    */
   public function testSetFormObject() {
-    $form = $this->getMock(FormInterface::class);
+    $form = $this->createMock(FormInterface::class);
 
     $this->decoratedFormState->setFormObject($form)
-      ->shouldBeCalled();;
+      ->shouldBeCalled();
 
     $this->assertSame($this->formStateDecoratorBase, $this->formStateDecoratorBase->setFormObject($form));
   }
@@ -1485,7 +1487,7 @@ class FormStateDecoratorBaseTest extends UnitTestCase {
    * @covers ::getFormObject
    */
   public function testGetFormObject() {
-    $form = $this->getMock(FormInterface::class);
+    $form = $this->createMock(FormInterface::class);
 
     $this->decoratedFormState->getFormObject()
       ->willReturn($form)

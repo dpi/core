@@ -26,14 +26,20 @@ class ConfigImporterMissingContentTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['system', 'user', 'entity_test', 'config_test', 'config_import_test'];
+  protected static $modules = [
+    'system',
+    'user',
+    'entity_test',
+    'config_test',
+    'config_import_test',
+  ];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installSchema('system', 'sequences');
     $this->installEntitySchema('entity_test');
     $this->installEntitySchema('user');
-    $this->installConfig(['config_test']);
+    $this->installConfig(['system', 'config_test']);
     // Installing config_test's default configuration pollutes the global
     // variable being used for recording hook invocations by this test already,
     // so it has to be cleared out manually.
@@ -44,8 +50,7 @@ class ConfigImporterMissingContentTest extends KernelTestBase {
     // Set up the ConfigImporter object for testing.
     $storage_comparer = new StorageComparer(
       $this->container->get('config.storage.sync'),
-      $this->container->get('config.storage'),
-      $this->container->get('config.manager')
+      $this->container->get('config.storage')
     );
     $this->configImporter = new ConfigImporter(
       $storage_comparer->createChangelist(),
@@ -56,7 +61,8 @@ class ConfigImporterMissingContentTest extends KernelTestBase {
       $this->container->get('module_handler'),
       $this->container->get('module_installer'),
       $this->container->get('theme_handler'),
-      $this->container->get('string_translation')
+      $this->container->get('string_translation'),
+      $this->container->get('extension.list.module')
     );
   }
 

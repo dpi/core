@@ -3,6 +3,7 @@
 namespace Drupal\Tests\statistics\Functional;
 
 use Drupal\Core\Cache\Cache;
+use Drupal\Core\Link;
 use Drupal\Tests\system\Functional\Cache\AssertPageCacheContextsAndTagsTrait;
 
 /**
@@ -13,6 +14,11 @@ use Drupal\Tests\system\Functional\Cache\AssertPageCacheContextsAndTagsTrait;
 class StatisticsReportsTest extends StatisticsTestBase {
 
   use AssertPageCacheContextsAndTagsTrait;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests the "popular content" block.
@@ -43,10 +49,10 @@ class StatisticsReportsTest extends StatisticsTestBase {
 
     // Get some page and check if the block is displayed.
     $this->drupalGet('user');
-    $this->assertText('Popular content', 'Found the popular content block.');
-    $this->assertText("Today's", "Found today's popular content.");
-    $this->assertText('All time', 'Found the all time popular content.');
-    $this->assertText('Last viewed', 'Found the last viewed popular content.');
+    $this->assertText('Popular content');
+    $this->assertText("Today's");
+    $this->assertText('All time');
+    $this->assertText('Last viewed');
 
     $tags = Cache::mergeTags($node->getCacheTags(), $block->getCacheTags());
     $tags = Cache::mergeTags($tags, $this->blockingUser->getCacheTags());
@@ -57,7 +63,7 @@ class StatisticsReportsTest extends StatisticsTestBase {
     $this->assertCacheContexts($contexts);
 
     // Check if the node link is displayed.
-    $this->assertRaw(\Drupal::l($node->label(), $node->urlInfo('canonical')), 'Found link to visited node.');
+    $this->assertRaw(Link::fromTextAndUrl($node->label(), $node->toUrl('canonical'))->toString());
   }
 
 }

@@ -19,9 +19,14 @@ class ContentEntityType extends EntityType implements ContentEntityTypeInterface
    */
   public function __construct($definition) {
     parent::__construct($definition);
+
     $this->handlers += [
       'storage' => 'Drupal\Core\Entity\Sql\SqlContentEntityStorage',
       'view_builder' => 'Drupal\Core\Entity\EntityViewBuilder',
+    ];
+
+    $this->revision_metadata_keys += [
+      'revision_default' => 'revision_default',
     ];
   }
 
@@ -51,24 +56,7 @@ class ContentEntityType extends EntityType implements ContentEntityTypeInterface
   /**
    * {@inheritdoc}
    */
-  public function getRevisionMetadataKeys($include_backwards_compatibility_field_names = TRUE) {
-    // Provide backwards compatibility in case the revision metadata keys are
-    // not defined in the entity annotation.
-    if (!$this->revision_metadata_keys && $include_backwards_compatibility_field_names) {
-      $base_fields = \Drupal::service('entity_field.manager')->getBaseFieldDefinitions($this->id());
-      if ((isset($base_fields['revision_uid']) && $revision_user = 'revision_uid') || (isset($base_fields['revision_user']) && $revision_user = 'revision_user')) {
-        @trigger_error('The revision_user revision metadata key is not set.', E_USER_DEPRECATED);
-        $this->revision_metadata_keys['revision_user'] = $revision_user;
-      }
-      if ((isset($base_fields['revision_timestamp']) && $revision_timestamp = 'revision_timestamp') || (isset($base_fields['revision_created'])) && $revision_timestamp = 'revision_created') {
-        @trigger_error('The revision_created revision metadata key is not set.', E_USER_DEPRECATED);
-        $this->revision_metadata_keys['revision_created'] = $revision_timestamp;
-      }
-      if ((isset($base_fields['revision_log']) && $revision_log = 'revision_log') || (isset($base_fields['revision_log_message']) && $revision_log = 'revision_log_message')) {
-        @trigger_error('The revision_log_message revision metadata key is not set.', E_USER_DEPRECATED);
-        $this->revision_metadata_keys['revision_log_message'] = $revision_log;
-      }
-    }
+  public function getRevisionMetadataKeys() {
     return $this->revision_metadata_keys;
   }
 
@@ -86,6 +74,19 @@ class ContentEntityType extends EntityType implements ContentEntityTypeInterface
   public function hasRevisionMetadataKey($key) {
     $keys = $this->getRevisionMetadataKeys();
     return isset($keys[$key]);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setRevisionMetadataKey($key, $field_name) {
+    if ($field_name !== NULL) {
+      $this->revision_metadata_keys[$key] = $field_name;
+    }
+    else {
+      unset($this->revision_metadata_keys[$key]);
+    }
+    return $this;
   }
 
 }

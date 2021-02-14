@@ -3,6 +3,7 @@
 namespace Drupal\Core\Config;
 
 use Drupal\Core\Config\Importer\MissingContentEvent;
+use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Extension\ModuleInstallerInterface;
 use Drupal\Core\Extension\ThemeHandlerInterface;
@@ -12,7 +13,7 @@ use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\StringTranslation\TranslationInterface;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Defines a configuration importer.
@@ -22,7 +23,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  *
  * @see \Drupal\Core\Config\StorageComparerInterface
  *
- * The ConfigImporter has a identifier which is used to construct event names.
+ * The ConfigImporter has an identifier which is used to construct event names.
  * The events fired during an import are:
  * - ConfigEvents::IMPORT_VALIDATE: Events listening can throw a
  *   \Drupal\Core\Config\ConfigImporterException to prevent an import from
@@ -52,7 +53,7 @@ class ConfigImporter {
   /**
    * The event dispatcher used to notify subscribers.
    *
-   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
+   * @var \Symfony\Contracts\EventDispatcher\EventDispatcherInterface
    */
   protected $eventDispatcher;
 
@@ -159,12 +160,19 @@ class ConfigImporter {
   protected $moduleInstaller;
 
   /**
+   * The module extension list.
+   *
+   * @var \Drupal\Core\Extension\ModuleExtensionList
+   */
+  protected $moduleExtensionList;
+
+  /**
    * Constructs a configuration import object.
    *
    * @param \Drupal\Core\Config\StorageComparerInterface $storage_comparer
    *   A storage comparer object used to determine configuration changes and
    *   access the source and target storage objects.
-   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
+   * @param \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $event_dispatcher
    *   The event dispatcher used to notify subscribers of config import events.
    * @param \Drupal\Core\Config\ConfigManagerInterface $config_manager
    *   The configuration manager.
@@ -180,8 +188,11 @@ class ConfigImporter {
    *   The theme handler
    * @param \Drupal\Core\StringTranslation\TranslationInterface $string_translation
    *   The string translation service.
+   * @param \Drupal\Core\Extension\ModuleExtensionList $extension_list_module
+   *   The module extension list.
    */
-  public function __construct(StorageComparerInterface $storage_comparer, EventDispatcherInterface $event_dispatcher, ConfigManagerInterface $config_manager, LockBackendInterface $lock, TypedConfigManagerInterface $typed_config, ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, ThemeHandlerInterface $theme_handler, TranslationInterface $string_translation) {
+  public function __construct(StorageComparerInterface $storage_comparer, EventDispatcherInterface $event_dispatcher, ConfigManagerInterface $config_manager, LockBackendInterface $lock, TypedConfigManagerInterface $typed_config, ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, ThemeHandlerInterface $theme_handler, TranslationInterface $string_translation, ModuleExtensionList $extension_list_module) {
+    $this->moduleExtensionList = $extension_list_module;
     $this->storageComparer = $storage_comparer;
     $this->eventDispatcher = $event_dispatcher;
     $this->configManager = $config_manager;
@@ -230,7 +241,7 @@ class ConfigImporter {
   /**
    * Resets the storage comparer and processed list.
    *
-   * @return \Drupal\Core\Config\ConfigImporter
+   * @return $this
    *   The ConfigImporter instance.
    */
   public function reset() {
@@ -369,7 +380,7 @@ class ConfigImporter {
     }
 
     // Get a list of modules with dependency weights as values.
-    $module_data = system_rebuild_module_data();
+    $module_data = $this->moduleExtensionList->getList();
     // Set the actual module weights.
     $module_list = array_combine(array_keys($module_data), array_keys($module_data));
     $module_list = array_map(function ($module) use ($module_data) {
@@ -404,6 +415,14 @@ class ConfigImporter {
     // in alphabetical order).
     $module_list = array_reverse($module_list);
     $this->extensionChangelist['module']['install'] = array_intersect(array_keys($module_list), $install);
+
+    // If we're installing the install profile ensure it comes last. This will
+    // occur when installing a site from configuration.
+    $install_profile_key = array_search($new_extensions['profile'], $this->extensionChangelist['module']['install'], TRUE);
+    if ($install_profile_key !== FALSE) {
+      unset($this->extensionChangelist['module']['install'][$install_profile_key]);
+      $this->extensionChangelist['module']['install'][] = $new_extensions['profile'];
+    }
 
     // Work out what themes to install and to uninstall.
     $this->extensionChangelist['theme']['install'] = array_keys(array_diff_key($new_extensions['theme'], $current_extensions['theme']));
@@ -449,7 +468,7 @@ class ConfigImporter {
   /**
    * Imports the changelist to the target storage.
    *
-   * @return \Drupal\Core\Config\ConfigImporter
+   * @return $this
    *   The ConfigImporter instance.
    *
    * @throws \Drupal\Core\Config\ConfigException
@@ -621,7 +640,7 @@ class ConfigImporter {
     if (!empty($missing_content)) {
       $event = new MissingContentEvent($missing_content);
       // Fire an event to allow listeners to create the missing content.
-      $this->eventDispatcher->dispatch(ConfigEvents::IMPORT_MISSING_CONTENT, $event);
+      $this->eventDispatcher->dispatch($event, ConfigEvents::IMPORT_MISSING_CONTENT);
       $sandbox['missing_content']['data'] = $event->getMissingContent();
     }
     $current_count = count($sandbox['missing_content']['data']);
@@ -641,7 +660,7 @@ class ConfigImporter {
    *   The batch context.
    */
   protected function finish(&$context) {
-    $this->eventDispatcher->dispatch(ConfigEvents::IMPORT, new ConfigImporterEvent($this));
+    $this->eventDispatcher->dispatch(new ConfigImporterEvent($this), ConfigEvents::IMPORT);
     // The import is now complete.
     $this->lock->release(static::LOCK_NAME);
     $this->reset();
@@ -723,9 +742,10 @@ class ConfigImporter {
           $this->logError($this->t('Rename operation for simple configuration. Existing configuration @old_name and staged configuration @new_name.', ['@old_name' => $names['old_name'], '@new_name' => $names['new_name']]));
         }
       }
-      $this->eventDispatcher->dispatch(ConfigEvents::IMPORT_VALIDATE, new ConfigImporterEvent($this));
+      $this->eventDispatcher->dispatch(new ConfigImporterEvent($this), ConfigEvents::IMPORT_VALIDATE);
       if (count($this->getErrors())) {
-        throw new ConfigImporterException('There were errors validating the config synchronization.');
+        $errors = array_merge(['There were errors validating the config synchronization.'], $this->getErrors());
+        throw new ConfigImporterException(implode(PHP_EOL, $errors));
       }
       else {
         $this->validated = TRUE;
@@ -788,9 +808,8 @@ class ConfigImporter {
       // services.
       $this->reInjectMe();
       // During a module install or uninstall the container is rebuilt and the
-      // module handler is called from drupal_get_complete_schema(). This causes
-      // the container's instance of the module handler not to have loaded all
-      // the enabled modules.
+      // module handler is called. This causes the container's instance of the
+      // module handler not to have loaded all the enabled modules.
       $this->moduleHandler->loadAll();
     }
     if ($type == 'theme') {
@@ -803,7 +822,7 @@ class ConfigImporter {
         $this->configManager->getConfigFactory()->reset('system.theme');
         $this->processedSystemTheme = TRUE;
       }
-      $this->themeHandler->$op([$name]);
+      \Drupal::service('theme_installer')->$op([$name]);
     }
 
     $this->setProcessedExtension($type, $op, $name);
@@ -859,8 +878,8 @@ class ConfigImporter {
           // If the target already exists, use the entity storage to delete it
           // again, if is a simple config, delete it directly.
           if ($entity_type_id = $this->configManager->getEntityTypeIdByName($name)) {
-            $entity_storage = $this->configManager->getEntityManager()->getStorage($entity_type_id);
-            $entity_type = $this->configManager->getEntityManager()->getDefinition($entity_type_id);
+            $entity_storage = $this->configManager->getEntityTypeManager()->getStorage($entity_type_id);
+            $entity_type = $this->configManager->getEntityTypeManager()->getDefinition($entity_type_id);
             $entity = $entity_storage->load($entity_storage->getIDFromConfigName($name, $entity_type->getConfigPrefix()));
             $entity->delete();
             $this->logError($this->t('Deleted and replaced configuration entity "@name"', ['@name' => $name]));
@@ -962,7 +981,7 @@ class ConfigImporter {
       }
 
       $method = 'import' . ucfirst($op);
-      $entity_storage = $this->configManager->getEntityManager()->getStorage($entity_type);
+      $entity_storage = $this->configManager->getEntityTypeManager()->getStorage($entity_type);
       // Call to the configuration entity's storage to handle the configuration
       // change.
       if (!($entity_storage instanceof ImportableEntityStorageInterface)) {
@@ -1008,7 +1027,7 @@ class ConfigImporter {
       $new_config->setData($data);
     }
 
-    $entity_storage = $this->configManager->getEntityManager()->getStorage($entity_type_id);
+    $entity_storage = $this->configManager->getEntityTypeManager()->getStorage($entity_type_id);
     // Call to the configuration entity's storage to handle the configuration
     // change.
     if (!($entity_storage instanceof ImportableEntityStorageInterface)) {
@@ -1020,7 +1039,7 @@ class ConfigImporter {
   }
 
   /**
-   * Determines if a import is already running.
+   * Determines if an import is already running.
    *
    * @return bool
    *   TRUE if an import is already running, FALSE if not.

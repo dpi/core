@@ -3,6 +3,7 @@
 namespace Drupal\views\Plugin\views\style;
 
 use Drupal\Component\Utility\Html;
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheableDependencyInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\views\Plugin\views\wizard\WizardInterface;
@@ -23,7 +24,7 @@ use Drupal\views\Plugin\views\wizard\WizardInterface;
 class Table extends StylePluginBase implements CacheableDependencyInterface {
 
   /**
-   * Does the style plugin for itself support to add fields to it's output.
+   * Does the style plugin for itself support to add fields to its output.
    *
    * @var bool
    */
@@ -96,7 +97,7 @@ class Table extends StylePluginBase implements CacheableDependencyInterface {
   }
 
   /**
-   * Add our actual sort criteria
+   * Add our actual sort criteria.
    */
   public function buildSortPost() {
     $query = $this->view->getRequest()->query;
@@ -214,7 +215,7 @@ class Table extends StylePluginBase implements CacheableDependencyInterface {
 
     $form['sticky'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t('Enable Drupal style "sticky" table headers (Javascript)'),
+      '#title' => $this->t('Enable Drupal style "sticky" table headers (JavaScript)'),
       '#default_value' => !empty($this->options['sticky']),
       '#description' => $this->t('(Sticky header effects will not be active for preview below, only on live output.)'),
     ];
@@ -423,7 +424,7 @@ class Table extends StylePluginBase implements CacheableDependencyInterface {
    * {@inheritdoc}
    */
   public function getCacheMaxAge() {
-    return 0;
+    return Cache::PERMANENT;
   }
 
   /**

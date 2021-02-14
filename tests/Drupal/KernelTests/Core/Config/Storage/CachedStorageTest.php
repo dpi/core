@@ -29,7 +29,7 @@ class CachedStorageTest extends ConfigStorageTestBase {
    */
   protected $fileStorage;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     // Create a directory.
     $dir = PublicStream::basePath() . '/config';
@@ -44,7 +44,7 @@ class CachedStorageTest extends ConfigStorageTestBase {
    * {@inheritdoc}
    */
   public function testInvalidStorage() {
-    // No-op as this test does not make sense.
+    $this->markTestSkipped('No-op as this test does not make sense');
   }
 
   /**

@@ -53,6 +53,8 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
 
   /**
    * Contains the operator which is used on the query.
+   *
+   * @var string
    */
   public $operator = '=';
 
@@ -75,7 +77,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
 
   /**
    * @var bool
-   * Disable the possibility to allow a exposed input to be optional.
+   * Disable the possibility to allow an exposed input to be optional.
    */
   public $always_required = FALSE;
 
@@ -104,7 +106,6 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
       $this->options['expose']['multiple'] = TRUE;
     }
 
-
     // If there are relationships in the view, allow empty should be true
     // so that we can do IS NULL checks on items. Not all filters respect
     // allow empty, but string and numeric do and that covers enough.
@@ -127,6 +128,8 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
         'description' => ['default' => ''],
         'use_operator' => ['default' => FALSE],
         'operator' => ['default' => ''],
+        'operator_limit_selection' => ['default' => FALSE],
+        'operator_list' => ['default' => []],
         'identifier' => ['default' => ''],
         'required' => ['default' => FALSE],
         'remember' => ['default' => FALSE],
@@ -167,7 +170,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
   }
 
   /**
-   * Display the filter on the administrative summary
+   * Display the filter on the administrative summary.
    */
   public function adminSummary() {
     return $this->operator . ' ' . $this->value;
@@ -240,7 +243,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
   }
 
   /**
-   * Simple validate handler
+   * Simple validate handler.
    */
   public function validateOptionsForm(&$form, FormStateInterface $form_state) {
     $this->operatorValidate($form, $form_state);
@@ -254,7 +257,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
   }
 
   /**
-   * Simple submit handler
+   * Simple submit handler.
    */
   public function submitOptionsForm(&$form, FormStateInterface $form_state) {
     // Do not store these values.
@@ -304,7 +307,8 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
 
   /**
    * Provide a list of options for the default operator form.
-   * Should be overridden by classes that don't override operatorForm
+   *
+   * Should be overridden by classes that don't override operatorForm.
    */
   public function operatorOptions() {
     return [];
@@ -317,6 +321,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
 
   /**
    * Perform any necessary changes to the form values prior to storage.
+   *
    * There is no need for this function to actually store the data.
    */
   public function operatorSubmit($form, FormStateInterface $form_state) {}
@@ -351,6 +356,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
 
   /**
    * Perform any necessary changes to the form values prior to storage.
+   *
    * There is no need for this function to actually store the data.
    */
   protected function valueSubmit($form, FormStateInterface $form_state) {}
@@ -515,7 +521,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
     // prior to rendering. That's why the preRender for it needs to run first,
     // so that when the next preRender (the one for fieldsets) runs, it gets
     // the flattened data.
-    array_unshift($form['#pre_render'], [get_class($this), 'preRenderFlattenData']);
+    array_unshift($form['#pre_render'], [static::class, 'preRenderFlattenData']);
     $form['expose']['#flatten'] = TRUE;
 
     if (empty($this->always_required)) {
@@ -558,6 +564,36 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
         '#description' => $this->t('Allow the user to choose the operator.'),
         '#default_value' => !empty($this->options['expose']['use_operator']),
       ];
+
+      $operators = $this->operatorOptions();
+      if (!empty($operators) && count($operators) > 1) {
+        $form['expose']['operator_limit_selection'] = [
+          '#type' => 'checkbox',
+          '#title' => $this->t('Limit the available operators'),
+          '#description' => $this->t('Limit the available operators to be shown on the exposed filter.'),
+          '#default_value' => !empty($this->options['expose']['operator_limit_selection']),
+          '#states' => [
+            'visible' => [
+              ':input[name="options[expose][use_operator]"]' => ['checked' => TRUE],
+            ],
+          ],
+        ];
+        $form['expose']['operator_list'] = [
+          '#type' => 'select',
+          '#title' => $this->t('Restrict operators to'),
+          '#default_value' => $this->options['expose']['operator_list'],
+          '#options' => $operators,
+          '#multiple' => TRUE,
+          '#description' => $this->t('Selecting none will make all of them available.'),
+          '#states' => [
+            'visible' => [
+              ':input[name="options[expose][operator_limit_selection]"]' => ['checked' => TRUE],
+              ':input[name="options[expose][use_operator]"]' => ['checked' => TRUE],
+            ],
+          ],
+        ];
+      }
+
       $form['expose']['operator_id'] = [
         '#type' => 'textfield',
         '#default_value' => $this->options['expose']['operator_id'],
@@ -617,11 +653,29 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public static function trustedCallbacks() {
+    $callbacks = parent::trustedCallbacks();
+    $callbacks[] = 'preRenderFlattenData';
+    return $callbacks;
+  }
+
+  /**
    * Validate the options form.
    */
   public function validateExposeForm($form, FormStateInterface $form_state) {
     $identifier = $form_state->getValue(['options', 'expose', 'identifier']);
     $this->validateIdentifier($identifier, $form_state, $form['expose']['identifier']);
+
+    $limit_operators = $form_state->getValue(['options', 'expose', 'operator_limit_selection']);
+    $operators_selected = $form_state->getValue(['options', 'expose', 'operator_list']);
+    $selected_operator = $form_state->getValue(['options', 'operator']);
+    if ($limit_operators && !in_array($selected_operator, $operators_selected, TRUE)) {
+      $form_state->setError(
+        $form['expose']['operator_list'],
+        $this->t('You selected the "@operator" operator as the default value but is not included in the list of limited operators.', ['@operator' => $this->operatorOptions()[$selected_operator]]));
+    }
   }
 
   /**
@@ -654,7 +708,6 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
     }
     return FALSE;
   }
-
 
   /**
    * Validate the build group options form.
@@ -689,7 +742,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
   /**
    * Validates a filter identifier.
    *
-   * Sets the form error if $form_state is passed or a error string if
+   * Sets the form error if $form_state is passed or an error string if
    * $form_state is not passed.
    *
    * @param string $identifier
@@ -708,7 +761,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
     elseif ($identifier == 'value') {
       $error = $this->t('This identifier is not allowed.');
     }
-    elseif (preg_match('/[^a-zA-z0-9_~\.\-]/', $identifier)) {
+    elseif (preg_match('/[^a-zA-Z0-9_~\.\-]+/', $identifier)) {
       $error = $this->t('This identifier has illegal characters.');
     }
 
@@ -763,6 +816,8 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
     $this->options['expose'] = [
       'use_operator' => FALSE,
       'operator' => $this->options['id'] . '_op',
+      'operator_limit_selection' => FALSE,
+      'operator_list' => [],
       'identifier' => $this->options['id'],
       'label' => $this->definition['title'],
       'description' => NULL,
@@ -834,9 +889,8 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
     }
   }
 
-
   /**
-   * Render our chunk of the exposed filter form when selecting
+   * Render our chunk of the exposed filter form when selecting.
    *
    * You can override this if it doesn't do what you expect.
    */
@@ -849,11 +903,31 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
     if (!empty($this->options['expose']['use_operator']) && !empty($this->options['expose']['operator_id'])) {
       $operator = $this->options['expose']['operator_id'];
       $this->operatorForm($form, $form_state);
+
+      // Limit the exposed operators if needed.
+      if (!empty($this->options['expose']['operator_limit_selection']) &&
+          !empty($this->options['expose']['operator_list'])) {
+
+        $options = $this->operatorOptions();
+        $operator_list = $this->options['expose']['operator_list'];
+        $form['operator']['#options'] = array_intersect_key($options, $operator_list);
+      }
       $form[$operator] = $form['operator'];
 
       $this->exposedTranslate($form[$operator], 'operator');
 
       unset($form['operator']);
+
+      // When the operator and value forms are both in play, enclose them within
+      // a wrapper.
+      if (!empty($this->options['expose']['identifier'])) {
+        $wrapper = $this->options['expose']['identifier'] . '_wrapper';
+        $this->buildValueWrapper($form, $wrapper);
+        $form[$operator]['#title_display'] = 'invisible';
+
+        $form[$wrapper][$operator] = $form[$operator];
+        unset($form[$operator]);
+      }
     }
 
     // Build the form and set the value based on the identifier.
@@ -868,23 +942,53 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
 
       $this->exposedTranslate($form[$value], 'value');
 
-      if (!empty($form['#type']) && ($form['#type'] == 'checkboxes' || ($form['#type'] == 'select' && !empty($form['#multiple'])))) {
-        unset($form[$value]['#default_value']);
-      }
-
-      if (!empty($form['#type']) && $form['#type'] == 'select' && empty($form['#multiple'])) {
-        $form[$value]['#default_value'] = 'All';
-      }
-
       if ($value != 'value') {
         unset($form['value']);
+      }
+
+      // When the operator and value forms are both in play, enclose them within
+      // a wrapper, for usability. Also wrap if the value form is comprised of
+      // multiple elements.
+      if ((!empty($this->options['expose']['use_operator']) && !empty($this->options['expose']['operator_id'])) || count(Element::children($form[$value]))) {
+        $wrapper = $value . '_wrapper';
+        $this->buildValueWrapper($form, $wrapper);
+        $form[$wrapper][$value] = $form[$value];
+        unset($form[$value]);
+      }
+    }
+  }
+
+  /**
+   * Builds wrapper for value and operator forms.
+   *
+   * @param array $form
+   *   The form.
+   * @param string $wrapper_identifer
+   *   The key to use for the wrapper element.
+   */
+  protected function buildValueWrapper(&$form, $wrapper_identifer) {
+    // If both the field and the operator are exposed, this will end up being
+    // called twice. We don't want to wipe out what's already there, so if it
+    // exists already, do nothing.
+    if (!isset($form[$wrapper_identifer])) {
+      $form[$wrapper_identifer] = [
+        '#type' => 'fieldset',
+      ];
+
+      $exposed_info = $this->exposedInfo();
+      if (!empty($exposed_info['label'])) {
+        $form[$wrapper_identifer]['#title'] = $exposed_info['label'];
+      }
+      if (!empty($exposed_info['description'])) {
+        $form[$wrapper_identifer]['#description'] = $exposed_info['description'];
       }
     }
   }
 
   /**
    * Build the form to let users create the group of exposed filters.
-   * This form is displayed when users click on button 'Build group'
+   *
+   * This form is displayed when users click on button 'Build group'.
    */
   protected function buildExposedFiltersGroupForm(&$form, FormStateInterface $form_state) {
     if (empty($this->options['exposed']) || empty($this->options['is_grouped'])) {
@@ -896,7 +1000,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
     // prior to rendering. That's why the preRender for it needs to run first,
     // so that when the next preRender (the one for fieldsets) runs, it gets
     // the flattened data.
-    array_unshift($form['#pre_render'], [get_class($this), 'preRenderFlattenData']);
+    array_unshift($form['#pre_render'], [static::class, 'preRenderFlattenData']);
     $form['group_info']['#flatten'] = TRUE;
 
     if (!empty($this->options['group_info']['identifier'])) {
@@ -995,7 +1099,9 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
       '#default_value' => $this->options['group_info']['remember'],
     ];
 
-    $groups = ['All' => $this->t('- Any -')]; // The string '- Any -' will not be rendered see @theme_views_ui_build_group_filter_form
+    // The string '- Any -' will not be rendered.
+    // @see theme_views_ui_build_group_filter_form()
+    $groups = ['All' => $this->t('- Any -')];
 
     // Provide 3 options to start when we are in a new group.
     if (count($this->options['group_info']['group_items']) == 0) {
@@ -1102,7 +1208,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
       '#required' => TRUE,
       '#attributes' => [
         'class' => ['default-radios'],
-      ]
+      ],
     ];
     // From all groups, let chose which is the default.
     $form['group_info']['default_group_multiple'] = [
@@ -1111,7 +1217,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
       '#default_value' => $this->options['group_info']['default_group_multiple'],
       '#attributes' => [
         'class' => ['default-checkboxes'],
-      ]
+      ],
     ];
 
     $form['group_info']['add_group'] = [
@@ -1162,7 +1268,6 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
     $form_state->get('force_build_group_options', TRUE);
   }
 
-
   /**
    * Make some translations to a form item to make it more suitable to
    * exposing.
@@ -1203,7 +1308,6 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
       $form['#required'] = TRUE;
     }
   }
-
 
   /**
    * Sanitizes the HTML select element's options.
@@ -1295,7 +1399,7 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
 
         // Value can be optional, For example for 'empty' and 'not empty' filters.
         if (isset($this->options['group_info']['group_items'][$selected_group]['value']) && $this->options['group_info']['group_items'][$selected_group]['value'] !== '') {
-          $input[$this->options['expose']['identifier']] = $this->options['group_info']['group_items'][$selected_group]['value'];
+          $input[$this->options['group_info']['identifier']] = $this->options['group_info']['group_items'][$selected_group]['value'];
         }
         $this->options['expose']['use_operator'] = TRUE;
 
@@ -1387,7 +1491,12 @@ abstract class FilterPluginBase extends HandlerBase implements CacheableDependen
     }
 
     if (!empty($this->options['expose']['identifier'])) {
-      $value = $input[$this->options['expose']['identifier']];
+      if ($this->options['is_grouped']) {
+        $value = $input[$this->options['group_info']['identifier']];
+      }
+      else {
+        $value = $input[$this->options['expose']['identifier']];
+      }
 
       // Various ways to check for the absence of non-required input.
       if (empty($this->options['expose']['required'])) {

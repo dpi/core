@@ -82,6 +82,7 @@ class ViewsDisplay extends ViewsPluginAnnotationBase {
 
   /**
    * A list of places where contextual links should be added.
+   *
    * For example:
    * @code
    * array(
@@ -111,7 +112,7 @@ class ViewsDisplay extends ViewsPluginAnnotationBase {
   /**
    * The theme function used to render the display's output.
    *
-   * @return string
+   * @var string
    */
   public $theme;
 

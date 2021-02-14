@@ -2,7 +2,9 @@
 
 namespace Drupal\Tests\book\Functional;
 
-use Drupal\Component\Utility\SafeMarkup;
+use Drupal\Core\Link;
+use Drupal\Core\Url;
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Entity\EntityInterface;
 
 /**
@@ -51,11 +53,16 @@ trait BookTestTrait {
      *  |- Node 4
      */
     $nodes = [];
-    $nodes[] = $this->createBookNode($book->id(), NULL, $edit); // Node 0.
-    $nodes[] = $this->createBookNode($book->id(), $nodes[0]->book['nid'], $edit); // Node 1.
-    $nodes[] = $this->createBookNode($book->id(), $nodes[0]->book['nid'], $edit); // Node 2.
-    $nodes[] = $this->createBookNode($book->id(), NULL, $edit); // Node 3.
-    $nodes[] = $this->createBookNode($book->id(), NULL, $edit); // Node 4.
+    // Node 0.
+    $nodes[] = $this->createBookNode($book->id(), NULL, $edit);
+    // Node 1.
+    $nodes[] = $this->createBookNode($book->id(), $nodes[0]->book['nid'], $edit);
+    // Node 2.
+    $nodes[] = $this->createBookNode($book->id(), $nodes[0]->book['nid'], $edit);
+    // Node 3.
+    $nodes[] = $this->createBookNode($book->id(), NULL, $edit);
+    // Node 4.
+    $nodes[] = $this->createBookNode($book->id(), NULL, $edit);
 
     $this->drupalLogout();
 
@@ -88,41 +95,38 @@ trait BookTestTrait {
 
     // Check outline structure.
     if ($nodes !== NULL) {
-      $this->assertPattern($this->generateOutlinePattern($nodes), format_string('Node @number outline confirmed.', ['@number' => $number]));
-    }
-    else {
-      $this->pass(format_string('Node %number does not have outline.', ['%number' => $number]));
+      $this->assertSession()->responseMatches($this->generateOutlinePattern($nodes));
     }
 
     // Check previous, up, and next links.
     if ($previous) {
       /** @var \Drupal\Core\Url $url */
-      $url = $previous->urlInfo();
+      $url = $previous->toUrl();
       $url->setOptions(['attributes' => ['rel' => ['prev'], 'title' => t('Go to previous page')]]);
-      $text = SafeMarkup::format('<b>‹</b> @label', ['@label' => $previous->label()]);
-      $this->assertRaw(\Drupal::l($text, $url), 'Previous page link found.');
+      $text = new FormattableMarkup('<b>‹</b> @label', ['@label' => $previous->label()]);
+      $this->assertRaw(Link::fromTextAndUrl($text, $url)->toString());
     }
 
     if ($up) {
       /** @var \Drupal\Core\Url $url */
-      $url = $up->urlInfo();
+      $url = $up->toUrl();
       $url->setOptions(['attributes' => ['title' => t('Go to parent page')]]);
-      $this->assertRaw(\Drupal::l('Up', $url), 'Up page link found.');
+      $this->assertRaw(Link::fromTextAndUrl('Up', $url)->toString());
     }
 
     if ($next) {
       /** @var \Drupal\Core\Url $url */
-      $url = $next->urlInfo();
+      $url = $next->toUrl();
       $url->setOptions(['attributes' => ['rel' => ['next'], 'title' => t('Go to next page')]]);
-      $text = SafeMarkup::format('@label <b>›</b>', ['@label' => $next->label()]);
-      $this->assertRaw(\Drupal::l($text, $url), 'Next page link found.');
+      $text = new FormattableMarkup('@label <b>›</b>', ['@label' => $next->label()]);
+      $this->assertRaw(Link::fromTextAndUrl($text, $url)->toString());
     }
 
     // Compute the expected breadcrumb.
     $expected_breadcrumb = [];
-    $expected_breadcrumb[] = \Drupal::url('<front>');
+    $expected_breadcrumb[] = Url::fromRoute('<front>')->toString();
     foreach ($breadcrumb as $a_node) {
-      $expected_breadcrumb[] = $a_node->url();
+      $expected_breadcrumb[] = $a_node->toUrl()->toString();
     }
 
     // Fetch links in the current breadcrumb.
@@ -133,12 +137,12 @@ trait BookTestTrait {
     }
 
     // Compare expected and got breadcrumbs.
-    $this->assertIdentical($expected_breadcrumb, $got_breadcrumb, 'The breadcrumb is correctly displayed on the page.');
+    $this->assertSame($expected_breadcrumb, $got_breadcrumb, 'The breadcrumb is correctly displayed on the page.');
 
     // Check printer friendly version.
     $this->drupalGet('book/export/html/' . $node->id());
-    $this->assertText($node->label(), 'Printer friendly title found.');
-    $this->assertRaw($node->body->processed, 'Printer friendly body found.');
+    $this->assertText($node->label());
+    $this->assertRaw($node->body->processed);
 
     $number++;
   }
@@ -179,23 +183,24 @@ trait BookTestTrait {
   public function createBookNode($book_nid, $parent = NULL, $edit = []) {
     // $number does not use drupal_static as it should not be reset
     // since it uniquely identifies each call to createBookNode().
-    static $number = 0; // Used to ensure that when sorted nodes stay in same order.
+    // Used to ensure that when sorted nodes stay in same order.
+    static $number = 0;
 
     $edit['title[0][value]'] = str_pad($number, 2, '0', STR_PAD_LEFT) . ' - SimpleTest test node ' . $this->randomMachineName(10);
     $edit['body[0][value]'] = 'SimpleTest test body ' . $this->randomMachineName(32) . ' ' . $this->randomMachineName(32);
     $edit['book[bid]'] = $book_nid;
 
     if ($parent !== NULL) {
-      $this->drupalPostForm('node/add/book', $edit, t('Change book (update list of parents)'));
+      $this->drupalPostForm('node/add/book', $edit, 'Change book (update list of parents)');
 
       $edit['book[pid]'] = $parent;
-      $this->drupalPostForm(NULL, $edit, t('Save'));
+      $this->submitForm($edit, 'Save');
       // Make sure the parent was flagged as having children.
-      $parent_node = \Drupal::entityManager()->getStorage('node')->loadUnchanged($parent);
+      $parent_node = \Drupal::entityTypeManager()->getStorage('node')->loadUnchanged($parent);
       $this->assertFalse(empty($parent_node->book['has_children']), 'Parent node is marked as having children');
     }
     else {
-      $this->drupalPostForm('node/add/book', $edit, t('Save'));
+      $this->drupalPostForm('node/add/book', $edit, 'Save');
     }
 
     // Check to make sure the book node was created.

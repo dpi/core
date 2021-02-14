@@ -16,16 +16,16 @@ abstract class RouteMatchTestBase extends UnitTestCase {
    *
    * @param $name
    *   Route name.
-   * @param Route $route
+   * @param \Symfony\Component\Routing\Route $route
    *   Request object
    * @param array $parameters
    *   Parameters array
    * @param $raw_parameters
    *   Raw parameters array
+   *
    * @return \Drupal\Core\Routing\RouteMatchInterface
    */
   abstract protected function getRouteMatch($name, Route $route, array $parameters, array $raw_parameters);
-
 
   /**
    * Provide sets of parameters and expected parameters for parameter tests.

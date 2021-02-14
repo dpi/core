@@ -16,7 +16,6 @@ use Drupal\Component\Utility\Number as NumberUtility;
  * - #step: Ensures that the number is an even multiple of step, offset by #min
  *   if specified. A #min of 1 and a #step of 2 would allow values of 1, 3, 5,
  *   etc.
- * - #size: The size of the input element in characters.
  *
  * Usage example:
  * @code
@@ -37,7 +36,7 @@ class Number extends FormElement {
    * {@inheritdoc}
    */
   public function getInfo() {
-    $class = get_class($this);
+    $class = static::class;
     return [
       '#input' => TRUE,
       '#step' => 1,

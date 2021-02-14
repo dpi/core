@@ -150,7 +150,7 @@ function hook_block_view_BASE_BLOCK_ID_alter(array &$build, \Drupal\Core\Block\B
  */
 function hook_block_build_alter(array &$build, \Drupal\Core\Block\BlockPluginInterface $block) {
   // Add the 'user' cache context to some blocks.
-  if ($some_condition) {
+  if ($block->label() === 'some condition') {
     $build['#cache']['contexts'][] = 'user';
   }
 }
@@ -214,6 +214,23 @@ function hook_block_access(\Drupal\block\Entity\Block $block, $operation, \Drupa
 
   // No opinion.
   return AccessResult::neutral();
+}
+
+/**
+ * Allow modules to alter the block plugin definitions.
+ *
+ * @param array[] $definitions
+ *   The array of block definitions, keyed by plugin ID.
+ *
+ * @ingroup block_api
+ */
+function hook_block_alter(&$definitions) {
+  foreach ($definitions as $id => $definition) {
+    if (strpos($id, 'system_menu_block:') === 0) {
+      // Replace $definition properties: id, deriver, class, provider to ones
+      // provided by this custom module.
+    }
+  }
 }
 
 /**

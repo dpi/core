@@ -58,8 +58,8 @@ class NodeStatisticsDatabaseStorage implements StatisticsStorageInterface {
         'totalcount' => 1,
         'timestamp' => $this->getRequestTime(),
       ])
-      ->expression('daycount', 'daycount + 1')
-      ->expression('totalcount', 'totalcount + 1')
+      ->expression('daycount', '[daycount] + 1')
+      ->expression('totalcount', '[totalcount] + 1')
       ->execute();
   }
 
@@ -116,7 +116,7 @@ class NodeStatisticsDatabaseStorage implements StatisticsStorageInterface {
    * {@inheritdoc}
    */
   public function resetDayCount() {
-    $statistics_timestamp = $this->state->get('statistics.day_timestamp') ?: 0;
+    $statistics_timestamp = $this->state->get('statistics.day_timestamp', 0);
     if (($this->getRequestTime() - $statistics_timestamp) >= 86400) {
       $this->state->set('statistics.day_timestamp', $this->getRequestTime());
       $this->connection->update('node_counter')
@@ -130,7 +130,7 @@ class NodeStatisticsDatabaseStorage implements StatisticsStorageInterface {
    */
   public function maxTotalCount() {
     $query = $this->connection->select('node_counter', 'nc');
-    $query->addExpression('MAX(totalcount)');
+    $query->addExpression('MAX([totalcount])');
     $max_total_count = (int) $query->execute()->fetchField();
     return $max_total_count;
   }

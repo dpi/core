@@ -24,7 +24,13 @@ class FieldFieldTest extends ViewsKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['field', 'entity_test', 'user', 'views_test_formatter'];
+  protected static $modules = [
+    'field',
+    'entity_test',
+    'user',
+    'views_test_formatter',
+    'views_entity_test',
+  ];
 
   /**
    * {@inheritdoc}
@@ -62,7 +68,7 @@ class FieldFieldTest extends ViewsKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     // First setup the needed entity types before installing the views.
     parent::setUp(FALSE);
 
@@ -70,7 +76,7 @@ class FieldFieldTest extends ViewsKernelTestBase {
     $this->installEntitySchema('entity_test');
     $this->installEntitySchema('entity_test_rev');
 
-    ViewTestData::createTestViews(get_class($this), ['views_test_config']);
+    ViewTestData::createTestViews(static::class, ['views_test_config']);
 
     // Bypass any field access.
     $this->adminUser = User::create(['name' => $this->randomString()]);
@@ -82,7 +88,7 @@ class FieldFieldTest extends ViewsKernelTestBase {
       $this->testUsers[$i] = User::create([
         'name' => 'test ' . $i,
         'timezone' => User::getAllowedTimezones()[$i],
-        'created' => REQUEST_TIME - rand(0, 3600)
+        'created' => REQUEST_TIME - rand(0, 3600),
       ]);
       $this->testUsers[$i]->save();
     }
@@ -229,18 +235,18 @@ class FieldFieldTest extends ViewsKernelTestBase {
     $executable = Views::getView('test_field_field_test');
     $executable->execute();
 
-    $this->assertTrue($executable->field['id'] instanceof EntityField);
-    $this->assertTrue($executable->field['field_test'] instanceof EntityField);
+    $this->assertInstanceOf(EntityField::class, $executable->field['id']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['field_test']);
 
     $this->assertIdenticalResultset($executable,
       [
-        ['id' => 1, 'field_test' => 3],
-        ['id' => 2, 'field_test' => 0],
-        ['id' => 3, 'field_test' => 8],
-        ['id' => 4, 'field_test' => 5],
-        ['id' => 5, 'field_test' => 6],
+        ['id' => 1, 'field_test' => 3, 'user_id' => 2],
+        ['id' => 2, 'field_test' => 0, 'user_id' => 3],
+        ['id' => 3, 'field_test' => 8, 'user_id' => 4],
+        ['id' => 4, 'field_test' => 5, 'user_id' => 5],
+        ['id' => 5, 'field_test' => 6, 'user_id' => 6],
       ],
-      ['id' => 'id', 'field_test' => 'field_test']
+      ['id' => 'id', 'field_test' => 'field_test', 'user_id' => 'user_id']
     );
   }
 
@@ -254,7 +260,7 @@ class FieldFieldTest extends ViewsKernelTestBase {
     $this->assertEqual('1', $executable->getStyle()->getField(0, 'id'));
     $this->assertEqual('3', $executable->getStyle()->getField(0, 'field_test'));
     $this->assertEqual('2', $executable->getStyle()->getField(1, 'id'));
-    // @todo Switch this assertion to assertIdentical('', ...) when
+    // @todo Switch this assertion to assertSame('', ...) when
     //   https://www.drupal.org/node/2488006 gets fixed.
     $this->assertEqual('0', $executable->getStyle()->getField(1, 'field_test'));
     $this->assertEqual('3', $executable->getStyle()->getField(2, 'id'));
@@ -279,8 +285,8 @@ class FieldFieldTest extends ViewsKernelTestBase {
     $render = $executable->display_handler->render();
     $expected_attachments = [
       'library' => [
-        'views/views.module'
-      ]
+        'views/views.module',
+      ],
     ];
     foreach ($this->entities as $entity) {
       $expected_attachments['library'][] = 'foo/fake_library';
@@ -299,9 +305,9 @@ class FieldFieldTest extends ViewsKernelTestBase {
     $executable = Views::getView('test_field_alias_test');
     $executable->execute();
 
-    $this->assertTrue($executable->field['id'] instanceof EntityField);
-    $this->assertTrue($executable->field['name'] instanceof EntityField);
-    $this->assertTrue($executable->field['name_alias'] instanceof EntityField);
+    $this->assertInstanceOf(EntityField::class, $executable->field['id']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['name']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['name_alias']);
 
     $this->assertIdenticalResultset($executable,
       [
@@ -329,7 +335,7 @@ class FieldFieldTest extends ViewsKernelTestBase {
       $this->assertEqual((string) ($i + 1), $executable->getStyle()->getField($i, 'id'));
       $this->assertEqual('test ' . $i, $executable->getStyle()->getField($i, 'name'));
       $entity = EntityTest::load($i + 1);
-      $this->assertEqual('<a href="' . $entity->url() . '" hreflang="' . $entity->language()->getId() . '">test ' . $i . '</a>', (string) $executable->getStyle()->getField($i, 'name_alias'));
+      $this->assertEqual('<a href="' . $entity->toUrl()->toString() . '" hreflang="' . $entity->language()->getId() . '">test ' . $i . '</a>', (string) $executable->getStyle()->getField($i, 'name_alias'));
     }
   }
 
@@ -348,10 +354,10 @@ class FieldFieldTest extends ViewsKernelTestBase {
       $timezones[] = $user->getTimeZone();
     }
 
-    $this->assertTrue($executable->field['field_test_multiple'] instanceof EntityField);
-    $this->assertTrue($executable->field['field_test_multiple_1'] instanceof EntityField);
-    $this->assertTrue($executable->field['field_test_multiple_2'] instanceof EntityField);
-    $this->assertTrue($executable->field['timezone'] instanceof EntityField);
+    $this->assertInstanceOf(EntityField::class, $executable->field['field_test_multiple']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['field_test_multiple_1']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['field_test_multiple_2']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['timezone']);
 
     $this->assertIdenticalResultset($executable,
       [
@@ -421,8 +427,8 @@ class FieldFieldTest extends ViewsKernelTestBase {
     $executable = Views::getView('test_field_field_revision_test');
     $executable->execute();
 
-    $this->assertTrue($executable->field['name'] instanceof EntityField);
-    $this->assertTrue($executable->field['field_test'] instanceof EntityField);
+    $this->assertInstanceOf(EntityField::class, $executable->field['name']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['field_test']);
 
     $this->assertIdenticalResultset($executable,
       [
@@ -475,12 +481,12 @@ class FieldFieldTest extends ViewsKernelTestBase {
       $timezones[] = $user->getTimeZone();
     }
 
-    $this->assertTrue($executable->field['id'] instanceof EntityField);
-    $this->assertTrue($executable->field['revision_id'] instanceof EntityField);
-    $this->assertTrue($executable->field['timezone'] instanceof EntityField);
-    $this->assertTrue($executable->field['field_test_multiple'] instanceof EntityField);
-    $this->assertTrue($executable->field['field_test_multiple_1'] instanceof EntityField);
-    $this->assertTrue($executable->field['field_test_multiple_2'] instanceof EntityField);
+    $this->assertInstanceOf(EntityField::class, $executable->field['id']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['revision_id']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['timezone']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['field_test_multiple']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['field_test_multiple_1']);
+    $this->assertInstanceOf(EntityField::class, $executable->field['field_test_multiple_2']);
 
     $this->assertIdenticalResultset($executable,
       [
@@ -551,7 +557,7 @@ class FieldFieldTest extends ViewsKernelTestBase {
   }
 
   /**
-   * Tests \Drupal\views\Plugin\views\field\EntityField::getValue
+   * Tests \Drupal\views\Plugin\views\field\EntityField::getValue.
    */
   public function testGetValueMethod() {
     $bundle = 'test_bundle';

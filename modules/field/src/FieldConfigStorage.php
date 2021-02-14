@@ -2,35 +2,29 @@
 
 namespace Drupal\field;
 
+use Drupal\Core\Cache\MemoryCache\MemoryCacheInterface;
 use Drupal\Core\Config\Config;
-use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\DeletedFieldsRepositoryInterface;
 use Drupal\Core\Field\FieldConfigStorageBase;
 use Drupal\Core\Field\FieldTypePluginManagerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Component\Uuid\UuidInterface;
-use Drupal\Core\State\StateInterface;
 
 /**
- * Controller class for fields.
+ * Storage handler for field config.
  */
 class FieldConfigStorage extends FieldConfigStorageBase {
 
   /**
-   * The entity manager.
+   * The entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityManager;
-
-  /**
-   * The state keyvalue collection.
-   *
-   * @var \Drupal\Core\State\StateInterface
-   */
-  protected $state;
+  protected $entityTypeManager;
 
   /**
    * The field type plugin manager.
@@ -38,6 +32,13 @@ class FieldConfigStorage extends FieldConfigStorageBase {
    * @var \Drupal\Core\Field\FieldTypePluginManagerInterface
    */
   protected $fieldTypeManager;
+
+  /**
+   * The deleted fields repository.
+   *
+   * @var \Drupal\Core\Field\DeletedFieldsRepositoryInterface
+   */
+  protected $deletedFieldsRepository;
 
   /**
    * Constructs a FieldConfigStorage object.
@@ -50,18 +51,20 @@ class FieldConfigStorage extends FieldConfigStorageBase {
    *   The UUID service.
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
    *   The language manager.
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
-   *   The entity manager.
-   * @param \Drupal\Core\State\StateInterface $state
-   *   The state key value store.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
    * @param \Drupal\Core\Field\FieldTypePluginManagerInterface $field_type_manager
    *   The field type plugin manager.
+   * @param \Drupal\Core\Field\DeletedFieldsRepositoryInterface $deleted_fields_repository
+   *   The deleted fields repository.
+   * @param \Drupal\Core\Cache\MemoryCache\MemoryCacheInterface $memory_cache
+   *   The memory cache.
    */
-  public function __construct(EntityTypeInterface $entity_type, ConfigFactoryInterface $config_factory, UuidInterface $uuid_service, LanguageManagerInterface $language_manager, EntityManagerInterface $entity_manager, StateInterface $state, FieldTypePluginManagerInterface $field_type_manager) {
-    parent::__construct($entity_type, $config_factory, $uuid_service, $language_manager);
-    $this->entityManager = $entity_manager;
-    $this->state = $state;
+  public function __construct(EntityTypeInterface $entity_type, ConfigFactoryInterface $config_factory, UuidInterface $uuid_service, LanguageManagerInterface $language_manager, EntityTypeManagerInterface $entity_type_manager, FieldTypePluginManagerInterface $field_type_manager, DeletedFieldsRepositoryInterface $deleted_fields_repository, MemoryCacheInterface $memory_cache) {
+    parent::__construct($entity_type, $config_factory, $uuid_service, $language_manager, $memory_cache);
+    $this->entityTypeManager = $entity_type_manager;
     $this->fieldTypeManager = $field_type_manager;
+    $this->deletedFieldsRepository = $deleted_fields_repository;
   }
 
   /**
@@ -73,9 +76,10 @@ class FieldConfigStorage extends FieldConfigStorageBase {
       $container->get('config.factory'),
       $container->get('uuid'),
       $container->get('language_manager'),
-      $container->get('entity.manager'),
-      $container->get('state'),
-      $container->get('plugin.manager.field.field_type')
+      $container->get('entity_type.manager'),
+      $container->get('plugin.manager.field.field_type'),
+      $container->get('entity_field.deleted_fields_repository'),
+      $container->get('entity.memory_cache')
     );
   }
 
@@ -104,7 +108,7 @@ class FieldConfigStorage extends FieldConfigStorageBase {
 
     // Get fields stored in configuration. If we are explicitly looking for
     // deleted fields only, this can be skipped, because they will be
-    // retrieved from state below.
+    // retrieved from the deleted fields repository below.
     if (empty($conditions['deleted'])) {
       if (isset($conditions['entity_type']) && isset($conditions['bundle']) && isset($conditions['field_name'])) {
         // Optimize for the most frequent case where we do have a specific ID.
@@ -117,16 +121,13 @@ class FieldConfigStorage extends FieldConfigStorageBase {
       }
     }
 
-    // Merge deleted fields (stored in state) if needed.
+    // Merge deleted fields from the deleted fields repository if needed.
     if ($include_deleted || !empty($conditions['deleted'])) {
-      $deleted_fields = $this->state->get('field.field.deleted') ?: [];
-      $deleted_storages = $this->state->get('field.storage.deleted') ?: [];
-      foreach ($deleted_fields as $id => $config) {
-        // If the field storage itself is deleted, inject it directly in the field.
-        if (isset($deleted_storages[$config['field_storage_uuid']])) {
-          $config['field_storage'] = $this->entityManager->getStorage('field_storage_config')->create($deleted_storages[$config['field_storage_uuid']]);
+      $deleted_field_definitions = $this->deletedFieldsRepository->getFieldDefinitions();
+      foreach ($deleted_field_definitions as $id => $field_definition) {
+        if ($field_definition instanceof FieldConfigInterface) {
+          $fields[$id] = $field_definition;
         }
-        $fields[$id] = $this->create($config);
       }
     }
 

@@ -6,7 +6,6 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\node\NodeInterface;
 
-
 /**
  * Provides an interface defining a book manager.
  */
@@ -16,7 +15,7 @@ interface BookManagerInterface {
    * Gets the data structure representing a named menu tree.
    *
    * Since this can be the full tree including hidden items, the data returned
-   * may be used for generating an an admin interface or a select.
+   * may be used for generating an admin interface or a select.
    *
    * Note: based on menu_tree_all_data().
    *
@@ -32,7 +31,7 @@ interface BookManagerInterface {
    *   $link, in which case $max_depth should be greater than $link['depth'].
    *
    * @return array
-   *   An tree of menu links in an array, in the order they should be rendered.
+   *   A tree of menu links in an array, in the order they should be rendered.
    */
   public function bookTreeAllData($bid, $link = NULL, $max_depth = NULL);
 
@@ -247,7 +246,8 @@ interface BookManagerInterface {
    *   A data structure representing the tree as returned from buildBookOutlineData.
    *
    * @return array
-   *   A structured array to be rendered by drupal_render().
+   *   A structured array to be rendered by
+   *   \Drupal\Core\Render\RendererInterface::render().
    *
    * @see \Drupal\Core\Menu\MenuLinkTree::build
    */

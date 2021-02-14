@@ -19,9 +19,9 @@ class FieldRdfaDatatypeCallbackTest extends FieldRdfaTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['text', 'filter'];
+  protected static $modules = ['text', 'filter', 'rdf_test'];
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->createTestField();
@@ -33,7 +33,7 @@ class FieldRdfaDatatypeCallbackTest extends FieldRdfaTestBase {
     $mapping->setFieldMapping($this->fieldName, [
       'properties' => ['schema:interactionCount'],
       'datatype_callback' => [
-        'callable' => 'Drupal\rdf\Tests\Field\TestDataConverter::convertFoo',
+        'callable' => 'Drupal\rdf_test\TestDataConverter::convertFoo',
       ],
     ])->save();
 

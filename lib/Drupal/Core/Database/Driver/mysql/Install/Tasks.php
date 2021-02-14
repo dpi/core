@@ -2,8 +2,9 @@
 
 namespace Drupal\Core\Database\Driver\mysql\Install;
 
-use Drupal\Core\Database\Install\Tasks as InstallTasks;
+use Drupal\Core\Database\ConnectionNotDefinedException;
 use Drupal\Core\Database\Database;
+use Drupal\Core\Database\Install\Tasks as InstallTasks;
 use Drupal\Core\Database\Driver\mysql\Connection;
 use Drupal\Core\Database\DatabaseNotFoundException;
 
@@ -11,6 +12,22 @@ use Drupal\Core\Database\DatabaseNotFoundException;
  * Specifies installation tasks for MySQL and equivalent databases.
  */
 class Tasks extends InstallTasks {
+
+  /**
+   * Minimum required MySQL version.
+   *
+   * 5.7.8 is the minimum version that supports the JSON datatype.
+   * @see https://dev.mysql.com/doc/refman/5.7/en/json.html
+   */
+  const MYSQL_MINIMUM_VERSION = '5.7.8';
+
+  /**
+   * Minimum required MariaDB version.
+   *
+   * 10.3.7 is the first stable (GA) release in the 10.3 series.
+   * @see https://mariadb.com/kb/en/changes-improvements-in-mariadb-103/#list-of-all-mariadb-103-releases
+   */
+  const MARIADB_MINIMUM_VERSION = '10.3.7';
 
   /**
    * Minimum required MySQLnd version.
@@ -43,14 +60,28 @@ class Tasks extends InstallTasks {
    * {@inheritdoc}
    */
   public function name() {
-    return t('MySQL, MariaDB, Percona Server, or equivalent');
+    try {
+      if (!$this->isConnectionActive() || !$this->getConnection() instanceof Connection) {
+        throw new ConnectionNotDefinedException('The database connection is not active or not a MySql connection');
+      }
+      if ($this->getConnection()->isMariaDb()) {
+        return $this->t('MariaDB');
+      }
+      return $this->t('MySQL, Percona Server, or equivalent');
+    }
+    catch (ConnectionNotDefinedException $e) {
+      return $this->t('MySQL, MariaDB, Percona Server, or equivalent');
+    }
   }
 
   /**
    * {@inheritdoc}
    */
   public function minimumVersion() {
-    return '5.5.3';
+    if ($this->getConnection()->isMariaDb()) {
+      return static::MARIADB_MINIMUM_VERSION;
+    }
+    return static::MYSQL_MINIMUM_VERSION;
   }
 
   /**
@@ -59,13 +90,13 @@ class Tasks extends InstallTasks {
   protected function connect() {
     try {
       // This doesn't actually test the connection.
-      db_set_active();
+      Database::setActiveConnection();
       // Now actually do a check.
       try {
         Database::getConnection();
       }
       catch (\Exception $e) {
-        // Detect utf8mb4 incompability.
+        // Detect utf8mb4 incompatibility.
         if ($e->getCode() == Connection::UNSUPPORTED_CHARSET || ($e->getCode() == Connection::SQLSTATE_SYNTAX_ERROR && $e->errorInfo[1] == Connection::UNKNOWN_CHARSET)) {
           $this->fail(t('Your MySQL server and PHP MySQL driver must support utf8mb4 character encoding. Make sure to use a database system that supports this (such as MySQL/MariaDB/Percona 5.5.3 and up), and that the utf8mb4 character set is compiled in. See the <a href=":documentation" target="_blank">MySQL documentation</a> for more information.', [':documentation' => 'https://dev.mysql.com/doc/refman/5.0/en/cannot-initialize-character-set.html']));
           $info = Database::getConnectionInfo();
@@ -108,6 +139,16 @@ class Tasks extends InstallTasks {
           // Now, attempt the connection again; if it's successful, attempt to
           // create the database.
           Database::getConnection()->createDatabase($database);
+          Database::closeConnection();
+
+          // Now, restore the database config.
+          Database::removeConnection('default');
+          $connection_info['default']['database'] = $database;
+          Database::addConnectionInfo('default', 'default', $connection_info['default']);
+
+          // Check the database connection.
+          Database::getConnection();
+          $this->pass('Drupal can CONNECT to the database ok.');
         }
         catch (DatabaseNotFoundException $e) {
           // Still no dice; probably a permission issue. Raise the error to the
@@ -116,9 +157,9 @@ class Tasks extends InstallTasks {
         }
       }
       else {
-        // Database connection failed for some other reason than the database
-        // not existing.
-        $this->fail(t('Failed to connect to your database server. The server reports the following message: %error.<ul><li>Is the database server running?</li><li>Does the database exist or does the database user have sufficient privileges to create the database?</li><li>Have you entered the correct database name?</li><li>Have you entered the correct username and password?</li><li>Have you entered the correct database hostname?</li></ul>', ['%error' => $e->getMessage()]));
+        // Database connection failed for some other reason than a non-existent
+        // database.
+        $this->fail(t('Failed to connect to your database server. The server reports the following message: %error.<ul><li>Is the database server running?</li><li>Does the database exist or does the database user have sufficient privileges to create the database?</li><li>Have you entered the correct database name?</li><li>Have you entered the correct username and password?</li><li>Have you entered the correct database hostname and port number?</li></ul>', ['%error' => $e->getMessage()]));
         return FALSE;
       }
     }

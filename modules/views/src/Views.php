@@ -115,18 +115,19 @@ class Views {
    * @param string $id
    *   The view ID to load.
    *
-   * @return \Drupal\views\ViewExecutable
-   *   A view executable instance, from the loaded entity.
+   * @return \Drupal\views\ViewExecutable|null
+   *   A view executable instance or NULL if the view does not exist.
    */
   public static function getView($id) {
-    $view = \Drupal::service('entity.manager')->getStorage('view')->load($id);
+    $view = \Drupal::entityTypeManager()->getStorage('view')->load($id);
     if ($view) {
       return static::executableFactory()->get($view);
     }
+    return NULL;
   }
 
   /**
-   * Fetches a list of all base tables available
+   * Fetches a list of all base tables available.
    *
    * @param string $type
    *   Either 'display', 'style' or 'row'.
@@ -195,6 +196,7 @@ class Views {
    *
    * @return array
    *   A list of arrays containing the $view_id and $display_id.
+   *
    * @code
    * array(
    *   array($view_id, $display_id),
@@ -242,7 +244,7 @@ class Views {
    *   An array of loaded view entities.
    */
   public static function getAllViews() {
-    return \Drupal::entityManager()->getStorage('view')->loadMultiple();
+    return \Drupal::entityTypeManager()->getStorage('view')->loadMultiple();
   }
 
   /**
@@ -256,7 +258,7 @@ class Views {
       ->condition('status', TRUE)
       ->execute();
 
-    return \Drupal::entityManager()->getStorage('view')->loadMultiple($query);
+    return \Drupal::entityTypeManager()->getStorage('view')->loadMultiple($query);
   }
 
   /**
@@ -270,7 +272,7 @@ class Views {
       ->condition('status', FALSE)
       ->execute();
 
-    return \Drupal::entityManager()->getStorage('view')->loadMultiple($query);
+    return \Drupal::entityTypeManager()->getStorage('view')->loadMultiple($query);
   }
 
   /**
@@ -308,6 +310,7 @@ class Views {
         $filter = ucfirst($filter);
         $views = call_user_func("static::get{$filter}Views");
         break;
+
       default:
         return [];
     }
@@ -512,7 +515,7 @@ class Views {
       throw new \Exception('Invalid plugin type used. Valid types are "plugin" or "handler".');
     }
 
-    return array_keys(array_filter(static::$plugins, function($plugin_type) use ($type) {
+    return array_keys(array_filter(static::$plugins, function ($plugin_type) use ($type) {
       return $plugin_type == $type;
     }));
   }

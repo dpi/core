@@ -21,24 +21,26 @@ class BaseFieldAccessTest extends ViewTestBase {
   public static $testViews = ['test_entity_test_protected_access'];
 
   /**
-   * Modules to enable
+   * Modules to enable.
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'views', 'views_test_config', 'entity_test', 'node', 'views_entity_test',
   ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
-    /** @var \Drupal\Core\Entity\EntityDefinitionUpdateManager $update_manager */
-    $update_manager = $this->container->get('entity.definition_update_manager');
-    \Drupal::entityManager()->clearCachedDefinitions();
-    $update_manager->applyUpdates();
-    ViewTestData::createTestViews(get_class($this), ['comment_test_views']);
+
+    ViewTestData::createTestViews(static::class, ['comment_test_views']);
     \Drupal::state()->set('entity_test.views_data', [
       'entity_test' => [
         'test_text_access' => [

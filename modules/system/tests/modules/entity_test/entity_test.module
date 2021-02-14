@@ -5,6 +5,7 @@
  * Test module for the entity API providing several entity types for testing.
  */
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Database\Query\AlterableInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
@@ -96,11 +97,19 @@ function entity_test_entity_type_alter(array &$entity_types) {
 
   // Allow entity_test_rev tests to override the entity type definition.
   $entity_types['entity_test_rev'] = $state->get('entity_test_rev.entity_type', $entity_types['entity_test_rev']);
+  $entity_types['entity_test_revpub'] = $state->get('entity_test_revpub.entity_type', $entity_types['entity_test_revpub']);
 
   // Enable the entity_test_new only when needed.
   if (!$state->get('entity_test_new')) {
     unset($entity_types['entity_test_new']);
   }
+  else {
+    // Allow tests to override the entity type definition.
+    $entity_types['entity_test_new'] = \Drupal::state()->get('entity_test_new.entity_type', $entity_types['entity_test_new']);
+  }
+
+  $entity_test_definition = $entity_types['entity_test'];
+  $entity_test_definition->set('entity_keys', $state->get('entity_test.entity_keys', []) + $entity_test_definition->getKeys());
 }
 
 /**
@@ -109,6 +118,28 @@ function entity_test_entity_type_alter(array &$entity_types) {
 function entity_test_entity_base_field_info(EntityTypeInterface $entity_type) {
   $fields = [];
 
+  if ($entity_type->id() === 'entity_test' && \Drupal::state()->get('entity_test.internal_field')) {
+    $fields['internal_string_field'] = BaseFieldDefinition::create('string')
+      ->setLabel('Internal field')
+      ->setInternal(TRUE);
+  }
+  if ($entity_type->id() === 'entity_test_mul' && \Drupal::state()->get('entity_test.required_default_field')) {
+    $fields['required_default_field'] = BaseFieldDefinition::create('string')
+      ->setLabel('Required field with default value')
+      ->setRequired(TRUE)
+      ->setDefaultValue('this is a default value');
+  }
+  if ($entity_type->id() === 'entity_test_mul' && \Drupal::state()->get('entity_test.required_multi_default_field')) {
+    $fields['required_multi_default_field'] = BaseFieldDefinition::create('string')
+      ->setLabel('Required field with default value')
+      ->setRequired(TRUE)
+      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+      ->setDefaultValue([
+        ['value' => 'this is the first default field item'],
+        ['value' => 'this is the second default value'],
+        ['value' => 'you get the idea...'],
+      ]);
+  }
   if ($entity_type->id() == 'entity_test_mulrev' && \Drupal::state()->get('entity_test.field_test_item')) {
     $fields['field_test_item'] = BaseFieldDefinition::create('field_test')
       ->setLabel(t('Field test'))
@@ -163,11 +194,11 @@ function entity_test_entity_base_field_info_alter(&$fields, EntityTypeInterface 
  *   'entity_test'.
  */
 function entity_test_create_bundle($bundle, $text = NULL, $entity_type = 'entity_test') {
-  $bundles = \Drupal::state()->get($entity_type . '.bundles') ?: [$entity_type => ['label' => 'Entity Test Bundle']];
+  $bundles = \Drupal::state()->get($entity_type . '.bundles', [$entity_type => ['label' => 'Entity Test Bundle']]);
   $bundles += [$bundle => ['label' => $text ? $text : $bundle]];
   \Drupal::state()->set($entity_type . '.bundles', $bundles);
 
-  \Drupal::entityManager()->onBundleCreate($bundle, $entity_type);
+  \Drupal::service('entity_bundle.listener')->onBundleCreate($bundle, $entity_type);
 }
 
 /**
@@ -180,11 +211,11 @@ function entity_test_create_bundle($bundle, $text = NULL, $entity_type = 'entity
  *   'entity_test'.
  */
 function entity_test_delete_bundle($bundle, $entity_type = 'entity_test') {
-  $bundles = \Drupal::state()->get($entity_type . '.bundles') ?: [$entity_type => ['label' => 'Entity Test Bundle']];
+  $bundles = \Drupal::state()->get($entity_type . '.bundles', [$entity_type => ['label' => 'Entity Test Bundle']]);
   unset($bundles[$bundle]);
   \Drupal::state()->set($entity_type . '.bundles', $bundles);
 
-  \Drupal::entityManager()->onBundleDelete($bundle, $entity_type);
+  \Drupal::service('entity_bundle.listener')->onBundleDelete($bundle, $entity_type);
 }
 
 /**
@@ -192,20 +223,40 @@ function entity_test_delete_bundle($bundle, $entity_type = 'entity_test') {
  */
 function entity_test_entity_bundle_info() {
   $bundles = [];
-  $entity_types = \Drupal::entityManager()->getDefinitions();
+  $entity_types = \Drupal::entityTypeManager()->getDefinitions();
   foreach ($entity_types as $entity_type_id => $entity_type) {
     if ($entity_type->getProvider() == 'entity_test' && $entity_type_id != 'entity_test_with_bundle') {
-      $bundles[$entity_type_id] = \Drupal::state()->get($entity_type_id . '.bundles') ?: [$entity_type_id => ['label' => 'Entity Test Bundle']];
+      $bundles[$entity_type_id] = \Drupal::state()->get($entity_type_id . '.bundles', [$entity_type_id => ['label' => 'Entity Test Bundle']]);
     }
   }
   return $bundles;
 }
 
 /**
+ * Implements hook_entity_bundle_info_alter().
+ */
+function entity_test_entity_bundle_info_alter(&$bundles) {
+  $entity_info = \Drupal::entityTypeManager()->getDefinitions();
+  $state = \Drupal::state();
+  foreach ($bundles as $entity_type_id => &$all_bundle_info) {
+    if ($entity_info[$entity_type_id]->getProvider() == 'entity_test') {
+      if ($state->get('entity_test.translation') && $entity_info[$entity_type_id]->isTranslatable()) {
+        foreach ($all_bundle_info as $bundle_name => &$bundle_info) {
+          $bundle_info['translatable'] = TRUE;
+          if ($state->get('entity_test.untranslatable_fields.default_translation_affected')) {
+            $bundle_info['untranslatable_fields.default_translation_affected'] = TRUE;
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
  * Implements hook_entity_view_mode_info_alter().
  */
 function entity_test_entity_view_mode_info_alter(&$view_modes) {
-  $entity_info = \Drupal::entityManager()->getDefinitions();
+  $entity_info = \Drupal::entityTypeManager()->getDefinitions();
   foreach ($entity_info as $entity_type => $info) {
     if ($entity_info[$entity_type]->getProvider() == 'entity_test' && !isset($view_modes[$entity_type])) {
       $view_modes[$entity_type] = [
@@ -228,14 +279,12 @@ function entity_test_entity_view_mode_info_alter(&$view_modes) {
  * Implements hook_entity_form_mode_info_alter().
  */
 function entity_test_entity_form_mode_info_alter(&$form_modes) {
-  $entity_info = \Drupal::entityManager()->getDefinitions();
+  $entity_info = \Drupal::entityTypeManager()->getDefinitions();
   foreach ($entity_info as $entity_type => $info) {
     if ($entity_info[$entity_type]->getProvider() == 'entity_test') {
-      $form_modes[$entity_type] = [
-        'compact' => [
-          'label' => t('Compact version'),
-          'status' => TRUE,
-        ],
+      $form_modes[$entity_type]['compact'] = [
+        'label' => t('Compact version'),
+        'status' => TRUE,
       ];
     }
   }
@@ -261,7 +310,7 @@ function entity_test_entity_extra_field_info() {
         'description' => t('An extra field on the display side, hidden by default.'),
         'visible' => FALSE,
       ],
-    ]
+    ],
   ];
 
   return $extra;
@@ -304,82 +353,6 @@ function entity_test_form_entity_test_form_validate_check(array &$form, FormStat
 function entity_test_form_node_form_alter(&$form, FormStateInterface $form_state, $form_id) {
   $langcode = $form_state->getFormObject()->getFormLangcode($form_state);
   \Drupal::state()->set('entity_test.form_langcode', $langcode);
-}
-
-/**
- * Loads a test entity.
- *
- * @param int $id
- *   A test entity ID.
- * @param bool $reset
- *   A boolean indicating that the internal cache should be reset.
- *
- * @return \Drupal\entity_test\Entity\EntityTest
- *   The loaded entity object, or NULL if the entity cannot be loaded.
- */
-function entity_test_load($id, $reset = FALSE) {
-  $storage = \Drupal::entityTypeManager()->getStorage('entity_test');
-  if ($reset) {
-    $storage->resetCache([$id]);
-  }
-  return $storage->load($id);
-}
-
-/**
- * Loads a test entity.
- *
- * @param int $id
- *   A test entity ID.
- * @param bool $reset
- *   A boolean indicating that the internal cache should be reset.
- *
- * @return \Drupal\entity_test\Entity\EntityTestRev
- *   The loaded entity object, or NULL if the entity cannot be loaded.
- */
-function entity_test_rev_load($id, $reset = FALSE) {
-  $storage = \Drupal::entityTypeManager()->getStorage('entity_test_rev');
-  if ($reset) {
-    $storage->resetCache([$id]);
-  }
-  return $storage->load($id);
-}
-
-/**
- * Loads a test entity.
- *
- * @param int $id
- *   A test entity ID.
- * @param bool $reset
- *   A boolean indicating that the internal cache should be reset.
- *
- * @return \Drupal\entity_test\Entity\EntityTestMul
- *   The loaded entity object, or FALSE if the entity cannot be loaded.
- */
-function entity_test_mul_load($id, $reset = FALSE) {
-  $storage = \Drupal::entityTypeManager()->getStorage('entity_test_mul');
-  if ($reset) {
-    $storage->resetCache([$id]);
-  }
-  return $storage->load($id);
-}
-
-/**
- * Loads a test entity.
- *
- * @param int $id
- *   A test entity ID.
- * @param bool $reset
- *   A boolean indicating that the internal cache should be reset.
- *
- * @return \Drupal\entity_test\Entity\EntityTestMulRev
- *   The loaded entity object, or NULL if the entity cannot be loaded.
- */
-function entity_test_mulrev_load($id, $reset = FALSE) {
-  $storage = \Drupal::entityTypeManager()->getStorage('entity_test_mulrev');
-  if ($reset) {
-    $storage->resetCache([$id]);
-  }
-  return $storage->load($id);
 }
 
 /**
@@ -456,6 +429,15 @@ function entity_test_entity_field_access_alter(array &$grants, array $context) {
 }
 
 /**
+ * Implements hook_entity_form_mode_alter().
+ */
+function entity_test_entity_form_mode_alter(&$form_mode, EntityInterface $entity) {
+  if ($entity->getEntityTypeId() === 'entity_test' && $entity->get('name')->value === 'compact_form_mode') {
+    $form_mode = 'compact';
+  }
+}
+
+/**
  * Implements hook_entity_form_display_alter().
  */
 function entity_test_entity_form_display_alter(EntityFormDisplay $form_display, $context) {
@@ -501,7 +483,7 @@ function entity_test_entity_operation_alter(array &$operations, EntityInterface 
   if (in_array($entity->getEntityTypeId(), $valid_entity_type_ids)) {
     if (\Drupal::service('router.route_provider')->getRouteByName("entity.{$entity->getEntityTypeId()}.test_operation")) {
       $operations['test_operation'] = [
-        'title' => format_string('Test Operation: @label', ['@label' => $entity->label()]),
+        'title' => new FormattableMarkup('Test Operation: @label', ['@label' => $entity->label()]),
         'url' => Url::fromRoute("entity.{$entity->getEntityTypeId()}.test_operation", [$entity->getEntityTypeId() => $entity->id()]),
         'weight' => 50,
       ];
@@ -633,6 +615,23 @@ function entity_test_entity_test_mul_langcode_key_translation_insert(EntityInter
  */
 function entity_test_entity_test_mul_langcode_key_translation_delete(EntityInterface $translation) {
   _entity_test_record_hooks('entity_test_mul_langcode_key_translation_delete', $translation->language()->getId());
+}
+
+/**
+ * Implements hook_entity_revision_create().
+ */
+function entity_test_entity_revision_create(EntityInterface $new_revision, EntityInterface $entity, $keep_untranslatable_fields) {
+  _entity_test_record_hooks('entity_revision_create', ['new_revision' => $new_revision, 'entity' => $entity, 'keep_untranslatable_fields' => $keep_untranslatable_fields]);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_revision_create() for 'entity_test_mulrev'.
+ */
+function entity_test_entity_test_mulrev_revision_create(EntityInterface $new_revision, EntityInterface $entity, $keep_untranslatable_fields) {
+  if ($new_revision->get('name')->value == 'revision_create_test_it') {
+    $new_revision->set('name', 'revision_create_test_it_altered');
+  }
+  _entity_test_record_hooks('entity_test_mulrev_revision_create', ['new_revision' => $new_revision, 'entity' => $entity, 'keep_untranslatable_fields' => $keep_untranslatable_fields]);
 }
 
 /**

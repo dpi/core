@@ -18,12 +18,20 @@ class BookUninstallTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['system', 'user', 'field', 'filter', 'text', 'node', 'book'];
+  protected static $modules = [
+    'system',
+    'user',
+    'field',
+    'filter',
+    'text',
+    'node',
+    'book',
+  ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('user');
     $this->installEntitySchema('node');
@@ -76,7 +84,7 @@ class BookUninstallTest extends KernelTestBase {
 
     $book_node->delete();
     // No nodes exist therefore the book module is not required.
-    $module_data = _system_rebuild_module_data();
+    $module_data = \Drupal::service('extension.list.module')->getList();
     $this->assertFalse(isset($module_data['book']->info['required']), 'The book module is not required.');
 
     $node = Node::create(['title' => $this->randomString(), 'type' => $content_type->id()]);

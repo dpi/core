@@ -71,10 +71,8 @@ class ContextTest extends TestCase {
 
       // Set expectation for exception.
       if ($is_required) {
-        $this->setExpectedException(
-          'Drupal\Component\Plugin\Exception\ContextException',
-          sprintf("The %s context is required and not present.", $data_type)
-        );
+        $this->expectException('Drupal\Component\Plugin\Exception\ContextException');
+        $this->expectExceptionMessage(sprintf("The %s context is required and not present.", $data_type));
       }
 
       // Exercise getContextValue().

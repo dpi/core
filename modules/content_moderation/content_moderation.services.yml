@@ -1,11 +1,6 @@
 services:
-  paramconverter.latest_revision:
-    class: Drupal\content_moderation\ParamConverter\EntityRevisionConverter
-    arguments: ['@entity.manager', '@content_moderation.moderation_information']
-    tags:
-      - { name: paramconverter, priority: 5 }
   content_moderation.state_transition_validation:
-    class: \Drupal\content_moderation\StateTransitionValidation
+    class: Drupal\content_moderation\StateTransitionValidation
     arguments: ['@content_moderation.moderation_information']
   content_moderation.moderation_information:
     class: Drupal\content_moderation\ModerationInformation
@@ -18,5 +13,10 @@ services:
   content_moderation.config_import_subscriber:
     class: Drupal\content_moderation\EventSubscriber\ConfigImportSubscriber
     arguments: ['@config.manager', '@entity_type.manager']
+    tags:
+      - { name: event_subscriber }
+  content_moderation.route_subscriber:
+    class: Drupal\content_moderation\Routing\ContentModerationRouteSubscriber
+    arguments: ['@entity_type.manager']
     tags:
       - { name: event_subscriber }

@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\field\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Tests\BrowserTestBase;
@@ -16,6 +17,7 @@ abstract class FieldTestBase extends BrowserTestBase {
    *
    * @param $cardinality
    *   Number of values to generate.
+   *
    * @return
    *   An array of random values, in the format expected for field values.
    */
@@ -33,7 +35,7 @@ abstract class FieldTestBase extends BrowserTestBase {
    *
    * This function only checks a single column in the field values.
    *
-   * @param EntityInterface $entity
+   * @param \Drupal\Core\Entity\EntityInterface $entity
    *   The entity to test.
    * @param $field_name
    *   The name of the field to test
@@ -56,9 +58,9 @@ abstract class FieldTestBase extends BrowserTestBase {
     // Filter out empty values so that they don't mess with the assertions.
     $field->filterEmptyItems();
     $values = $field->getValue();
-    $this->assertEqual(count($values), count($expected_values), 'Expected number of values were saved.');
+    $this->assertEqual(count($expected_values), count($values), 'Expected number of values were saved.');
     foreach ($expected_values as $key => $value) {
-      $this->assertEqual($values[$key][$column], $value, format_string('Value @value was saved correctly.', ['@value' => $value]));
+      $this->assertEqual($value, $values[$key][$column], new FormattableMarkup('Value @value was saved correctly.', ['@value' => $value]));
     }
   }
 

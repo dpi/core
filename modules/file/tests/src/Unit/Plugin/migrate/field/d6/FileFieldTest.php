@@ -8,6 +8,8 @@ use Drupal\Tests\UnitTestCase;
 use Drupal\file\Plugin\migrate\field\d6\FileField;
 use Prophecy\Argument;
 
+// cspell:ignore imagefield
+
 /**
  * @coversDefaultClass \Drupal\file\Plugin\migrate\field\d6\FileField
  * @group file
@@ -27,27 +29,27 @@ class FileFieldTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     $this->plugin = new FileField([], 'file', []);
 
     $migration = $this->prophesize(MigrationInterface::class);
 
-    // The plugin's processFieldValues() method will call
+    // The plugin's defineValueProcessPipeline() method will call
     // mergeProcessOfProperty() and return nothing. So, in order to examine the
     // process pipeline created by the plugin, we need to ensure that
     // getProcess() always returns the last input to mergeProcessOfProperty().
     $migration->mergeProcessOfProperty(Argument::type('string'), Argument::type('array'))
-      ->will(function($arguments) use ($migration) {
+      ->will(function ($arguments) use ($migration) {
         $migration->getProcess()->willReturn($arguments[1]);
       });
     $this->migration = $migration->reveal();
   }
 
   /**
-   * @covers ::processFieldValues
+   * @covers ::defineValueProcessPipeline
    */
-  public function testProcessFieldValues() {
-    $this->plugin->processFieldValues($this->migration, 'somefieldname', []);
+  public function testDefineValueProcessPipeline($method = 'defineValueProcessPipeline') {
+    $this->plugin->$method($this->migration, 'somefieldname', []);
 
     $expected = [
       'plugin' => 'd6_field_file',
@@ -63,7 +65,7 @@ class FileFieldTest extends UnitTestCase {
     return [
       ['image', 'imagefield_widget'],
       ['file', 'filefield_widget'],
-      ['file', 'x_widget']
+      ['file', 'x_widget'],
     ];
   }
 

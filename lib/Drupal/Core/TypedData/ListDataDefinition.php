@@ -20,7 +20,7 @@ class ListDataDefinition extends DataDefinition implements ListDataDefinitionInt
    * @param string $item_type
    *   The data type of the list items; e.g., 'string', 'integer' or 'any'.
    *
-   * @return \Drupal\Core\TypedData\ListDataDefinition
+   * @return static
    *   A new List Data Definition object.
    */
   public static function create($item_type) {
@@ -72,20 +72,18 @@ class ListDataDefinition extends DataDefinition implements ListDataDefinitionInt
    * {@inheritdoc}
    */
   public function getClass() {
-    $class = isset($this->definition['class']) ? $this->definition['class'] : NULL;
-    if (!empty($class)) {
-      return $class;
+    if (!empty($this->definition['class'])) {
+      return $this->definition['class'];
     }
-    else {
-      // If a list definition is used but no class has been specified, derive
-      // the default list class from the item type.
-      $item_type_definition = \Drupal::typedDataManager()
-        ->getDefinition($this->getItemDefinition()->getDataType());
-      if (!$item_type_definition) {
-        throw new \LogicException("An invalid data type '{$this->getItemDefinition()->getDataType()}' has been specified for list items");
-      }
-      return $item_type_definition['list_class'];
+
+    // If a list definition is used but no class has been specified, derive the
+    // default list class from the item type.
+    $item_type_definition = \Drupal::typedDataManager()
+      ->getDefinition($this->getItemDefinition()->getDataType());
+    if (!$item_type_definition) {
+      throw new \LogicException("An invalid data type '{$this->getItemDefinition()->getDataType()}' has been specified for list items");
     }
+    return $item_type_definition['list_class'];
   }
 
   /**

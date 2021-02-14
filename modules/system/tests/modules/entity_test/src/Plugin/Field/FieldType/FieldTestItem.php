@@ -9,7 +9,6 @@ use Drupal\Core\TypedData\DataDefinition;
 use Drupal\Core\TypedData\DataDefinitionInterface;
 use Drupal\Core\TypedData\TypedDataInterface;
 
-
 /**
  * Defines the 'field_test' entity field type.
  *
@@ -115,7 +114,7 @@ class FieldTestItem extends FieldItemBase {
    */
   public function delete() {
     parent::delete();
-    $deleted_languages = \Drupal::state()->get('entity_test.delete.' . $this->getFieldDefinition()->getName()) ?: [];
+    $deleted_languages = \Drupal::state()->get('entity_test.delete.' . $this->getFieldDefinition()->getName(), []);
     $deleted_languages[] = $this->getLangcode();
     \Drupal::state()->set('entity_test.delete.' . $this->getFieldDefinition()->getName(), $deleted_languages);
   }

@@ -164,7 +164,7 @@ class Random {
    * @param int $size
    *   The number of random keys to add to the object.
    *
-   * @return \stdClass
+   * @return object
    *   The generated object, with the specified number of random keys. Each key
    *   has a random string value.
    */
@@ -192,6 +192,7 @@ class Random {
    *   Nonsense latin words which form sentence(s).
    */
   public function sentences($min_word_count, $capitalize = FALSE) {
+    // cSpell:disable
     $dictionary = ["abbas", "abdo", "abico", "abigo", "abluo", "accumsan",
       "acsi", "ad", "adipiscing", "aliquam", "aliquip", "amet", "antehabeo",
       "appellatio", "aptent", "at", "augue", "autem", "bene", "blandit",
@@ -223,6 +224,7 @@ class Random {
       "virtus", "voco", "volutpat", "vulpes", "vulputate", "wisi", "ymo",
       "zelus",
     ];
+    // cSpell:enable
     $dictionary_flipped = array_flip($dictionary);
     $greeking = '';
 
@@ -249,6 +251,7 @@ class Random {
    * Generate paragraphs separated by double new line.
    *
    * @param int $paragraph_count
+   *
    * @return string
    */
   public function paragraphs($paragraph_count = 12) {
@@ -259,14 +262,15 @@ class Random {
     return $output;
   }
 
-
   /**
    * Create a placeholder image.
    *
    * @param string $destination
    *   The absolute file path where the image should be stored.
-   * @param int $min_resolution
-   * @param int $max_resolution
+   * @param string $min_resolution
+   *   The minimum resolution for the image. For example, '400x300'.
+   * @param string $max_resolution
+   *   The maximum resolution for the image. For example, '800x600'.
    *
    * @return string
    *   Path to image file.

@@ -17,7 +17,12 @@ class FieldAccessTest extends FieldTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'field_test'];
+  protected static $modules = ['node', 'field_test'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Node entity to use in this test.
@@ -33,7 +38,7 @@ class FieldAccessTest extends FieldTestBase {
    */
   protected $testViewFieldValue;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $web_user = $this->drupalCreateUser(['view test_view_field content']);
@@ -58,7 +63,8 @@ class FieldAccessTest extends FieldTestBase {
 
     // Assign display properties for the 'default' and 'teaser' view modes.
     foreach (['default', 'teaser'] as $view_mode) {
-      entity_get_display('node', $content_type, $view_mode)
+      \Drupal::service('entity_display.repository')
+        ->getViewDisplay('node', $content_type, $view_mode)
         ->setComponent($field_storage['field_name'])
         ->save();
     }

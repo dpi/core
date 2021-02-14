@@ -4,6 +4,7 @@ namespace Drupal\Core\Entity\Query;
 
 use Drupal\Core\Database\Query\PagerSelectExtender;
 use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Utility\TableSort;
 
 /**
  * The base entity query class.
@@ -60,7 +61,7 @@ abstract class QueryBase implements QueryInterface {
   protected $groupBy = [];
 
   /**
-   * Aggregate Conditions
+   * Aggregate Conditions.
    *
    * @var \Drupal\Core\Entity\Query\ConditionAggregateInterface
    */
@@ -107,6 +108,13 @@ abstract class QueryBase implements QueryInterface {
    * @var bool
    */
   protected $allRevisions = FALSE;
+
+  /**
+   * Flag indicating whether to query the latest revision.
+   *
+   * @var bool
+   */
+  protected $latestRevision = FALSE;
 
   /**
    * The query pager data.
@@ -252,6 +260,16 @@ abstract class QueryBase implements QueryInterface {
    */
   public function currentRevision() {
     $this->allRevisions = FALSE;
+    $this->latestRevision = FALSE;
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function latestRevision() {
+    $this->allRevisions = TRUE;
+    $this->latestRevision = TRUE;
     return $this;
   }
 
@@ -260,6 +278,7 @@ abstract class QueryBase implements QueryInterface {
    */
   public function allRevisions() {
     $this->allRevisions = TRUE;
+    $this->latestRevision = FALSE;
     return $this;
   }
 
@@ -291,11 +310,11 @@ abstract class QueryBase implements QueryInterface {
    */
   protected function initializePager() {
     if ($this->pager && !empty($this->pager['limit']) && !$this->count) {
-      $page = pager_find_page($this->pager['element']);
+      $page = \Drupal::service('pager.parameters')->findPage($this->pager['element']);
       $count_query = clone $this;
       $this->pager['total'] = $count_query->count()->execute();
       $this->pager['start'] = $page * $this->pager['limit'];
-      pager_default_initialize($this->pager['total'], $this->pager['limit'], $this->pager['element']);
+      \Drupal::service('pager.manager')->createPager($this->pager['total'], $this->pager['limit'], $this->pager['element']);
       $this->range($this->pager['start'], $this->pager['limit']);
     }
   }
@@ -311,8 +330,8 @@ abstract class QueryBase implements QueryInterface {
       }
     }
 
-    $order = tablesort_get_order($headers);
-    $direction = tablesort_get_sort($headers);
+    $order = TableSort::getOrder($headers, \Drupal::request());
+    $direction = TableSort::getSort($headers, \Drupal::request());
     foreach ($headers as $header) {
       if (is_array($header) && ($header['data'] == $order['name'])) {
         $this->sort($header['specifier'], $direction, isset($header['langcode']) ? $header['langcode'] : NULL);
@@ -431,7 +450,7 @@ abstract class QueryBase implements QueryInterface {
   }
 
   /**
-   * Generates an alias for a field and it's aggregated function.
+   * Generates an alias for a field and its aggregated function.
    *
    * @param string $field
    *   The field name used in the alias.

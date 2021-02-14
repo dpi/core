@@ -19,7 +19,12 @@ class ViewsFormMultipleTest extends ViewTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
     $this->enableViewsTestModule();
@@ -37,7 +42,6 @@ class ViewsFormMultipleTest extends ViewTestBase {
     ];
     return $data;
   }
-
 
   /**
    * Tests the a page with multiple View forms in it.

@@ -2,6 +2,7 @@
 
 namespace Drupal\views\Plugin\views\filter;
 
+use Drupal\Component\Render\MarkupInterface;
 use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
@@ -9,7 +10,7 @@ use Drupal\views\ViewExecutable;
 use Drupal\Core\Form\OptGroup;
 
 /**
- * Simple filter to handle matching of multiple options selectable via checkboxes
+ * Simple filter to handle matching of multiple options selectable via checkboxes.
  *
  * Definition items:
  * - options callback: The function to call in order to generate the value options. If omitted, the options 'Yes' and 'No' will be used.
@@ -88,7 +89,8 @@ class InOperator extends FilterPluginBase {
       '#type' => 'checkbox',
       '#title' => $this->t('Limit list to selected items'),
       '#description' => $this->t('If checked, the only items presented to the user will be the ones selected here.'),
-      '#default_value' => !empty($this->options['expose']['reduce']), // safety
+      // Safety.
+      '#default_value' => !empty($this->options['expose']['reduce']),
     ];
   }
 
@@ -146,7 +148,7 @@ class InOperator extends FilterPluginBase {
   }
 
   /**
-   * Build strings from the operators() for 'select' options
+   * Build strings from the operators() for 'select' options.
    */
   public function operatorOptions($which = 'title') {
     $options = [];
@@ -228,7 +230,9 @@ class InOperator extends FilterPluginBase {
         '#default_value' => $default_value,
         // These are only valid for 'select' type, but do no harm to checkboxes.
         '#multiple' => TRUE,
-        '#size' => count($options) > 8 ? 8 : count($options),
+        // The value options can be a multidimensional array if the value form
+        // type is a select list, so make sure that they are counted correctly.
+        '#size' => min(count($options, COUNT_RECURSIVE), 8),
       ];
       $user_input = $form_state->getUserInput();
       if ($exposed && !isset($user_input[$identifier])) {
@@ -260,15 +264,15 @@ class InOperator extends FilterPluginBase {
     }
 
     // Because options may be an array of strings, or an array of mixed arrays
-    // and strings (optgroups) or an array of objects, we have to
-    // step through and handle each one individually.
+    // and strings (optgroups), or an array of objects, or a form of Markup, we
+    // have to step through and handle each one individually.
     $options = [];
     foreach ($input as $id => $option) {
       if (is_array($option)) {
         $options[$id] = $this->reduceValueOptions($option);
         continue;
       }
-      elseif (is_object($option)) {
+      elseif (is_object($option) && !$option instanceof MarkupInterface) {
         $keys = array_keys($option->option);
         $key = array_shift($keys);
         if (isset($this->options['value'][$key])) {
@@ -366,7 +370,7 @@ class InOperator extends FilterPluginBase {
           if ($values !== '') {
             $values .= ', ';
           }
-          if (Unicode::strlen($values) > 8) {
+          if (mb_strlen($values) > 8) {
             $values = Unicode::truncate($values, 8, FALSE, TRUE);
             break;
           }
@@ -448,7 +452,7 @@ class InOperator extends FilterPluginBase {
       }
     }
     elseif (!empty($this->value) && ($this->operator == 'in' || $this->operator == 'not in')) {
-      $errors[] = $this->t('The value @value is not an array for @operator on filter: @filter', ['@value' => var_export($this->value), '@operator' => $this->operator, '@filter' => $this->adminLabel(TRUE)]);
+      $errors[] = $this->t('The value @value is not an array for @operator on filter: @filter', ['@value' => var_export($this->value, TRUE), '@operator' => $this->operator, '@filter' => $this->adminLabel(TRUE)]);
     }
     return $errors;
   }

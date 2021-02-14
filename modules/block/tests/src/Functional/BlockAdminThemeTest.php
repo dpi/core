@@ -16,27 +16,35 @@ class BlockAdminThemeTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['block', 'contextual'];
+  protected static $modules = ['block', 'contextual'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Check for the accessibility of the admin theme on the block admin page.
    */
   public function testAdminTheme() {
     // Create administrative user.
-    $admin_user = $this->drupalCreateUser(['administer blocks', 'administer themes']);
+    $admin_user = $this->drupalCreateUser([
+      'administer blocks',
+      'administer themes',
+    ]);
     $this->drupalLogin($admin_user);
 
     // Ensure that access to block admin page is denied when theme is not
     // installed.
     $this->drupalGet('admin/structure/block/list/bartik');
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
 
     // Install admin theme and confirm that tab is accessible.
-    \Drupal::service('theme_handler')->install(['bartik']);
+    \Drupal::service('theme_installer')->install(['bartik']);
     $edit['admin_theme'] = 'bartik';
-    $this->drupalPostForm('admin/appearance', $edit, t('Save configuration'));
+    $this->drupalPostForm('admin/appearance', $edit, 'Save configuration');
     $this->drupalGet('admin/structure/block/list/bartik');
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
   }
 
   /**
@@ -53,9 +61,9 @@ class BlockAdminThemeTest extends BrowserTestBase {
     $this->drupalLogin($admin_user);
 
     // Install admin theme and confirm that tab is accessible.
-    \Drupal::service('theme_handler')->install(['seven']);
+    \Drupal::service('theme_installer')->install(['seven']);
     $edit['admin_theme'] = 'seven';
-    $this->drupalPostForm('admin/appearance', $edit, t('Save configuration'));
+    $this->drupalPostForm('admin/appearance', $edit, 'Save configuration');
 
     // Define our block settings.
     $settings = [

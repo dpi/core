@@ -8,6 +8,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Builds a form to delete a date format.
+ *
+ * @internal
  */
 class DateFormatDeleteForm extends EntityDeleteForm {
 
@@ -19,7 +21,7 @@ class DateFormatDeleteForm extends EntityDeleteForm {
   protected $dateFormatter;
 
   /**
-   * Constructs an DateFormatDeleteForm object.
+   * Constructs a DateFormatDeleteForm object.
    *
    * @param \Drupal\Core\Datetime\DateFormatterInterface $date_formatter
    *   The date formatter service.
@@ -41,7 +43,7 @@ class DateFormatDeleteForm extends EntityDeleteForm {
    * {@inheritdoc}
    */
   public function getQuestion() {
-    return t('Are you sure you want to delete the format %name : %format?', [
+    return $this->t('Are you sure you want to delete the format %name : %format?', [
       '%name' => $this->entity->label(),
       '%format' => $this->dateFormatter->format(REQUEST_TIME, $this->entity->id()),
     ]);

@@ -41,9 +41,11 @@ class YamlSymfonyTest extends YamlTestBase {
    * @covers ::encode
    */
   public function testEncode() {
+    // cSpell:disable
     $this->assertEquals('foo:
   bar: \'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus sapien ex, venenatis vitae nisi eu, posuere luctus dolor. Nullam convallis\'
 ', YamlSymfony::encode(['foo' => ['bar' => 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus sapien ex, venenatis vitae nisi eu, posuere luctus dolor. Nullam convallis']]));
+    // cSpell:enable
   }
 
   /**
@@ -59,7 +61,7 @@ class YamlSymfonyTest extends YamlTestBase {
    * @covers ::decode
    */
   public function testError() {
-    $this->setExpectedException(InvalidDataTypeException::class);
+    $this->expectException(InvalidDataTypeException::class);
     YamlSymfony::decode('foo: [ads');
   }
 
@@ -69,7 +71,8 @@ class YamlSymfonyTest extends YamlTestBase {
    * @covers ::encode
    */
   public function testObjectSupportDisabled() {
-    $this->setExpectedException(InvalidDataTypeException::class, 'Object support when dumping a YAML file has been disabled.');
+    $this->expectException(InvalidDataTypeException::class);
+    $this->expectExceptionMessage('Object support when dumping a YAML file has been disabled.');
     $object = new \stdClass();
     $object->foo = 'bar';
     YamlSymfony::encode([$object]);

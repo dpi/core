@@ -5,6 +5,7 @@ namespace Drupal\Tests\hal\Kernel;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Url;
 use Drupal\entity_test\Entity\EntityTest;
+use Drupal\filter\Entity\FilterFormat;
 
 /**
  * Tests HAL normalization edge cases for EntityResource.
@@ -16,10 +17,29 @@ class NormalizeTest extends NormalizerTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
-    \Drupal::service('router.builder')->rebuild();
+    FilterFormat::create([
+      'format' => 'my_text_format',
+      'name' => 'My Text Format',
+      'filters' => [
+        'filter_html' => [
+          'module' => 'filter',
+          'status' => TRUE,
+          'weight' => 10,
+          'settings' => [
+            'allowed_html' => '<p>',
+          ],
+        ],
+        'filter_autop' => [
+          'module' => 'filter',
+          'status' => TRUE,
+          'weight' => 10,
+          'settings' => [],
+        ],
+      ],
+    ])->save();
   }
 
   /**
@@ -37,7 +57,7 @@ class NormalizeTest extends NormalizerTestBase {
       'name' => $this->randomMachineName(),
       'field_test_text' => [
         'value' => $this->randomMachineName(),
-        'format' => 'full_html',
+        'format' => 'my_text_format',
       ],
       'field_test_entity_reference' => [
         'target_id' => $target_entity_de->id(),
@@ -48,7 +68,7 @@ class NormalizeTest extends NormalizerTestBase {
       'name' => $this->randomMachineName(),
       'field_test_entity_reference' => [
         'target_id' => $target_entity_en->id(),
-      ]
+      ],
     ];
 
     $entity = EntityTest::create($values);
@@ -152,20 +172,21 @@ class NormalizeTest extends NormalizerTestBase {
         [
           'value' => $values['field_test_text']['value'],
           'format' => $values['field_test_text']['format'],
+          'processed' => "<p>{$values['field_test_text']['value']}</p>",
         ],
       ],
     ];
 
     $normalized = $this->serializer->normalize($entity, $this->format);
-    $this->assertEqual($normalized['_links']['self'], $expected_array['_links']['self'], 'self link placed correctly.');
+    $this->assertEqual($expected_array['_links']['self'], $normalized['_links']['self'], 'self link placed correctly.');
     // @todo Test curies.
     // @todo Test type.
-    $this->assertEqual($normalized['id'], $expected_array['id'], 'Internal id is exposed.');
-    $this->assertEqual($normalized['uuid'], $expected_array['uuid'], 'Non-translatable fields is normalized.');
-    $this->assertEqual($normalized['name'], $expected_array['name'], 'Translatable field with multiple language values is normalized.');
-    $this->assertEqual($normalized['field_test_text'], $expected_array['field_test_text'], 'Field with properties is normalized.');
-    $this->assertEqual($normalized['_embedded'][$relation_uri], $expected_array['_embedded'][$relation_uri], 'Entity reference field is normalized.');
-    $this->assertEqual($normalized['_links'][$relation_uri], $expected_array['_links'][$relation_uri], 'Links are added for entity reference field.');
+    $this->assertEqual($expected_array['id'], $normalized['id'], 'Internal id is exposed.');
+    $this->assertEqual($expected_array['uuid'], $normalized['uuid'], 'Non-translatable fields is normalized.');
+    $this->assertEqual($expected_array['name'], $normalized['name'], 'Translatable field with multiple language values is normalized.');
+    $this->assertEqual($expected_array['field_test_text'], $normalized['field_test_text'], 'Field with properties is normalized.');
+    $this->assertEqual($expected_array['_embedded'][$relation_uri], $normalized['_embedded'][$relation_uri], 'Entity reference field is normalized.');
+    $this->assertEqual($expected_array['_links'][$relation_uri], $normalized['_links'][$relation_uri], 'Links are added for entity reference field.');
   }
 
   /**
@@ -178,7 +199,7 @@ class NormalizeTest extends NormalizerTestBase {
    *   The entity URI.
    */
   protected function getEntityUri(EntityInterface $entity) {
-    $url = $entity->urlInfo('canonical', ['absolute' => TRUE]);
+    $url = $entity->toUrl('canonical', ['absolute' => TRUE]);
     return $url->setRouteParameter('_format', 'hal_json')->toString();
   }
 

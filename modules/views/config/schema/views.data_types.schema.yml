@@ -701,6 +701,15 @@ views_filter:
         operator:
           type: string
           label: 'Operator'
+        operator_limit_selection:
+          type: boolean
+          label: 'Limit the available operators'
+        operator_list:
+          type: sequence
+          label: 'List of available operators'
+          sequence:
+            type: string
+            label: 'Operator'
         identifier:
           type: string
           label: 'Filter identifier'
@@ -820,3 +829,20 @@ views_cache:
 views_display_extender:
   type: mapping
   label: 'Display extender settings'
+
+views_field_bulk_form:
+  type: views_field
+  label: 'Bulk operation'
+  mapping:
+    action_title:
+      type: label
+      label: 'Action title'
+    include_exclude:
+      type: string
+      label: 'Available actions'
+    selected_actions:
+      type: sequence
+      label: 'Available actions'
+      sequence:
+        type: string
+        label: 'Action'

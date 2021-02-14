@@ -2,7 +2,7 @@
 
 namespace Drupal\Tests\filter\Functional;
 
-use Drupal\Component\Utility\SafeMarkup;
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\filter\Entity\FilterFormat;
 use Drupal\Tests\BrowserTestBase;
 
@@ -21,6 +21,11 @@ class FilterFormTest extends BrowserTestBase {
   protected static $modules = ['filter', 'filter_test'];
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * An administrative user account that can administer text formats.
    *
    * @var \Drupal\user\Entity\User
@@ -28,7 +33,7 @@ class FilterFormTest extends BrowserTestBase {
   protected $adminUser;
 
   /**
-   * An basic user account that can only access basic HTML text format.
+   * A basic user account that can only access basic HTML text format.
    *
    * @var \Drupal\user\Entity\User
    */
@@ -37,7 +42,7 @@ class FilterFormTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     /** @var \Drupal\filter\FilterFormatInterface $filter_test_format */
@@ -71,8 +76,6 @@ class FilterFormTest extends BrowserTestBase {
     // correctly.
     // @see https://www.drupal.org/node/2387983
     \Drupal::service('module_installer')->install(['filter_test_plugin']);
-    // Force rebuild module data.
-    _system_rebuild_module_data();
   }
 
   /**
@@ -175,10 +178,7 @@ class FilterFormTest extends BrowserTestBase {
    *   The HTML ID of the select element.
    */
   protected function assertNoSelect($id) {
-    $select = $this->xpath('//select[@id=:id]', [':id' => $id]);
-    $this->assertEmpty($select, SafeMarkup::format('Field @id does not exist.', [
-      '@id' => $id,
-    ]));
+    $this->assertSession()->elementNotExists('xpath', "//select[@id=$id]");
   }
 
   /**
@@ -195,40 +195,13 @@ class FilterFormTest extends BrowserTestBase {
    *   TRUE if the assertion passed; FALSE otherwise.
    */
   protected function assertOptions($id, array $expected_options, $selected) {
-    $select = $this->xpath('//select[@id=:id]', [':id' => $id]);
-    $this->assertNotEmpty($select, SafeMarkup::format('Field @id exists.', [
-      '@id' => $id,
-    ]));
-    $select = reset($select);
+    $select = $this->assertSession()->selectExists($id);
     $found_options = $select->findAll('css', 'option');
-    foreach ($found_options as $found_key => $found_option) {
-      $expected_key = array_search($found_option->getValue(), $expected_options);
-      if ($expected_key !== FALSE) {
-        $this->pass(SafeMarkup::format('Option @option for field @id exists.', [
-          '@option' => $expected_options[$expected_key],
-          '@id' => $id,
-        ]));
-        unset($found_options[$found_key]);
-        unset($expected_options[$expected_key]);
-      }
-    }
-
-    // Make sure that all expected options were found and that there are no
-    // unexpected options.
-    foreach ($expected_options as $expected_option) {
-      $this->fail(SafeMarkup::format('Option @option for field @id exists.', [
-        '@option' => $expected_option,
-        '@id' => $id,
-      ]));
-    }
-    foreach ($found_options as $found_option) {
-      $this->fail(SafeMarkup::format('Option @option for field @id does not exist.', [
-        '@option' => $found_option->getValue(),
-        '@id' => $id,
-      ]));
-    }
-
-    $this->assertOptionSelected($id, $selected);
+    $found_options = array_map(function ($item) {
+      return $item->getValue();
+    }, $found_options);
+    $this->assertEqualsCanonicalizing($expected_options, $found_options);
+    $this->assertTrue($this->assertSession()->optionExists($id, $selected)->isSelected());
   }
 
   /**
@@ -244,12 +217,8 @@ class FilterFormTest extends BrowserTestBase {
    *   TRUE if the assertion passed; FALSE otherwise.
    */
   protected function assertRequiredSelectAndOptions($id, array $options) {
-    $select = $this->xpath('//select[@id=:id and contains(@required, "required")]', [
-      ':id' => $id,
-    ]);
-    $this->assertNotEmpty($select, SafeMarkup::format('Required field @id exists.', [
-      '@id' => $id,
-    ]));
+    $select = $this->assertSession()->selectExists($id);
+    $this->assertSame('required', $select->getAttribute('required'));
     // A required select element has a "- Select -" option whose key is an empty
     // string.
     $options[] = '';
@@ -269,7 +238,7 @@ class FilterFormTest extends BrowserTestBase {
     $textarea = $this->xpath('//textarea[@id=:id and not(contains(@disabled, "disabled"))]', [
       ':id' => $id,
     ]);
-    $this->assertNotEmpty($textarea, SafeMarkup::format('Enabled field @id exists.', [
+    $this->assertNotEmpty($textarea, new FormattableMarkup('Enabled field @id exists.', [
       '@id' => $id,
     ]));
   }
@@ -287,14 +256,12 @@ class FilterFormTest extends BrowserTestBase {
     $textarea = $this->xpath('//textarea[@id=:id and contains(@disabled, "disabled")]', [
       ':id' => $id,
     ]);
-    $this->assertNotEmpty($textarea, SafeMarkup::format('Disabled field @id exists.', [
+    $this->assertNotEmpty($textarea, new FormattableMarkup('Disabled field @id exists.', [
       '@id' => $id,
     ]));
     $textarea = reset($textarea);
     $expected = 'This field has been disabled because you do not have sufficient permissions to edit it.';
-    $this->assertEqual($textarea->getText(), $expected, SafeMarkup::format('Disabled textarea @id hides text in an inaccessible text format.', [
-      '@id' => $id,
-    ]));
+    $this->assertEqual($expected, $textarea->getText(), new FormattableMarkup('Disabled textarea @id hides text in an inaccessible text format.', ['@id' => $id]));
     // Make sure the text format select is not shown.
     $select_id = str_replace('value', 'format--2', $id);
     $this->assertNoSelect($select_id);

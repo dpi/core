@@ -7,6 +7,8 @@ use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Form handler for the shortcut set entity edit forms.
+ *
+ * @internal
  */
 class ShortcutSetForm extends BundleEntityFormBase {
 
@@ -19,8 +21,8 @@ class ShortcutSetForm extends BundleEntityFormBase {
     $entity = $this->entity;
     $form['label'] = [
       '#type' => 'textfield',
-      '#title' => t('Set name'),
-      '#description' => t('The new set is created by copying items from your default shortcut set.'),
+      '#title' => $this->t('Set name'),
+      '#description' => $this->t('The new set is created by copying links from your default shortcut set.'),
       '#required' => TRUE,
       '#default_value' => $entity->label(),
     ];
@@ -37,7 +39,7 @@ class ShortcutSetForm extends BundleEntityFormBase {
       '#maxlength' => 23,
     ];
 
-    $form['actions']['submit']['#value'] = t('Create new set');
+    $form['actions']['submit']['#value'] = $this->t('Create new set');
 
     return $this->protectBundleIdElement($form);
   }
@@ -51,12 +53,12 @@ class ShortcutSetForm extends BundleEntityFormBase {
     $entity->save();
 
     if ($is_new) {
-      drupal_set_message(t('The %set_name shortcut set has been created. You can edit it from this page.', ['%set_name' => $entity->label()]));
+      $this->messenger()->addStatus($this->t('The %set_name shortcut set has been created. You can edit it from this page.', ['%set_name' => $entity->label()]));
     }
     else {
-      drupal_set_message(t('Updated set name to %set-name.', ['%set-name' => $entity->label()]));
+      $this->messenger()->addStatus($this->t('Updated set name to %set-name.', ['%set-name' => $entity->label()]));
     }
-    $form_state->setRedirectUrl($this->entity->urlInfo('customize-form'));
+    $form_state->setRedirectUrl($this->entity->toUrl('customize-form'));
   }
 
 }

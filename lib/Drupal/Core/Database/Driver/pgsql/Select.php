@@ -30,8 +30,8 @@ class Select extends QuerySelect {
    * yet selected.
    *
    * @code
-   *   $query = db_select('example', 'e');
-   *   $query->join('example_revision', 'er', 'e.vid = er.vid');
+   *   $query = \Drupal::database()->select('example', 'e');
+   *   $query->join('example_revision', 'er', '[e].[vid] = [er].[vid]');
    *   $query
    *     ->distinct()
    *     ->fields('e')
@@ -99,7 +99,7 @@ class Select extends QuerySelect {
       }
     }
 
-    // If $field contains an characters which are not allowed in a field name
+    // If $field contains characters which are not allowed in a field name
     // it is considered an expression, these can't be handled automatically
     // either.
     if ($this->connection->escapeField($field) != $field) {

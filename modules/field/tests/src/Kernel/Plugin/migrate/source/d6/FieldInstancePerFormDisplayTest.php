@@ -15,7 +15,7 @@ class FieldInstancePerFormDisplayTest extends MigrateSqlSourceTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['field', 'migrate_drupal'];
+  protected static $modules = ['field', 'migrate_drupal'];
 
   /**
    * {@inheritdoc}
@@ -57,7 +57,7 @@ class FieldInstancePerFormDisplayTest extends MigrateSqlSourceTestBase {
         'db_columns' => $empty_array,
         'active' => '1',
         'locked' => '0',
-      ]
+      ],
     ];
     $tests[0]['source_data']['content_node_field_instance'] = [
       [

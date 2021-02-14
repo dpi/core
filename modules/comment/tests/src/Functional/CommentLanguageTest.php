@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\comment\Functional;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\comment\Entity\Comment;
 use Drupal\comment\Plugin\Field\FieldType\CommentItemInterface;
 use Drupal\comment\Tests\CommentTestTrait;
@@ -26,24 +27,44 @@ class CommentLanguageTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'language', 'language_test', 'comment_test'];
+  protected static $modules = [
+    'node',
+    'language',
+    'language_test',
+    'comment_test',
+  ];
 
-  protected function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  protected function setUp(): void {
     parent::setUp();
 
     $this->drupalCreateContentType(['type' => 'article', 'name' => 'Article']);
 
     // Create and log in user.
-    $admin_user = $this->drupalCreateUser(['administer site configuration', 'administer languages', 'access administration pages', 'administer content types', 'administer comments', 'create article content', 'access comments', 'post comments', 'skip comment approval']);
+    $admin_user = $this->drupalCreateUser([
+      'administer site configuration',
+      'administer languages',
+      'access administration pages',
+      'administer content types',
+      'administer comments',
+      'create article content',
+      'access comments',
+      'post comments',
+      'skip comment approval',
+    ]);
     $this->drupalLogin($admin_user);
 
     // Add language.
     $edit = ['predefined_langcode' => 'fr'];
-    $this->drupalPostForm('admin/config/regional/language/add', $edit, t('Add language'));
+    $this->drupalPostForm('admin/config/regional/language/add', $edit, 'Add language');
 
     // Set "Article" content type to use multilingual support.
     $edit = ['language_configuration[language_alterable]' => TRUE];
-    $this->drupalPostForm('admin/structure/types/manage/article', $edit, t('Save content type'));
+    $this->drupalPostForm('admin/structure/types/manage/article', $edit, 'Save content type');
 
     // Enable content language negotiation UI.
     \Drupal::state()->set('language_test.content_language_type', TRUE);
@@ -57,12 +78,12 @@ class CommentLanguageTest extends BrowserTestBase {
       'language_content[enabled][language-url]' => TRUE,
       'language_content[enabled][language-interface]' => FALSE,
     ];
-    $this->drupalPostForm('admin/config/regional/language/detection', $edit, t('Save settings'));
+    $this->drupalPostForm('admin/config/regional/language/detection', $edit, 'Save settings');
 
     // Change user language preference, this way interface language is always
     // French no matter what path prefix the URLs have.
     $edit = ['preferred_langcode' => 'fr'];
-    $this->drupalPostForm("user/" . $admin_user->id() . "/edit", $edit, t('Save'));
+    $this->drupalPostForm("user/" . $admin_user->id() . "/edit", $edit, 'Save');
 
     // Create comment field on article.
     $this->addDefaultCommentField('node', 'article');
@@ -94,10 +115,10 @@ class CommentLanguageTest extends BrowserTestBase {
         'langcode[0][value]' => $node_langcode,
         'comment[0][status]' => CommentItemInterface::OPEN,
       ];
-      $this->drupalPostForm("node/add/article", $edit, t('Save'));
+      $this->drupalPostForm("node/add/article", $edit, 'Save');
       $node = $this->drupalGetNodeByTitle($title);
 
-      $prefixes = language_negotiation_url_prefixes();
+      $prefixes = $this->config('language.negotiation')->get('url.prefixes');
       foreach ($this->container->get('language_manager')->getLanguages() as $langcode => $language) {
         // Post a comment with content language $langcode.
         $prefix = empty($prefixes[$langcode]) ? '' : $prefixes[$langcode] . '/';
@@ -106,8 +127,8 @@ class CommentLanguageTest extends BrowserTestBase {
           'subject[0][value]' => $this->randomMachineName(),
           'comment_body[0][value]' => $comment_values[$node_langcode][$langcode],
         ];
-        $this->drupalPostForm($prefix . 'node/' . $node->id(), $edit, t('Preview'));
-        $this->drupalPostForm(NULL, $edit, t('Save'));
+        $this->drupalPostForm($prefix . 'node/' . $node->id(), $edit, 'Preview');
+        $this->submitForm($edit, 'Save');
 
         // Check that comment language matches the current content language.
         $cids = \Drupal::entityQuery('comment')
@@ -119,8 +140,8 @@ class CommentLanguageTest extends BrowserTestBase {
           ->execute();
         $comment = Comment::load(reset($cids));
         $args = ['%node_language' => $node_langcode, '%comment_language' => $comment->langcode->value, '%langcode' => $langcode];
-        $this->assertEqual($comment->langcode->value, $langcode, format_string('The comment posted with content language %langcode and belonging to the node with language %node_language has language %comment_language', $args));
-        $this->assertEqual($comment->comment_body->value, $comment_values[$node_langcode][$langcode], 'Comment body correctly stored.');
+        $this->assertEqual($langcode, $comment->langcode->value, new FormattableMarkup('The comment posted with content language %langcode and belonging to the node with language %node_language has language %comment_language', $args));
+        $this->assertEqual($comment_values[$node_langcode][$langcode], $comment->comment_body->value, 'Comment body correctly stored.');
       }
     }
 

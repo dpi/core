@@ -8,10 +8,12 @@ use Drupal\Core\Config\ConfigImporter;
 use Drupal\Core\Config\ConfigImporterException;
 use Drupal\Core\Config\ConfigManagerInterface;
 use Drupal\Core\Config\Entity\ConfigEntityInterface;
+use Drupal\Core\Config\Importer\ConfigImporterBatch;
 use Drupal\Core\Config\StorageComparer;
 use Drupal\Core\Config\StorageInterface;
 use Drupal\Core\Config\TypedConfigManagerInterface;
-use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Extension\ModuleInstallerInterface;
 use Drupal\Core\Extension\ThemeHandlerInterface;
@@ -22,19 +24,21 @@ use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Serialization\Yaml;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Provides a form for importing a single configuration file.
+ *
+ * @internal
  */
 class ConfigSingleImportForm extends ConfirmFormBase {
 
   /**
-   * The entity manager.
+   * The entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityManager;
+  protected $entityTypeManager;
 
   /**
    * The config storage.
@@ -53,14 +57,14 @@ class ConfigSingleImportForm extends ConfirmFormBase {
   /**
    * The event dispatcher.
    *
-   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
+   * @var \Symfony\Contracts\EventDispatcher\EventDispatcherInterface
    */
   protected $eventDispatcher;
 
   /**
    * The configuration manager.
    *
-   * @var \Drupal\Core\Config\ConfigManagerInterface;
+   * @var \Drupal\Core\Config\ConfigManagerInterface
    */
   protected $configManager;
 
@@ -93,6 +97,13 @@ class ConfigSingleImportForm extends ConfirmFormBase {
   protected $themeHandler;
 
   /**
+   * The module extension list.
+   *
+   * @var \Drupal\Core\Extension\ModuleExtensionList
+   */
+  protected $moduleExtensionList;
+
+  /**
    * The module installer.
    *
    * @var \Drupal\Core\Extension\ModuleInstallerInterface
@@ -116,13 +127,13 @@ class ConfigSingleImportForm extends ConfirmFormBase {
   /**
    * Constructs a new ConfigSingleImportForm.
    *
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
-   *   The entity manager.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
    * @param \Drupal\Core\Config\StorageInterface $config_storage
    *   The config storage.
    * @param \Drupal\Core\Render\RendererInterface $renderer
    *   The renderer service.
-   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
+   * @param \Symfony\Contracts\EventDispatcher\EventDispatcherInterface $event_dispatcher
    *   The event dispatcher used to notify subscribers of config import events.
    * @param \Drupal\Core\Config\ConfigManagerInterface $config_manager
    *   The configuration manager.
@@ -136,9 +147,11 @@ class ConfigSingleImportForm extends ConfirmFormBase {
    *   The module installer.
    * @param \Drupal\Core\Extension\ThemeHandlerInterface $theme_handler
    *   The theme handler.
+   * @param \Drupal\Core\Extension\ModuleExtensionList $extension_list_module
+   *   The module extension list.
    */
-  public function __construct(EntityManagerInterface $entity_manager, StorageInterface $config_storage, RendererInterface $renderer, EventDispatcherInterface $event_dispatcher, ConfigManagerInterface $config_manager, LockBackendInterface $lock, TypedConfigManagerInterface $typed_config, ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, ThemeHandlerInterface $theme_handler) {
-    $this->entityManager = $entity_manager;
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, StorageInterface $config_storage, RendererInterface $renderer, EventDispatcherInterface $event_dispatcher, ConfigManagerInterface $config_manager, LockBackendInterface $lock, TypedConfigManagerInterface $typed_config, ModuleHandlerInterface $module_handler, ModuleInstallerInterface $module_installer, ThemeHandlerInterface $theme_handler, ModuleExtensionList $extension_list_module) {
+    $this->entityTypeManager = $entity_type_manager;
     $this->configStorage = $config_storage;
     $this->renderer = $renderer;
 
@@ -150,6 +163,7 @@ class ConfigSingleImportForm extends ConfirmFormBase {
     $this->moduleHandler = $module_handler;
     $this->moduleInstaller = $module_installer;
     $this->themeHandler = $theme_handler;
+    $this->moduleExtensionList = $extension_list_module;
   }
 
   /**
@@ -157,7 +171,7 @@ class ConfigSingleImportForm extends ConfirmFormBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('entity.manager'),
+      $container->get('entity_type.manager'),
       $container->get('config.storage'),
       $container->get('renderer'),
       $container->get('event_dispatcher'),
@@ -166,7 +180,8 @@ class ConfigSingleImportForm extends ConfirmFormBase {
       $container->get('config.typed'),
       $container->get('module_handler'),
       $container->get('module_installer'),
-      $container->get('theme_handler')
+      $container->get('theme_handler'),
+      $container->get('extension.list.module')
     );
   }
 
@@ -193,9 +208,9 @@ class ConfigSingleImportForm extends ConfirmFormBase {
       $type = $this->t('simple configuration');
     }
     else {
-      $definition = $this->entityManager->getDefinition($this->data['config_type']);
+      $definition = $this->entityTypeManager->getDefinition($this->data['config_type']);
       $name = $this->data['import'][$definition->getKey('id')];
-      $type = $definition->getLowercaseLabel();
+      $type = $definition->getSingularLabel();
     }
 
     $args = [
@@ -221,7 +236,7 @@ class ConfigSingleImportForm extends ConfirmFormBase {
     }
 
     $entity_types = [];
-    foreach ($this->entityManager->getDefinitions() as $entity_type => $definition) {
+    foreach ($this->entityTypeManager->getDefinitions() as $entity_type => $definition) {
       if ($definition->entityClassImplements(ConfigEntityInterface::class)) {
         $entity_types[$entity_type] = $definition->getLabel();
       }
@@ -292,8 +307,8 @@ class ConfigSingleImportForm extends ConfirmFormBase {
     }
 
     // Validate for config entities.
-    if ($form_state->getValue('config_type') !== 'system.simple') {
-      $definition = $this->entityManager->getDefinition($form_state->getValue('config_type'));
+    if ($form_state->getValue('config_type') && $form_state->getValue('config_type') !== 'system.simple') {
+      $definition = $this->entityTypeManager->getDefinition($form_state->getValue('config_type'));
       $id_key = $definition->getKey('id');
 
       // If a custom entity ID is specified, override the value in the
@@ -302,7 +317,7 @@ class ConfigSingleImportForm extends ConfirmFormBase {
         $data[$id_key] = $form_state->getValue('custom_entity_id');
       }
 
-      $entity_storage = $this->entityManager->getStorage($form_state->getValue('config_type'));
+      $entity_storage = $this->entityTypeManager->getStorage($form_state->getValue('config_type'));
       // If an entity ID was not specified, set an error.
       if (!isset($data[$id_key])) {
         $form_state->setErrorByName('import', $this->t('Missing ID key "@id_key" for this @entity_type import.', ['@id_key' => $id_key, '@entity_type' => $definition->getLabel()]));
@@ -337,13 +352,10 @@ class ConfigSingleImportForm extends ConfirmFormBase {
     if (!$form_state->getErrors()) {
       $source_storage = new StorageReplaceDataWrapper($this->configStorage);
       $source_storage->replaceData($config_name, $data);
-      $storage_comparer = new StorageComparer(
-        $source_storage,
-        $this->configStorage,
-        $this->configManager
-      );
+      $storage_comparer = new StorageComparer($source_storage, $this->configStorage);
 
-      if (!$storage_comparer->createChangelist()->hasChanges()) {
+      $storage_comparer->createChangelist();
+      if (!$storage_comparer->hasChanges()) {
         $form_state->setErrorByName('import', $this->t('There are no changes to import.'));
       }
       else {
@@ -356,7 +368,8 @@ class ConfigSingleImportForm extends ConfirmFormBase {
           $this->moduleHandler,
           $this->moduleInstaller,
           $this->themeHandler,
-          $this->getStringTranslation()
+          $this->getStringTranslation(),
+          $this->moduleExtensionList
         );
 
         try {
@@ -393,30 +406,30 @@ class ConfigSingleImportForm extends ConfirmFormBase {
     /** @var \Drupal\Core\Config\ConfigImporter $config_importer */
     $config_importer = $form_state->get('config_importer');
     if ($config_importer->alreadyImporting()) {
-      drupal_set_message($this->t('Another request may be importing configuration already.'), 'error');
+      $this->messenger()->addError($this->t('Another request may be importing configuration already.'));
     }
     else {
       try {
         $sync_steps = $config_importer->initialize();
         $batch = [
           'operations' => [],
-          'finished' => [ConfigSync::class, 'finishBatch'],
+          'finished' => [ConfigImporterBatch::class, 'finish'],
           'title' => $this->t('Importing configuration'),
           'init_message' => $this->t('Starting configuration import.'),
           'progress_message' => $this->t('Completed @current step of @total.'),
           'error_message' => $this->t('Configuration import has encountered an error.'),
         ];
         foreach ($sync_steps as $sync_step) {
-          $batch['operations'][] = [[ConfigSync::class, 'processBatch'], [$config_importer, $sync_step]];
+          $batch['operations'][] = [[ConfigImporterBatch::class, 'process'], [$config_importer, $sync_step]];
         }
 
         batch_set($batch);
       }
       catch (ConfigImporterException $e) {
         // There are validation errors.
-        drupal_set_message($this->t('The configuration import failed for the following reasons:'), 'error');
+        $this->messenger()->addError($this->t('The configuration import failed for the following reasons:'));
         foreach ($config_importer->getErrors() as $message) {
-          drupal_set_message($message, 'error');
+          $this->messenger()->addError($message);
         }
       }
     }

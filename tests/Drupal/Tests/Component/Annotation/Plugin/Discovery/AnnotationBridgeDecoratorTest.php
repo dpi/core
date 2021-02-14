@@ -6,6 +6,7 @@ use Drupal\Component\Annotation\Plugin;
 use Drupal\Component\Annotation\Plugin\Discovery\AnnotationBridgeDecorator;
 use Drupal\Component\Plugin\Definition\PluginDefinition;
 use Drupal\Component\Plugin\Discovery\DiscoveryInterface;
+use Drupal\Tests\PhpUnitCompatibilityTrait;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -13,6 +14,8 @@ use PHPUnit\Framework\TestCase;
  * @group Plugin
  */
 class AnnotationBridgeDecoratorTest extends TestCase {
+
+  use PhpUnitCompatibilityTrait;
 
   /**
    * @covers ::getDefinitions
@@ -35,6 +38,9 @@ class AnnotationBridgeDecoratorTest extends TestCase {
 
 }
 
+/**
+ * {@inheritdoc}
+ */
 class TestAnnotation extends Plugin {
 
   /**
@@ -45,12 +51,17 @@ class TestAnnotation extends Plugin {
   }
 
 }
+
+/**
+ * {@inheritdoc}
+ */
 class ObjectDefinition extends PluginDefinition {
 
   /**
    * ObjectDefinition constructor.
    *
    * @param array $definition
+   *   An array of definition values.
    */
   public function __construct(array $definition) {
     foreach ($definition as $property => $value) {

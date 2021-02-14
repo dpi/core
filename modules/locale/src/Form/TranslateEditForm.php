@@ -2,12 +2,15 @@
 
 namespace Drupal\locale\Form;
 
+use Drupal\Component\Gettext\PoItem;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
 use Drupal\locale\SourceString;
 
 /**
  * Defines a translation edit form.
+ *
+ * @internal
  */
 class TranslateEditForm extends TranslateFormBase {
 
@@ -68,7 +71,7 @@ class TranslateEditForm extends TranslateFormBase {
             '#title' => $this->t('Source string (@language)', ['@language' => $this->t('Built-in English')]),
             '#title_display' => 'invisible',
             '#plain_text' => $source_array[0],
-            '#preffix' => '<span lang="en">',
+            '#prefix' => '<span lang="en">',
             '#suffix' => '</span>',
           ];
         }
@@ -86,7 +89,7 @@ class TranslateEditForm extends TranslateFormBase {
             '#type' => 'item',
             '#title' => $this->t('Plural form'),
             '#plain_text' => $source_array[1],
-            '#preffix' => '<span lang="en">',
+            '#prefix' => '<span lang="en">',
             '#suffix' => '</span>',
           ];
           $form['strings'][$string->lid]['original'] = [
@@ -184,7 +187,7 @@ class TranslateEditForm extends TranslateFormBase {
       // Plural translations are saved in a delimited string. To be able to
       // compare the new strings with the existing strings a string in the same
       // format is created.
-      $new_translation_string_delimited = implode(LOCALE_PLURAL_DELIMITER, $new_translation['translations']);
+      $new_translation_string_delimited = implode(PoItem::DELIMITER, $new_translation['translations']);
 
       // Generate an imploded string without delimiter, to be able to run
       // empty() on it.
@@ -217,7 +220,7 @@ class TranslateEditForm extends TranslateFormBase {
       }
     }
 
-    drupal_set_message($this->t('The strings have been saved.'));
+    $this->messenger()->addStatus($this->t('The strings have been saved.'));
 
     // Keep the user on the current pager page.
     $page = $this->getRequest()->query->get('page');

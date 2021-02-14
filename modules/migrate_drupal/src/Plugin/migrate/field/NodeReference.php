@@ -2,35 +2,15 @@
 
 namespace Drupal\migrate_drupal\Plugin\migrate\field;
 
-use Drupal\migrate\Plugin\MigrationInterface;
+@trigger_error('The ' . __NAMESPACE__ . '\NodeReference is deprecated in drupal:9.1.0 and will be removed from drupal:10.0.0. Instead use \Drupal\migrate_drupal\Plugin\migrate\field\d6\NodeReference. See https://www.drupal.org/node/3159537.', E_USER_DEPRECATED);
+
+use Drupal\migrate_drupal\Plugin\migrate\field\d6\NodeReference as NonLegacyNodeReference;
 
 /**
- * @MigrateField(
- *   id = "nodereference",
- *   core = {6},
- *   type_map = {
- *     "nodereference" = "entity_reference",
- *   },
- * )
+ * @deprecated in drupal:9.1.0 and is removed from drupal:10.0.0. Use
+ * \Drupal\migrate_drupal\Plugin\migrate\field\d6\NodeReference instead.
+ *
+ * @see https://www.drupal.org/node/3159537
  */
-class NodeReference extends FieldPluginBase {
-
-  /**
-   * {@inheritdoc}
-   */
-  public function processFieldValues(MigrationInterface $migration, $field_name, $data) {
-    $process = [
-      'plugin' => 'iterator',
-      'source' => $field_name,
-      'process' => [
-        'target_id' => [
-          'plugin' => 'migration_lookup',
-          'migration' => 'd6_node',
-          'source' => 'nid',
-        ],
-      ],
-    ];
-    $migration->setProcessOfProperty($field_name, $process);
-  }
-
+class NodeReference extends NonLegacyNodeReference {
 }

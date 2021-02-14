@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\system\Functional\Module;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Config\InstallStorage;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Config\FileStorage;
@@ -18,14 +19,17 @@ abstract class ModuleTestBase extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['system_test'];
+  protected static $modules = ['system_test'];
 
   protected $adminUser;
 
   protected function setUp() {
     parent::setUp();
 
-    $this->adminUser = $this->drupalCreateUser(['access administration pages', 'administer modules']);
+    $this->adminUser = $this->drupalCreateUser([
+      'access administration pages',
+      'administer modules',
+    ]);
     $this->drupalLogin($this->adminUser);
   }
 
@@ -39,12 +43,13 @@ abstract class ModuleTestBase extends BrowserTestBase {
    *   specified base table. Defaults to TRUE.
    */
   public function assertTableCount($base_table, $count = TRUE) {
-    $tables = db_find_tables(Database::getConnection()->prefixTables('{' . $base_table . '}') . '%');
+    $connection = Database::getConnection();
+    $tables = $connection->schema()->findTables($connection->prefixTables('{' . $base_table . '}') . '%');
 
     if ($count) {
-      return $this->assertTrue($tables, format_string('Tables matching "@base_table" found.', ['@base_table' => $base_table]));
+      return $this->assertNotEmpty($tables, new FormattableMarkup('Tables matching "@base_table" found.', ['@base_table' => $base_table]));
     }
-    return $this->assertFalse($tables, format_string('Tables matching "@base_table" not found.', ['@base_table' => $base_table]));
+    return $this->assertEmpty($tables, new FormattableMarkup('Tables matching "@base_table" not found.', ['@base_table' => $base_table]));
   }
 
   /**
@@ -56,12 +61,13 @@ abstract class ModuleTestBase extends BrowserTestBase {
   public function assertModuleTablesExist($module) {
     $tables = array_keys(drupal_get_module_schema($module));
     $tables_exist = TRUE;
+    $schema = Database::getConnection()->schema();
     foreach ($tables as $table) {
-      if (!db_table_exists($table)) {
+      if (!$schema->tableExists($table)) {
         $tables_exist = FALSE;
       }
     }
-    return $this->assertTrue($tables_exist, format_string('All database tables defined by the @module module exist.', ['@module' => $module]));
+    return $this->assertTrue($tables_exist, new FormattableMarkup('All database tables defined by the @module module exist.', ['@module' => $module]));
   }
 
   /**
@@ -73,12 +79,13 @@ abstract class ModuleTestBase extends BrowserTestBase {
   public function assertModuleTablesDoNotExist($module) {
     $tables = array_keys(drupal_get_module_schema($module));
     $tables_exist = FALSE;
+    $schema = Database::getConnection()->schema();
     foreach ($tables as $table) {
-      if (db_table_exists($table)) {
+      if ($schema->tableExists($table)) {
         $tables_exist = TRUE;
       }
     }
-    return $this->assertFalse($tables_exist, format_string('None of the database tables defined by the @module module exist.', ['@module' => $module]));
+    return $this->assertFalse($tables_exist, new FormattableMarkup('None of the database tables defined by the @module module exist.', ['@module' => $module]));
   }
 
   /**
@@ -107,22 +114,24 @@ abstract class ModuleTestBase extends BrowserTestBase {
       // schema directory.
       return;
     }
-    $this->assertTrue($all_names);
+    $this->assertNotEmpty($all_names);
 
+    $module_config_dependencies = \Drupal::service('config.manager')->findConfigEntityDependents('module', [$module]);
     // Look up each default configuration object name in the active
     // configuration, and if it exists, remove it from the stack.
-    // Only default config that belongs to $module is guaranteed to exist; any
-    // other default config depends on whether other modules are enabled. Thus,
-    // list all default config once more, but filtered by $module.
-    $names = $module_file_storage->listAll($module . '.');
+    $names = $module_file_storage->listAll();
     foreach ($names as $key => $name) {
       if ($this->config($name)->get()) {
         unset($names[$key]);
       }
+      // All configuration in a module's config/install directory should depend
+      // on the module as it must be removed on uninstall or the module will not
+      // be re-installable.
+      $this->assertTrue(strpos($name, $module . '.') === 0 || isset($module_config_dependencies[$name]), "Configuration $name provided by $module in its config/install directory does not depend on it.");
     }
     // Verify that all configuration has been installed (which means that $names
     // is empty).
-    return $this->assertFalse($names, format_string('All default configuration of @module module found.', ['@module' => $module]));
+    return $this->assertEmpty($names, new FormattableMarkup('All default configuration of @module module found.', ['@module' => $module]));
   }
 
   /**
@@ -136,7 +145,7 @@ abstract class ModuleTestBase extends BrowserTestBase {
    */
   public function assertNoModuleConfig($module) {
     $names = \Drupal::configFactory()->listAll($module . '.');
-    return $this->assertFalse($names, format_string('No configuration found for @module module.', ['@module' => $module]));
+    return $this->assertEmpty($names, new FormattableMarkup('No configuration found for @module module.', ['@module' => $module]));
   }
 
   /**
@@ -156,7 +165,7 @@ abstract class ModuleTestBase extends BrowserTestBase {
       else {
         $message = 'Module "@module" is not enabled.';
       }
-      $this->assertEqual($this->container->get('module_handler')->moduleExists($module), $enabled, format_string($message, ['@module' => $module]));
+      $this->assertEqual($enabled, $this->container->get('module_handler')->moduleExists($module), new FormattableMarkup($message, ['@module' => $module]));
     }
   }
 
@@ -181,7 +190,7 @@ abstract class ModuleTestBase extends BrowserTestBase {
    *   A link to associate with the message.
    */
   public function assertLogMessage($type, $message, $variables = [], $severity = RfcLogLevel::NOTICE, $link = '') {
-    $count = db_select('watchdog', 'w')
+    $this->assertNotEmpty(Database::getConnection()->select('watchdog', 'w')
       ->condition('type', $type)
       ->condition('message', $message)
       ->condition('variables', serialize($variables))
@@ -189,8 +198,8 @@ abstract class ModuleTestBase extends BrowserTestBase {
       ->condition('link', $link)
       ->countQuery()
       ->execute()
-      ->fetchField();
-    $this->assertTrue($count > 0, format_string('watchdog table contains @count rows for @message', ['@count' => $count, '@message' => format_string($message, $variables)]));
+      ->fetchField()
+    );
   }
 
 }

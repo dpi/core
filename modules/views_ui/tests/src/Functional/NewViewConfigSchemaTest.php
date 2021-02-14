@@ -14,7 +14,20 @@ class NewViewConfigSchemaTest extends UITestBase {
    *
    * @var array
    */
-  public static $modules = ['views_ui', 'node', 'comment', 'file', 'taxonomy', 'dblog', 'aggregator'];
+  protected static $modules = [
+    'views_ui',
+    'node',
+    'comment',
+    'file',
+    'taxonomy',
+    'dblog',
+    'aggregator',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests creating brand new views.
@@ -42,7 +55,7 @@ class NewViewConfigSchemaTest extends UITestBase {
       $edit['id'] = strtolower($this->randomMachineName());
       $edit['show[wizard_key]'] = $wizard_key;
       $edit['description'] = $this->randomString();
-      $this->drupalPostForm('admin/structure/views/add', $edit, t('Save and edit'));
+      $this->drupalPostForm('admin/structure/views/add', $edit, 'Save and edit');
     }
   }
 

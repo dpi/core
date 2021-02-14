@@ -27,7 +27,9 @@
 
         function showViewRow(index, row) {
           const $row = $(row);
-          const $sources = $row.find('[data-drupal-selector="views-table-filter-text-source"]');
+          const $sources = $row.find(
+            '[data-drupal-selector="views-table-filter-text-source"]',
+          );
           const textMatch = $sources.text().toLowerCase().indexOf(query) !== -1;
           $row.closest('tr').toggle(textMatch);
         }
@@ -35,8 +37,7 @@
         // Filter if the length of the query is at least 2 characters.
         if (query.length >= 2) {
           $rows.each(showViewRow);
-        }
-        else {
+        } else {
           $rows.show();
         }
       }
@@ -47,4 +48,4 @@
       }
     },
   };
-}(jQuery, Drupal));
+})(jQuery, Drupal);

@@ -4,6 +4,8 @@ namespace Drupal\Tests\Component\PhpStorage;
 
 use Drupal\Component\PhpStorage\FileStorage;
 use Drupal\Component\Utility\Random;
+use Drupal\Tests\Traits\PhpUnitWarnings;
+use org\bovigo\vfs\vfsStreamDirectory;
 
 /**
  * @coversDefaultClass \Drupal\Component\PhpStorage\FileStorage
@@ -11,6 +13,8 @@ use Drupal\Component\Utility\Random;
  * @group PhpStorage
  */
 class FileStorageTest extends PhpStorageTestBase {
+
+  use PhpUnitWarnings;
 
   /**
    * Standard test settings to pass to storage instances.
@@ -22,7 +26,7 @@ class FileStorageTest extends PhpStorageTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->standardSettings = [
@@ -76,15 +80,30 @@ class FileStorageTest extends PhpStorageTestBase {
     $this->assertTrue($GLOBALS[$random], 'File saved correctly with correct value');
 
     // Make sure directory exists prior to removal.
-    $this->assertTrue(file_exists($this->directory . '/test'), 'File storage directory does not exist.');
+    $this->assertDirectoryExists($this->directory . '/test');
 
     $this->assertTrue($php->deleteAll(), 'Delete all reported success');
     $this->assertFalse($php->load($name));
-    $this->assertFalse(file_exists($this->directory . '/test'), 'File storage directory does not exist after call to deleteAll()');
+    $this->assertDirectoryNotExists($this->directory . '/test');
 
     // Should still return TRUE if directory has already been deleted.
     $this->assertTrue($php->deleteAll(), 'Delete all succeeds with nothing to delete');
     unset($GLOBALS[$random]);
+  }
+
+  /**
+   * @covers ::createDirectory
+   */
+  public function testCreateDirectoryFailWarning() {
+    $directory = new vfsStreamDirectory('permissionDenied', 0200);
+    $storage = new FileStorage([
+      'directory' => $directory->url(),
+      'bin' => 'test',
+    ]);
+    $code = "<?php\n echo 'here';";
+    $this->expectWarning();
+    $this->expectWarningMessage('mkdir(): Permission Denied');
+    $storage->save('subdirectory/foo.php', $code);
   }
 
 }

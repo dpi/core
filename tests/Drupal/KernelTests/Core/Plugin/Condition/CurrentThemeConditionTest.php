@@ -2,7 +2,7 @@
 
 namespace Drupal\KernelTests\Core\Plugin\Condition;
 
-use Drupal\Component\Utility\SafeMarkup;
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\KernelTests\KernelTestBase;
 
 /**
@@ -15,13 +15,13 @@ class CurrentThemeConditionTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['system', 'theme_test'];
+  protected static $modules = ['system', 'theme_test'];
 
   /**
    * Tests the current theme condition.
    */
   public function testCurrentTheme() {
-    \Drupal::service('theme_handler')->install(['test_theme']);
+    \Drupal::service('theme_installer')->install(['test_theme']);
 
     $manager = \Drupal::service('plugin.manager.condition');
     /** @var $condition \Drupal\Core\Condition\ConditionInterface */
@@ -31,8 +31,8 @@ class CurrentThemeConditionTest extends KernelTestBase {
     $condition_negated = $manager->createInstance('current_theme');
     $condition_negated->setConfiguration(['theme' => 'test_theme', 'negate' => TRUE]);
 
-    $this->assertEqual($condition->summary(), SafeMarkup::format('The current theme is @theme', ['@theme' => 'test_theme']));
-    $this->assertEqual($condition_negated->summary(), SafeMarkup::format('The current theme is not @theme', ['@theme' => 'test_theme']));
+    $this->assertEqual(new FormattableMarkup('The current theme is @theme', ['@theme' => 'test_theme']), $condition->summary());
+    $this->assertEqual(new FormattableMarkup('The current theme is not @theme', ['@theme' => 'test_theme']), $condition_negated->summary());
 
     // The expected theme has not been set up yet.
     $this->assertFalse($condition->execute());

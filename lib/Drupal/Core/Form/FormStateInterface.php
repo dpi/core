@@ -12,9 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
  * examine what in the form changed when the form submission process is
  * complete. Furthermore, it may be used to store information related to the
  * processed data in the form, which will persist across page requests when the
- * 'cache' or 'rebuild' flag is set. See
- * \Drupal\Core\Form\FormState::$internalStorage for documentation of the
- * available flags.
+ * 'cache' or 'rebuild' flag is set. See \Drupal\Core\Form\FormState for
+ * documentation of the available flags.
  *
  * @see \Drupal\Core\Form\FormBuilderInterface
  * @see \Drupal\Core\Form\FormValidatorInterface
@@ -122,12 +121,13 @@ interface FormStateInterface {
    * @param array $route_parameters
    *   (optional) An associative array of parameter names and values.
    * @param array $options
-   *   (optional) An associative array of additional options. See
-   *   \Drupal\Core\Url for the available keys.
+   *   (optional) An associative array of additional options containing the
+   *   same values accepted from \Drupal\Core\Url::fromUri() for $options.
    *
    * @return $this
    *
    * @see \Drupal\Core\Form\FormSubmitterInterface::redirectForm()
+   * @see \Drupal\Core\Url::fromUri()
    */
   public function setRedirect($route_name, array $route_parameters = [], array $options = []);
 

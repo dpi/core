@@ -62,7 +62,7 @@ class RandomTest extends TestCase {
     // There are fewer than 100 possibilities so an exception should occur to
     // prevent infinite loops.
     $random = new Random();
-    $this->setExpectedException(\RuntimeException::class);
+    $this->expectException(\RuntimeException::class);
     for ($i = 0; $i <= 100; $i++) {
       $str = $random->name(1, TRUE);
       $names[$str] = TRUE;
@@ -78,7 +78,7 @@ class RandomTest extends TestCase {
     // There are fewer than 100 possibilities so an exception should occur to
     // prevent infinite loops.
     $random = new Random();
-    $this->setExpectedException(\RuntimeException::class);
+    $this->expectException(\RuntimeException::class);
     for ($i = 0; $i <= 100; $i++) {
       $str = $random->string(1, TRUE);
       $names[$str] = TRUE;
@@ -126,7 +126,7 @@ class RandomTest extends TestCase {
     $random = new Random();
     for ($i = 0; $i <= 1; $i++) {
       $obj = $random->object($i);
-      $this->assertEquals($i, count(get_object_vars($obj)), 'Generated random object has expected number of properties');
+      $this->assertCount($i, get_object_vars($obj), 'Generated random object has expected number of properties');
     }
   }
 

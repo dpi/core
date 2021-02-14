@@ -2,7 +2,6 @@
 
 namespace Drupal\system;
 
-use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\Core\Menu\MenuActiveTrailInterface;
 use Drupal\Core\Menu\MenuLinkTreeInterface;
 use Drupal\Core\Menu\MenuLinkInterface;
@@ -70,8 +69,6 @@ class SystemManager {
    *
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   The module handler.
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
-   *   The entity manager.
    * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
    *   The request stack.
    * @param \Drupal\Core\Menu\MenuLinkTreeInterface $menu_tree
@@ -79,7 +76,7 @@ class SystemManager {
    * @param \Drupal\Core\Menu\MenuActiveTrailInterface $menu_active_trail
    *   The active menu trail service.
    */
-  public function __construct(ModuleHandlerInterface $module_handler, EntityManagerInterface $entity_manager, RequestStack $request_stack, MenuLinkTreeInterface $menu_tree, MenuActiveTrailInterface $menu_active_trail) {
+  public function __construct(ModuleHandlerInterface $module_handler, RequestStack $request_stack, MenuLinkTreeInterface $menu_tree, MenuActiveTrailInterface $menu_active_trail) {
     $this->moduleHandler = $module_handler;
     $this->requestStack = $request_stack;
     $this->menuTree = $menu_tree;
@@ -110,7 +107,7 @@ class SystemManager {
 
     // Check run-time requirements and status information.
     $requirements = $this->moduleHandler->invokeAll('requirements', ['runtime']);
-    uasort($requirements, function($a, $b) {
+    uasort($requirements, function ($a, $b) {
       if (!isset($a['weight'])) {
         if (!isset($b['weight'])) {
           return strcasecmp($a['title'], $b['title']);
@@ -152,7 +149,8 @@ class SystemManager {
    * hidden, so we supply the contents of the block.
    *
    * @return array
-   *   A render array suitable for drupal_render.
+   *   A render array suitable for
+   *   \Drupal\Core\Render\RendererInterface::render().
    */
   public function getBlockContents() {
     // We hard-code the menu name here since otherwise a link in the tools menu

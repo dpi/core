@@ -98,11 +98,4 @@ class EntityTypeRepository implements EntityTypeRepositoryInterface {
     throw new NoCorrespondingEntityClassException($class_name);
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function clearCachedDefinitions() {
-    $this->classNameEntityTypeMap = [];
-  }
-
 }

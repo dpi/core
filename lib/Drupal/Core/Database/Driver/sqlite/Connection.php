@@ -5,6 +5,7 @@ namespace Drupal\Core\Database\Driver\sqlite;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Database\DatabaseNotFoundException;
 use Drupal\Core\Database\Connection as DatabaseConnection;
+use Drupal\Core\Database\StatementInterface;
 
 /**
  * SQLite implementation of \Drupal\Core\Database\Connection.
@@ -15,6 +16,16 @@ class Connection extends DatabaseConnection {
    * Error code for "Unable to open database file" error.
    */
   const DATABASE_NOT_FOUND = 14;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $statementClass = NULL;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $statementWrapperClass = NULL;
 
   /**
    * Whether or not the active transaction (if any) will be rolled back.
@@ -36,17 +47,20 @@ class Connection extends DatabaseConnection {
   ];
 
   /**
-   * All databases attached to the current database. This is used to allow
-   * prefixes to be safely handled without locking the table
+   * All databases attached to the current database.
+   *
+   * This is used to allow prefixes to be safely handled without locking the
+   * table.
    *
    * @var array
    */
   protected $attachedDatabases = [];
 
   /**
-   * Whether or not a table has been dropped this request: the destructor will
-   * only try to get rid of unnecessary databases if there is potential of them
-   * being empty.
+   * Whether or not a table has been dropped this request.
+   *
+   * The destructor will only try to get rid of unnecessary databases if there
+   * is potential of them being empty.
    *
    * This variable is set to public because Schema needs to
    * access it. However, it should not be manually set.
@@ -56,19 +70,20 @@ class Connection extends DatabaseConnection {
   public $tableDropped = FALSE;
 
   /**
+   * {@inheritdoc}
+   */
+  protected $transactionalDDLSupport = TRUE;
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $identifierQuotes = ['"', '"'];
+
+  /**
    * Constructs a \Drupal\Core\Database\Driver\sqlite\Connection object.
    */
   public function __construct(\PDO $connection, array $connection_options) {
-    // We don't need a specific PDOStatement class here, we simulate it in
-    // static::prepare().
-    $this->statementClass = NULL;
-
     parent::__construct($connection, $connection_options);
-
-    // This driver defaults to transaction support, except if explicitly passed FALSE.
-    $this->transactionSupport = $this->transactionalDDLSupport = !isset($connection_options['transactions']) || $connection_options['transactions'] !== FALSE;
-
-    $this->connectionOptions = $connection_options;
 
     // Attach one database for each registered prefix.
     $prefixes = $this->prefixes;
@@ -124,10 +139,10 @@ class Connection extends DatabaseConnection {
       throw $e;
     }
 
-
     // Create functions needed by SQLite.
     $pdo->sqliteCreateFunction('if', [__CLASS__, 'sqlFunctionIf']);
     $pdo->sqliteCreateFunction('greatest', [__CLASS__, 'sqlFunctionGreatest']);
+    $pdo->sqliteCreateFunction('least', [__CLASS__, 'sqlFunctionLeast']);
     $pdo->sqliteCreateFunction('pow', 'pow', 2);
     $pdo->sqliteCreateFunction('exp', 'exp', 1);
     $pdo->sqliteCreateFunction('length', 'strlen', 1);
@@ -166,7 +181,6 @@ class Connection extends DatabaseConnection {
     return $pdo;
   }
 
-
   /**
    * Destructor for the SQLite connection.
    *
@@ -182,10 +196,10 @@ class Connection extends DatabaseConnection {
           $count = $this->query('SELECT COUNT(*) FROM ' . $prefix . '.sqlite_master WHERE type = :type AND name NOT LIKE :pattern', [':type' => 'table', ':pattern' => 'sqlite_%'])->fetchField();
 
           // We can prune the database file if it doesn't have any tables.
-          if ($count == 0) {
-            // Detaching the database fails at this point, but no other queries
-            // are executed after the connection is destructed so we can simply
-            // remove the database file.
+          if ($count == 0 && $this->connectionOptions['database'] != ':memory:' && file_exists($this->connectionOptions['database'] . '-' . $prefix)) {
+            // Detach the database.
+            $this->query('DETACH DATABASE :schema', [':schema' => $prefix]);
+            // Destroy the database file.
             unlink($this->connectionOptions['database'] . '-' . $prefix);
           }
         }
@@ -195,6 +209,7 @@ class Connection extends DatabaseConnection {
         }
       }
     }
+    parent::__destruct();
   }
 
   /**
@@ -232,6 +247,16 @@ class Connection extends DatabaseConnection {
     else {
       return NULL;
     }
+  }
+
+  /**
+   * SQLite compatibility implementation for the LEAST() SQL function.
+   */
+  public static function sqlFunctionLeast() {
+    // Remove all NULL, FALSE and empty strings values but leaves 0 (zero) values.
+    $values = array_filter(func_get_args(), 'strlen');
+
+    return count($values) < 1 ? NULL : min($values);
   }
 
   /**
@@ -333,6 +358,7 @@ class Connection extends DatabaseConnection {
    * {@inheritdoc}
    */
   public function prepare($statement, array $driver_options = []) {
+    @trigger_error('Connection::prepare() is deprecated in drupal:9.1.0 and is removed from drupal:10.0.0. Database drivers should instantiate \PDOStatement objects by calling \PDO::prepare in their Connection::prepareStatement method instead. \PDO::prepare should not be called outside of driver code. See https://www.drupal.org/node/3137786', E_USER_DEPRECATED);
     return new Statement($this->connection, $this, $statement, $driver_options);
   }
 
@@ -388,7 +414,7 @@ class Connection extends DatabaseConnection {
   public function createDatabase($database) {
     // Verify the database is writable.
     $db_directory = new \SplFileInfo(dirname($database));
-    if (!$db_directory->isDir() && !drupal_mkdir($db_directory->getPathName(), 0755, TRUE)) {
+    if (!$db_directory->isDir() && !\Drupal::service('file_system')->mkdir($db_directory->getPathName(), 0755, TRUE)) {
       throw new DatabaseNotFoundException('Unable to create database directory ' . $db_directory->getPathName());
     }
   }
@@ -400,8 +426,12 @@ class Connection extends DatabaseConnection {
   /**
    * {@inheritdoc}
    */
-  public function prepareQuery($query) {
-    return $this->prepare($this->prefixTables($query));
+  public function prepareStatement(string $query, array $options): StatementInterface {
+    $query = $this->prefixTables($query);
+    if (!($options['allow_square_brackets'] ?? FALSE)) {
+      $query = $this->quoteIdentifiers($query);
+    }
+    return new Statement($this->connection, $this, $query, $options['pdo'] ?? []);
   }
 
   public function nextId($existing_id = 0) {
@@ -435,6 +465,52 @@ class Connection extends DatabaseConnection {
 
     // Don't include the SQLite database file name as part of the table name.
     return $prefix . $table;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function createConnectionOptionsFromUrl($url, $root) {
+    $database = parent::createConnectionOptionsFromUrl($url, $root);
+
+    // A SQLite database path with two leading slashes indicates a system path.
+    // Otherwise the path is relative to the Drupal root.
+    $url_components = parse_url($url);
+    if ($url_components['path'][0] === '/') {
+      $url_components['path'] = substr($url_components['path'], 1);
+    }
+    if ($url_components['path'][0] === '/' || $url_components['path'] === ':memory:') {
+      $database['database'] = $url_components['path'];
+    }
+    else {
+      $database['database'] = $root . '/' . $url_components['path'];
+    }
+
+    // User credentials and system port are irrelevant for SQLite.
+    unset(
+      $database['username'],
+      $database['password'],
+      $database['port']
+    );
+
+    return $database;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function createUrlFromConnectionOptions(array $connection_options) {
+    if (!isset($connection_options['driver'], $connection_options['database'])) {
+      throw new \InvalidArgumentException("As a minimum, the connection options array must contain at least the 'driver' and 'database' keys");
+    }
+
+    $db_url = 'sqlite://localhost/' . $connection_options['database'];
+
+    if (isset($connection_options['prefix']['default']) && $connection_options['prefix']['default'] !== NULL && $connection_options['prefix']['default'] !== '') {
+      $db_url .= '#' . $connection_options['prefix']['default'];
+    }
+
+    return $db_url;
   }
 
 }

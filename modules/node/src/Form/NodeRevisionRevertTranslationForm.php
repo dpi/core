@@ -12,6 +12,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Provides a form for reverting a node revision for a single translation.
+ *
+ * @internal
  */
 class NodeRevisionRevertTranslationForm extends NodeRevisionRevertForm {
 
@@ -51,7 +53,7 @@ class NodeRevisionRevertTranslationForm extends NodeRevisionRevertForm {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('entity.manager')->getStorage('node'),
+      $container->get('entity_type.manager')->getStorage('node'),
       $container->get('date.formatter'),
       $container->get('language_manager'),
       $container->get('datetime.time')
@@ -69,7 +71,7 @@ class NodeRevisionRevertTranslationForm extends NodeRevisionRevertForm {
    * {@inheritdoc}
    */
   public function getQuestion() {
-    return t('Are you sure you want to revert @language translation to the revision from %revision-date?', ['@language' => $this->languageManager->getLanguageName($this->langcode), '%revision-date' => $this->dateFormatter->format($this->revision->getRevisionCreationTime())]);
+    return $this->t('Are you sure you want to revert @language translation to the revision from %revision-date?', ['@language' => $this->languageManager->getLanguageName($this->langcode), '%revision-date' => $this->dateFormatter->format($this->revision->getRevisionCreationTime())]);
   }
 
   /**
@@ -86,10 +88,15 @@ class NodeRevisionRevertTranslationForm extends NodeRevisionRevertForm {
     $this->langcode = $langcode;
     $form = parent::buildForm($form, $form_state, $node_revision);
 
+    // Unless untranslatable fields are configured to affect only the default
+    // translation, we need to ask the user whether they should be included in
+    // the revert process.
+    $default_translation_affected = $this->revision->isDefaultTranslationAffectedOnly();
     $form['revert_untranslated_fields'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Revert content shared among translations'),
-      '#default_value' => FALSE,
+      '#default_value' => $default_translation_affected && $this->revision->getTranslation($this->langcode)->isDefaultTranslation(),
+      '#access' => !$default_translation_affected,
     ];
 
     return $form;
@@ -99,24 +106,9 @@ class NodeRevisionRevertTranslationForm extends NodeRevisionRevertForm {
    * {@inheritdoc}
    */
   protected function prepareRevertedRevision(NodeInterface $revision, FormStateInterface $form_state) {
-    $revert_untranslated_fields = $form_state->getValue('revert_untranslated_fields');
-
-    /** @var \Drupal\node\NodeInterface $default_revision */
-    $latest_revision = $this->nodeStorage->load($revision->id());
-    $latest_revision_translation = $latest_revision->getTranslation($this->langcode);
-
-    $revision_translation = $revision->getTranslation($this->langcode);
-
-    foreach ($latest_revision_translation->getFieldDefinitions() as $field_name => $definition) {
-      if ($definition->isTranslatable() || $revert_untranslated_fields) {
-        $latest_revision_translation->set($field_name, $revision_translation->get($field_name)->getValue());
-      }
-    }
-
-    $latest_revision_translation->setNewRevision();
-    $latest_revision_translation->isDefaultRevision(TRUE);
-
-    return $latest_revision_translation;
+    $revert_untranslated_fields = (bool) $form_state->getValue('revert_untranslated_fields');
+    $translation = $revision->getTranslation($this->langcode);
+    return $this->nodeStorage->createRevision($translation, TRUE, $revert_untranslated_fields);
   }
 
 }

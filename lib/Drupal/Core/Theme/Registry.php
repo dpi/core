@@ -2,6 +2,7 @@
 
 namespace Drupal\Core\Theme;
 
+use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\DestructableInterface;
@@ -132,6 +133,13 @@ class Registry implements DestructableInterface {
    * @var \Drupal\Core\Extension\ThemeHandlerInterface
    */
   protected $themeHandler;
+
+  /**
+   * The theme initialization.
+   *
+   * @var \Drupal\Core\Theme\ThemeInitializationInterface
+   */
+  protected $themeInitialization;
 
   /**
    * The theme manager.
@@ -341,7 +349,7 @@ class Registry implements DestructableInterface {
     // Process each base theme.
     // Ensure that we start with the root of the parents, so that both CSS files
     // and preprocess functions comes first.
-    foreach (array_reverse($this->theme->getBaseThemes()) as $base) {
+    foreach (array_reverse($this->theme->getBaseThemeExtensions()) as $base) {
       // If the base theme uses a theme engine, process its hooks.
       $base_path = $base->getPath();
       if ($this->theme->getEngine()) {
@@ -487,6 +495,7 @@ class Registry implements DestructableInterface {
         // if the theme hook specifies a function callback instead, check to
         // ensure the function actually exists.
         if (isset($info['function'])) {
+          trigger_error(sprintf('Theme functions are deprecated in drupal:8.0.0 and are removed from drupal:10.0.0. Use Twig templates instead of %s(). See https://www.drupal.org/node/1831138', $info['function']), E_USER_DEPRECATED);
           if (!function_exists($info['function'])) {
             throw new \BadFunctionCallException(sprintf(
               'Theme hook "%s" refers to a theme function callback that does not exist: "%s"',
@@ -565,10 +574,18 @@ class Registry implements DestructableInterface {
           $info['preprocess functions'] = array_merge($cache[$hook]['preprocess functions'], $info['preprocess functions']);
         }
         $result[$hook]['preprocess functions'] = $info['preprocess functions'];
+
+        // If a theme implementation definition provides both 'template' and
+        // 'function', the 'function' will be used. In this case, if the new
+        // result provides a 'template' value, any existing 'function' value
+        // must be removed for the override to be called.
+        if (isset($result[$hook]['template'])) {
+          unset($cache[$hook]['function']);
+        }
       }
 
       // Merge the newly created theme hooks into the existing cache.
-      $cache = $result + $cache;
+      $cache = NestedArray::mergeDeep($cache, $result);
     }
 
     // Let themes have variable preprocessors even if they didn't register a
@@ -675,7 +692,7 @@ class Registry implements DestructableInterface {
     // Gather prefixes. This will be used to limit the found functions to the
     // expected naming conventions.
     $prefixes = array_keys((array) $this->moduleHandler->getModuleList());
-    foreach (array_reverse($theme->getBaseThemes()) as $base) {
+    foreach (array_reverse($theme->getBaseThemeExtensions()) as $base) {
       $prefixes[] = $base->getName();
     }
     if ($theme->getEngine()) {
@@ -785,6 +802,7 @@ class Registry implements DestructableInterface {
    *
    * @param $prefixes
    *   An array of function prefixes by which the list can be limited.
+   *
    * @return array
    *   Functions grouped by the first prefix.
    */

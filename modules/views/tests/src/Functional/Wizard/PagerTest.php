@@ -10,6 +10,11 @@ namespace Drupal\Tests\views\Functional\Wizard;
 class PagerTest extends WizardTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Tests the pager option.
    */
   public function testPager() {
@@ -55,7 +60,7 @@ class PagerTest extends WizardTestBase {
     $view['page[title]'] = $this->randomMachineName(16);
     $view['page[path]'] = $path;
     $view['page[pager]'] = $pager;
-    $this->drupalPostForm('admin/structure/views/add', $view, t('Save and edit'));
+    $this->drupalPostForm('admin/structure/views/add', $view, 'Save and edit');
   }
 
 }

@@ -2,15 +2,16 @@
 
 namespace Drupal\rest\EventSubscriber;
 
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Cache\CacheableResponse;
 use Drupal\Core\Cache\CacheableResponseInterface;
-use Drupal\Core\Render\RenderContext;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\rest\ResourceResponseInterface;
+use Drupal\serialization\Normalizer\CacheableNormalizerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -60,10 +61,10 @@ class ResourceResponseSubscriber implements EventSubscriberInterface {
   /**
    * Serializes ResourceResponse responses' data, and removes that data.
    *
-   * @param \Symfony\Component\HttpKernel\Event\FilterResponseEvent $event
+   * @param \Symfony\Component\HttpKernel\Event\ResponseEvent $event
    *   The event to process.
    */
-  public function onResponse(FilterResponseEvent $event) {
+  public function onResponse(ResponseEvent $event) {
     $response = $event->getResponse();
     if (!$response instanceof ResourceResponseInterface) {
       return;
@@ -128,11 +129,10 @@ class ResourceResponseSubscriber implements EventSubscriberInterface {
   /**
    * Renders a resource response body.
    *
-   * Serialization can invoke rendering (e.g., generating URLs), but the
-   * serialization API does not provide a mechanism to collect the
-   * bubbleable metadata associated with that (e.g., language and other
-   * contexts), so instead, allow those to "leak" and collect them here in
-   * a render context.
+   * During serialization, encoders and normalizers are able to explicitly
+   * bubble cacheability metadata via the 'cacheability' key-value pair in the
+   * received context. This bubbled cacheability metadata will be applied to the
+   * the response.
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
    *   The request object.
@@ -152,14 +152,15 @@ class ResourceResponseSubscriber implements EventSubscriberInterface {
 
     // If there is data to send, serialize and set it as the response body.
     if ($data !== NULL) {
-      $context = new RenderContext();
-      $output = $this->renderer
-        ->executeInRenderContext($context, function () use ($serializer, $data, $format) {
-          return $serializer->serialize($data, $format);
-        });
+      $serialization_context = [
+        'request' => $request,
+        CacheableNormalizerInterface::SERIALIZATION_CONTEXT_CACHEABILITY => new CacheableMetadata(),
+      ];
 
-      if ($response instanceof CacheableResponseInterface && !$context->isEmpty()) {
-        $response->addCacheableDependency($context->pop());
+      $output = $serializer->serialize($data, $format, $serialization_context);
+
+      if ($response instanceof CacheableResponseInterface) {
+        $response->addCacheableDependency($serialization_context[CacheableNormalizerInterface::SERIALIZATION_CONTEXT_CACHEABILITY]);
       }
 
       $response->setContent($output);
@@ -186,7 +187,9 @@ class ResourceResponseSubscriber implements EventSubscriberInterface {
     $final_response->setContent($response->getContent());
     $final_response->setStatusCode($response->getStatusCode());
     $final_response->setProtocolVersion($response->getProtocolVersion());
-    $final_response->setCharset($response->getCharset());
+    if ($response->getCharset()) {
+      $final_response->setCharset($response->getCharset());
+    }
     $final_response->headers = clone $response->headers;
     if ($final_response instanceof CacheableResponseInterface) {
       $final_response->addCacheableDependency($response->getCacheableMetadata());

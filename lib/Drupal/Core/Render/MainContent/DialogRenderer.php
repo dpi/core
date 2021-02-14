@@ -7,6 +7,7 @@ use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\OpenDialogCommand;
 use Drupal\Core\Controller\TitleResolverInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Render\RendererInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -22,13 +23,23 @@ class DialogRenderer implements MainContentRendererInterface {
   protected $titleResolver;
 
   /**
+   * The renderer.
+   *
+   * @var \Drupal\Core\Render\RendererInterface
+   */
+  protected $renderer;
+
+  /**
    * Constructs a new DialogRenderer.
    *
    * @param \Drupal\Core\Controller\TitleResolverInterface $title_resolver
    *   The title resolver.
+   * @param \Drupal\Core\Render\RendererInterface $renderer
+   *   The renderer.
    */
-  public function __construct(TitleResolverInterface $title_resolver) {
+  public function __construct(TitleResolverInterface $title_resolver, RendererInterface $renderer) {
     $this->titleResolver = $title_resolver;
+    $this->renderer = $renderer;
   }
 
   /**
@@ -38,7 +49,7 @@ class DialogRenderer implements MainContentRendererInterface {
     $response = new AjaxResponse();
 
     // First render the main content, because it might provide a title.
-    $content = drupal_render_root($main_content);
+    $content = $this->renderer->renderRoot($main_content);
 
     // Attach the library necessary for using the OpenDialogCommand and set the
     // attachments for this Ajax response.
@@ -62,7 +73,7 @@ class DialogRenderer implements MainContentRendererInterface {
    *
    * @param array &$options
    *   The 'target' option, if set, is used, and then removed from $options.
-   * @param RouteMatchInterface $route_match
+   * @param \Drupal\Core\Routing\RouteMatchInterface $route_match
    *   When no 'target' option is set in $options, $route_match is used instead
    *   to determine the target.
    *

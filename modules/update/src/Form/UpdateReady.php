@@ -13,6 +13,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Configure update settings for this site.
+ *
+ * @internal
  */
 class UpdateReady extends FormBase {
 
@@ -78,7 +80,7 @@ class UpdateReady extends FormBase {
       $container->get('update.root'),
       $container->get('module_handler'),
       $container->get('state'),
-      $container->get('site.path')
+      $container->getParameter('site.path')
     );
   }
 
@@ -116,27 +118,26 @@ class UpdateReady extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
+    $session = $this->getRequest()->getSession();
     // Store maintenance_mode setting so we can restore it when done.
-    $_SESSION['maintenance_mode'] = $this->state->get('system.maintenance_mode');
+    $session->set('maintenance_mode', $this->state->get('system.maintenance_mode'));
     if ($form_state->getValue('maintenance_mode') == TRUE) {
       $this->state->set('system.maintenance_mode', TRUE);
     }
 
-    if (!empty($_SESSION['update_manager_update_projects'])) {
+    $projects = $session->remove('update_manager_update_projects');
+    if ($projects) {
       // Make sure the Updater registry is loaded.
       drupal_get_updaters();
 
       $updates = [];
       $directory = _update_manager_extract_directory();
 
-      $projects = $_SESSION['update_manager_update_projects'];
-      unset($_SESSION['update_manager_update_projects']);
-
       $project_real_location = NULL;
       foreach ($projects as $project => $url) {
         $project_location = $directory . '/' . $project;
         $updater = Updater::factory($project_location, $this->root);
-        $project_real_location = drupal_realpath($project_location);
+        $project_real_location = \Drupal::service('file_system')->realpath($project_location);
         $updates[] = [
           'project' => $project,
           'updater_name' => get_class($updater),
@@ -151,7 +152,7 @@ class UpdateReady extends FormBase {
       // and invoke update_authorize_run_update() directly.
       if (fileowner($project_real_location) == fileowner($this->sitePath)) {
         $this->moduleHandler->loadInclude('update', 'inc', 'update.authorize');
-        $filetransfer = new Local($this->root);
+        $filetransfer = new Local($this->root, \Drupal::service('file_system'));
         $response = update_authorize_run_update($filetransfer, $updates);
         if ($response instanceof Response) {
           $form_state->setResponse($response);

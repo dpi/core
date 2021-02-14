@@ -21,7 +21,7 @@ class PathMatcherTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     // Create a stub config factory with all config settings that will be
     // checked during this test.
     $config_factory_stub = $this->getConfigFactoryStub(
@@ -31,7 +31,7 @@ class PathMatcherTest extends UnitTestCase {
         ],
       ]
     );
-    $route_match = $this->getMock('Drupal\Core\Routing\RouteMatchInterface');
+    $route_match = $this->createMock('Drupal\Core\Routing\RouteMatchInterface');
     $this->pathMatcher = new PathMatcher($config_factory_stub, $route_match);
   }
 

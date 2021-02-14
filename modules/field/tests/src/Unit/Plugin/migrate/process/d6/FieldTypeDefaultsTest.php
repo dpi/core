@@ -17,9 +17,9 @@ class FieldTypeDefaultsTest extends MigrateProcessTestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
-    $this->plugin = new FieldTypeDefaults([], 'field_type_defaults', []);
+    $this->plugin = new FieldTypeDefaults([], 'd6_field_type_defaults', []);
   }
 
   /**
@@ -47,8 +47,8 @@ class FieldTypeDefaultsTest extends MigrateProcessTestCase {
    * @covers ::transform
    */
   public function testDefaultsException() {
-    $this->setExpectedException(MigrateException::class,
-      sprintf('Failed to lookup field type %s in the static map.', var_export([], TRUE)));
+    $this->expectException(MigrateException::class);
+    $this->expectExceptionMessage(sprintf('Failed to lookup field type %s in the static map.', var_export([], TRUE)));
     $this->plugin->transform([], $this->migrateExecutable, $this->row, 'property');
   }
 

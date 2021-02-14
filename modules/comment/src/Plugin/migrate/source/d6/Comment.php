@@ -24,8 +24,8 @@ class Comment extends DrupalSqlBase {
       'comment', 'hostname', 'timestamp', 'status', 'thread', 'name',
       'mail', 'homepage', 'format',
     ]);
-    $query->innerJoin('node', 'n', 'c.nid = n.nid');
-    $query->fields('n', ['type']);
+    $query->innerJoin('node', 'n', '[c].[nid] = [n].[nid]');
+    $query->fields('n', ['type', 'language']);
     $query->orderBy('c.timestamp');
     return $query;
   }
@@ -34,6 +34,30 @@ class Comment extends DrupalSqlBase {
    * {@inheritdoc}
    */
   public function prepareRow(Row $row) {
+    // @todo Remove the call to ->prepareComment() in
+    // https://www.drupal.org/project/drupal/issues/3069260 when the Drupal 9
+    // branch opens.
+    return parent::prepareRow($this->prepareComment($row));
+  }
+
+  /**
+   * Provides a BC layer for deprecated sources.
+   *
+   * @param \Drupal\migrate\Row $row
+   *   The row from the source to process.
+   *
+   * @return \Drupal\migrate\Row
+   *   The row object.
+   *
+   * @throws \Exception
+   *   Passing a Row with a frozen source to this method will trigger an
+   *   \Exception when attempting to set the source properties.
+   *
+   * @todo Remove usages of this method and deprecate for removal in
+   *   https://www.drupal.org/project/drupal/issues/3069260 when the Drupal 9
+   *   branch opens.
+   */
+  protected function prepareComment(Row $row) {
     if ($this->variableGet('comment_subject_field_' . $row->getSourceProperty('type'), 1)) {
       // Comment subject visible.
       $row->setSourceProperty('field_name', 'comment');
@@ -43,10 +67,18 @@ class Comment extends DrupalSqlBase {
       $row->setSourceProperty('field_name', 'comment_no_subject');
       $row->setSourceProperty('comment_type', 'comment_no_subject');
     }
+
     // In D6, status=0 means published, while in D8 means the opposite.
     // See https://www.drupal.org/node/237636.
     $row->setSourceProperty('status', !$row->getSourceProperty('status'));
-    return parent::prepareRow($row);
+
+    // If node did not have a language, use site default language as a fallback.
+    if (!$row->getSourceProperty('language')) {
+      $language_default = $this->variableGet('language_default', NULL);
+      $language = $language_default ? $language_default->language : 'en';
+      $row->setSourceProperty('language', $language);
+    }
+    return $row;
   }
 
   /**
@@ -69,6 +101,7 @@ class Comment extends DrupalSqlBase {
       'mail' => $this->t("The comment author's email address from the comment form, if user is anonymous, and the 'Anonymous users may/must leave their contact information' setting is turned on."),
       'homepage' => $this->t("The comment author's home page address from the comment form, if user is anonymous, and the 'Anonymous users may/must leave their contact information' setting is turned on."),
       'type' => $this->t("The {node}.type to which this comment is a reply."),
+      'language' => $this->t("The {node}.language to which this comment is a reply. Site default language is used as a fallback if node does not have a language."),
     ];
   }
 

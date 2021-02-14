@@ -125,6 +125,10 @@ abstract class RelationshipPluginBase extends HandlerBase {
    * {@inheritdoc}
    */
   public function query() {
+    if (!empty($this->definition['deprecated'])) {
+      @trigger_error($this->definition['deprecated'], E_USER_DEPRECATED);
+    }
+
     // Figure out what base table this relationship brings to the party.
     $table_data = Views::viewsData()->get($this->definition['base']);
     $base_field = empty($this->definition['base field']) ? $table_data['table']['base']['field'] : $this->definition['base field'];
@@ -169,11 +173,11 @@ abstract class RelationshipPluginBase extends HandlerBase {
    * {@inheritdoc}
    */
   public function calculateDependencies() {
+    $dependencies = parent::calculateDependencies();
     // Add the provider of the relationship's base table to the dependencies.
     $table_data = $this->getViewsData()->get($this->definition['base']);
-    return [
-      'module' => [$table_data['table']['provider']],
-    ];
+    $dependencies['module'][] = $table_data['table']['provider'];
+    return $dependencies;
   }
 
 }

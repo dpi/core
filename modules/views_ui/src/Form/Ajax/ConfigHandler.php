@@ -10,6 +10,8 @@ use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Provides a form for configuring an item in the Views UI.
+ *
+ * @internal
  */
 class ConfigHandler extends ViewsFormBase {
 
@@ -256,7 +258,7 @@ class ConfigHandler extends ViewsFormBase {
   }
 
   /**
-   * Submit handler for removing an item from a view
+   * Submit handler for removing an item from a view.
    */
   public function remove(&$form, FormStateInterface $form_state) {
     $view = $form_state->get('view');

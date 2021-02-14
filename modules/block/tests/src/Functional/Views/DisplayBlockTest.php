@@ -3,6 +3,8 @@
 namespace Drupal\Tests\block\Functional\Views;
 
 use Drupal\Component\Serialization\Json;
+use Drupal\Component\Utility\Crypt;
+use Drupal\Core\Site\Settings;
 use Drupal\Core\Url;
 use Drupal\Tests\block\Functional\AssertBlockAppearsTrait;
 use Drupal\Tests\system\Functional\Cache\AssertPageCacheContextsAndTagsTrait;
@@ -28,7 +30,18 @@ class DisplayBlockTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'block_test_views', 'test_page_test', 'contextual', 'views_ui'];
+  protected static $modules = [
+    'node',
+    'block_test_views',
+    'test_page_test',
+    'contextual',
+    'views_ui',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * Views used by this test.
@@ -40,10 +53,10 @@ class DisplayBlockTest extends ViewTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
-    ViewTestData::createTestViews(get_class($this), ['block_test_views']);
+    ViewTestData::createTestViews(static::class, ['block_test_views']);
     $this->enableViewsTestModule();
   }
 
@@ -51,7 +64,10 @@ class DisplayBlockTest extends ViewTestBase {
    * Tests default and custom block categories.
    */
   public function testBlockCategory() {
-    $this->drupalLogin($this->drupalCreateUser(['administer views', 'administer blocks']));
+    $this->drupalLogin($this->drupalCreateUser([
+      'administer views',
+      'administer blocks',
+    ]));
 
     // Create a new view in the UI.
     $edit = [];
@@ -61,17 +77,17 @@ class DisplayBlockTest extends ViewTestBase {
     $edit['description'] = $this->randomString();
     $edit['block[create]'] = TRUE;
     $edit['block[style][row_plugin]'] = 'fields';
-    $this->drupalPostForm('admin/structure/views/add', $edit, t('Save and edit'));
+    $this->drupalPostForm('admin/structure/views/add', $edit, 'Save and edit');
 
     $pattern = '//tr[.//td[text()=:category] and .//td//a[contains(@href, :href)]]';
 
     // Test that the block was given a default category corresponding to its
     // base table.
     $arguments = [
-      ':href' => \Drupal::Url('block.admin_add', [
+      ':href' => Url::fromRoute('block.admin_add', [
         'plugin_id' => 'views_block:' . $edit['id'] . '-block_1',
         'theme' => 'classy',
-      ]),
+      ])->toString(),
       ':category' => 'Lists (Views)',
     ];
     $this->drupalGet('admin/structure/block');
@@ -80,8 +96,8 @@ class DisplayBlockTest extends ViewTestBase {
     $this->assertTrue(!empty($elements), 'The test block appears in the category for its base table.');
 
     // Duplicate the block before changing the category.
-    $this->drupalPostForm('admin/structure/views/view/' . $edit['id'] . '/edit/block_1', [], t('Duplicate @display_title', ['@display_title' => 'Block']));
-    $this->assertUrl('admin/structure/views/view/' . $edit['id'] . '/edit/block_2');
+    $this->drupalPostForm('admin/structure/views/view/' . $edit['id'] . '/edit/block_1', [], 'Duplicate Block');
+    $this->assertSession()->addressEquals('admin/structure/views/view/' . $edit['id'] . '/edit/block_2');
 
     // Change the block category to a random string.
     $this->drupalGet('admin/structure/views/view/' . $edit['id'] . '/edit/block_1');
@@ -89,13 +105,13 @@ class DisplayBlockTest extends ViewTestBase {
     $this->assertTrue(!empty($link));
     $this->clickLink(t('Lists (Views)'));
     $category = $this->randomString();
-    $this->drupalPostForm(NULL, ['block_category' => $category], t('Apply'));
+    $this->submitForm(['block_category' => $category], 'Apply');
 
     // Duplicate the block after changing the category.
-    $this->drupalPostForm(NULL, [], t('Duplicate @display_title', ['@display_title' => 'Block']));
-    $this->assertUrl('admin/structure/views/view/' . $edit['id'] . '/edit/block_3');
+    $this->submitForm([], 'Duplicate Block');
+    $this->assertSession()->addressEquals('admin/structure/views/view/' . $edit['id'] . '/edit/block_3');
 
-    $this->drupalPostForm(NULL, [], t('Save'));
+    $this->submitForm([], 'Save');
 
     // Test that the blocks are listed under the correct categories.
     $arguments[':category'] = $category;
@@ -105,20 +121,20 @@ class DisplayBlockTest extends ViewTestBase {
     $this->assertTrue(!empty($elements), 'The test block appears in the custom category.');
 
     $arguments = [
-      ':href' => \Drupal::Url('block.admin_add', [
+      ':href' => Url::fromRoute('block.admin_add', [
         'plugin_id' => 'views_block:' . $edit['id'] . '-block_2',
         'theme' => 'classy',
-      ]),
+      ])->toString(),
       ':category' => 'Lists (Views)',
     ];
     $elements = $this->xpath($pattern, $arguments);
     $this->assertTrue(!empty($elements), 'The first duplicated test block remains in the original category.');
 
     $arguments = [
-      ':href' => \Drupal::Url('block.admin_add', [
+      ':href' => Url::fromRoute('block.admin_add', [
         'plugin_id' => 'views_block:' . $edit['id'] . '-block_3',
         'theme' => 'classy',
-      ]),
+      ])->toString(),
       ':category' => $category,
     ];
     $elements = $this->xpath($pattern, $arguments);
@@ -154,10 +170,10 @@ class DisplayBlockTest extends ViewTestBase {
     $view->displayHandlers->remove('block_1');
     $view->storage->save();
 
-    $this->assertFalse($block_storage->load($block_1->id()), 'The block for this display was removed.');
-    $this->assertFalse($block_storage->load($block_2->id()), 'The block for this display was removed.');
-    $this->assertTrue($block_storage->load($block_3->id()), 'A block from another view was unaffected.');
-    $this->assertTrue($block_storage->load($block_4->id()), 'A block from another view was unaffected.');
+    $this->assertNull($block_storage->load($block_1->id()), 'The block for this display was removed.');
+    $this->assertNull($block_storage->load($block_2->id()), 'The block for this display was removed.');
+    $this->assertNotEmpty($block_storage->load($block_3->id()), 'A block from another view was unaffected.');
+    $this->assertNotEmpty($block_storage->load($block_4->id()), 'A block from another view was unaffected.');
     $this->drupalGet('test-page');
     $this->assertNoBlockAppears($block_1);
     $this->assertNoBlockAppears($block_2);
@@ -171,8 +187,8 @@ class DisplayBlockTest extends ViewTestBase {
     $view->displayHandlers->remove('block_1');
     $view->storage->save();
 
-    $this->assertFalse($block_storage->load($block_3->id()), 'The block for this display was removed.');
-    $this->assertTrue($block_storage->load($block_4->id()), 'A block from another display on the same view was unaffected.');
+    $this->assertNull($block_storage->load($block_3->id()), 'The block for this display was removed.');
+    $this->assertNotEmpty($block_storage->load($block_4->id()), 'A block from another display on the same view was unaffected.');
     $this->drupalGet('test-page');
     $this->assertNoBlockAppears($block_3);
     $this->assertBlockAppears($block_4);
@@ -187,13 +203,13 @@ class DisplayBlockTest extends ViewTestBase {
     $this->drupalGet('admin/structure/block/add/views_block:test_view_block-block_1/' . $default_theme);
     $elements = $this->xpath('//input[@name="label"]');
     $this->assertTrue(empty($elements), 'The label field is not found for Views blocks.');
-    // Test that that machine name field is hidden from display and has been
+    // Test that the machine name field is hidden from display and has been
     // saved as expected from the default value.
-    $this->assertNoFieldById('edit-machine-name', 'views_block__test_view_block_1', 'The machine name is hidden on the views block form.');
+    $this->assertSession()->fieldNotExists('edit-machine-name', NULL);
 
     // Save the block.
     $edit = ['region' => 'content'];
-    $this->drupalPostForm(NULL, $edit, t('Save block'));
+    $this->submitForm($edit, 'Save block');
     $storage = $this->container->get('entity_type.manager')->getStorage('block');
     $block = $storage->load('views_block__test_view_block_block_1');
     // This will only return a result if our new block has been created with the
@@ -202,7 +218,7 @@ class DisplayBlockTest extends ViewTestBase {
 
     for ($i = 2; $i <= 3; $i++) {
       // Place the same block again and make sure we have a new ID.
-      $this->drupalPostForm('admin/structure/block/add/views_block:test_view_block-block_1/' . $default_theme, $edit, t('Save block'));
+      $this->drupalPostForm('admin/structure/block/add/views_block:test_view_block-block_1/' . $default_theme, $edit, 'Save block');
       $block = $storage->load('views_block__test_view_block_block_1_' . $i);
       // This will only return a result if our new block has been created with the
       // expected machine name.
@@ -214,14 +230,14 @@ class DisplayBlockTest extends ViewTestBase {
     $edit = ['region' => 'content'];
     $edit['settings[override][items_per_page]'] = 10;
 
-    $this->drupalPostForm('admin/structure/block/add/views_block:test_view_block-block_1/' . $default_theme, $edit, t('Save block'));
+    $this->drupalPostForm('admin/structure/block/add/views_block:test_view_block-block_1/' . $default_theme, $edit, 'Save block');
 
     $block = $storage->load('views_block__test_view_block_block_1_4');
     $config = $block->getPlugin()->getConfiguration();
     $this->assertEqual(10, $config['items_per_page'], "'Items per page' is properly saved.");
 
     $edit['settings[override][items_per_page]'] = 5;
-    $this->drupalPostForm('admin/structure/block/manage/views_block__test_view_block_block_1_4', $edit, t('Save block'));
+    $this->drupalPostForm('admin/structure/block/manage/views_block__test_view_block_block_1_4', $edit, 'Save block');
 
     $block = $storage->load('views_block__test_view_block_block_1_4');
 
@@ -232,7 +248,7 @@ class DisplayBlockTest extends ViewTestBase {
     $edit = ['region' => 'content'];
     $edit['settings[views_label_checkbox]'] = 1;
     $edit['settings[views_label]'] = 'Custom title';
-    $this->drupalPostForm('admin/structure/block/add/views_block:test_view_block-block_1/' . $default_theme, $edit, t('Save block'));
+    $this->drupalPostForm('admin/structure/block/add/views_block:test_view_block-block_1/' . $default_theme, $edit, 'Save block');
 
     $block = $storage->load('views_block__test_view_block_block_1_5');
     $config = $block->getPlugin()->getConfiguration();
@@ -248,7 +264,7 @@ class DisplayBlockTest extends ViewTestBase {
     $this->drupalGet('');
 
     $result = $this->xpath('//div[contains(@class, "region-sidebar-first")]/div[contains(@class, "block-views")]/h2');
-    $this->assertEqual($result[0]->getText(), 'Custom title');
+    $this->assertEqual('Custom title', $result[0]->getText());
 
     // Don't override the title anymore.
     $plugin = $block->getPlugin();
@@ -257,7 +273,7 @@ class DisplayBlockTest extends ViewTestBase {
 
     $this->drupalGet('');
     $result = $this->xpath('//div[contains(@class, "region-sidebar-first")]/div[contains(@class, "block-views")]/h2');
-    $this->assertEqual($result[0]->getText(), 'test_view_block');
+    $this->assertEqual('test_view_block', $result[0]->getText());
 
     // Hide the title.
     $block->getPlugin()->setConfigurationValue('label_display', FALSE);
@@ -283,14 +299,14 @@ class DisplayBlockTest extends ViewTestBase {
 
     $block = $this->drupalPlaceBlock('views_block:test_view_block-block_1', ['label' => 'test_view_block-block_1:1', 'views_label' => 'Custom title']);
     $this->drupalGet('');
-    $this->assertEqual(1, count($this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]')));
+    $this->assertCount(1, $this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]'));
 
     $display = &$view->getDisplay('block_1');
     $display['display_options']['block_hide_empty'] = TRUE;
     $view->save();
 
     $this->drupalGet($url);
-    $this->assertEqual(0, count($this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]')));
+    $this->assertCount(0, $this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]'));
     // Ensure that the view cacheability metadata is propagated even, for an
     // empty block.
     $this->assertCacheTags(array_merge($block->getCacheTags(), ['block_view', 'config:block_list', 'config:views.view.test_view_block', 'http_response', 'rendered']));
@@ -310,7 +326,7 @@ class DisplayBlockTest extends ViewTestBase {
     $view->save();
 
     $this->drupalGet($url);
-    $this->assertEqual(1, count($this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]')));
+    $this->assertCount(1, $this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]'));
     $this->assertCacheTags(array_merge($block->getCacheTags(), ['block_view', 'config:block_list', 'config:views.view.test_view_block', 'http_response', 'rendered']));
     $this->assertCacheContexts(['url.query_args:_wrapper_format']);
 
@@ -328,7 +344,7 @@ class DisplayBlockTest extends ViewTestBase {
     $view->save();
 
     $this->drupalGet($url);
-    $this->assertEqual(0, count($this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]')));
+    $this->assertCount(0, $this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]'));
     $this->assertCacheTags(array_merge($block->getCacheTags(), ['block_view', 'config:block_list', 'config:views.view.test_view_block', 'http_response', 'rendered']));
     $this->assertCacheContexts(['url.query_args:_wrapper_format']);
 
@@ -345,7 +361,7 @@ class DisplayBlockTest extends ViewTestBase {
     $view->save();
 
     $this->drupalGet($url);
-    $this->assertEqual(1, count($this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]')));
+    $this->assertCount(1, $this->xpath('//div[contains(@class, "block-views-blocktest-view-block-block-1")]'));
     $this->assertCacheTags(array_merge($block->getCacheTags(), ['block_view', 'config:block_list', 'config:views.view.test_view_block', 'http_response', 'rendered']));
     $this->assertCacheContexts(['url.query_args:_wrapper_format']);
   }
@@ -354,26 +370,33 @@ class DisplayBlockTest extends ViewTestBase {
    * Tests the contextual links on a Views block.
    */
   public function testBlockContextualLinks() {
-    $this->drupalLogin($this->drupalCreateUser(['administer views', 'access contextual links', 'administer blocks']));
+    $this->drupalLogin($this->drupalCreateUser([
+      'administer views',
+      'access contextual links',
+      'administer blocks',
+    ]));
     $block = $this->drupalPlaceBlock('views_block:test_view_block-block_1');
     $cached_block = $this->drupalPlaceBlock('views_block:test_view_block-block_1');
     $this->drupalGet('test-page');
 
     $id = 'block:block=' . $block->id() . ':langcode=en|entity.view.edit_form:view=test_view_block:location=block&name=test_view_block&display_id=block_1&langcode=en';
+    $id_token = Crypt::hmacBase64($id, Settings::getHashSalt() . $this->container->get('private_key')->get());
     $cached_id = 'block:block=' . $cached_block->id() . ':langcode=en|entity.view.edit_form:view=test_view_block:location=block&name=test_view_block&display_id=block_1&langcode=en';
+    $cached_id_token = Crypt::hmacBase64($cached_id, Settings::getHashSalt() . $this->container->get('private_key')->get());
     // @see \Drupal\contextual\Tests\ContextualDynamicContextTest:assertContextualLinkPlaceHolder()
-    $this->assertRaw('<div' . new Attribute(['data-contextual-id' => $id]) . '></div>', format_string('Contextual link placeholder with id @id exists.', ['@id' => $id]));
-    $this->assertRaw('<div' . new Attribute(['data-contextual-id' => $cached_id]) . '></div>', format_string('Contextual link placeholder with id @id exists.', ['@id' => $cached_id]));
+    // Check existence of the contextual link placeholders.
+    $this->assertRaw('<div' . new Attribute(['data-contextual-id' => $id, 'data-contextual-token' => $id_token]) . '></div>');
+    $this->assertRaw('<div' . new Attribute(['data-contextual-id' => $cached_id, 'data-contextual-token' => $cached_id_token]) . '></div>');
 
     // Get server-rendered contextual links.
     // @see \Drupal\contextual\Tests\ContextualDynamicContextTest:renderContextualLinks()
-    $post = ['ids[0]' => $id, 'ids[1]' => $cached_id];
+    $post = ['ids[0]' => $id, 'ids[1]' => $cached_id, 'tokens[0]' => $id_token, 'tokens[1]' => $cached_id_token];
     $url = 'contextual/render?_format=json,destination=test-page';
     $this->getSession()->getDriver()->getClient()->request('POST', $url, $post);
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $json = Json::decode($this->getSession()->getPage()->getContent());
-    $this->assertIdentical($json[$id], '<ul class="contextual-links"><li class="block-configure"><a href="' . base_path() . 'admin/structure/block/manage/' . $block->id() . '">Configure block</a></li><li class="entityviewedit-form"><a href="' . base_path() . 'admin/structure/views/view/test_view_block/edit/block_1">Edit view</a></li></ul>');
-    $this->assertIdentical($json[$cached_id], '<ul class="contextual-links"><li class="block-configure"><a href="' . base_path() . 'admin/structure/block/manage/' . $cached_block->id() . '">Configure block</a></li><li class="entityviewedit-form"><a href="' . base_path() . 'admin/structure/views/view/test_view_block/edit/block_1">Edit view</a></li></ul>');
+    $this->assertSame('<ul class="contextual-links"><li class="block-configure"><a href="' . base_path() . 'admin/structure/block/manage/' . $block->id() . '">Configure block</a></li><li class="entityviewedit-form"><a href="' . base_path() . 'admin/structure/views/view/test_view_block/edit/block_1">Edit view</a></li></ul>', $json[$id]);
+    $this->assertSame('<ul class="contextual-links"><li class="block-configure"><a href="' . base_path() . 'admin/structure/block/manage/' . $cached_block->id() . '">Configure block</a></li><li class="entityviewedit-form"><a href="' . base_path() . 'admin/structure/views/view/test_view_block/edit/block_1">Edit view</a></li></ul>', $json[$cached_id]);
   }
 
 }

@@ -3,7 +3,7 @@
 namespace Drupal\Tests\aggregator\Functional;
 
 use Drupal\aggregator\Entity\Feed;
-use Drupal\system\Tests\Entity\EntityWithUriCacheTagsTestBase;
+use Drupal\Tests\system\Functional\Entity\EntityWithUriCacheTagsTestBase;
 use Drupal\user\Entity\Role;
 use Drupal\user\RoleInterface;
 
@@ -17,12 +17,17 @@ class FeedCacheTagsTest extends EntityWithUriCacheTagsTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['aggregator'];
+  protected static $modules = ['aggregator'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     // Give anonymous users permission to access feeds, so that we can verify

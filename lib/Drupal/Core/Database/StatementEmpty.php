@@ -2,7 +2,6 @@
 
 namespace Drupal\Core\Database;
 
-
 /**
  * Empty implementation of a database statement.
  *
@@ -50,9 +49,7 @@ class StatementEmpty implements \Iterator, StatementInterface {
   /**
    * {@inheritdoc}
    */
-  public function setFetchMode($mode, $a1 = NULL, $a2 = []) {
-    return;
-  }
+  public function setFetchMode($mode, $a1 = NULL, $a2 = []) {}
 
   /**
    * {@inheritdoc}
@@ -71,7 +68,7 @@ class StatementEmpty implements \Iterator, StatementInterface {
   /**
    * {@inheritdoc}
    */
-  public function fetchObject() {
+  public function fetchObject(string $class_name = NULL, array $constructor_arguments = NULL) {
     return NULL;
   }
 

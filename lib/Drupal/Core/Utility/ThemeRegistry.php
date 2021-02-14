@@ -24,6 +24,8 @@ class ThemeRegistry extends CacheCollector implements DestructableInterface {
    * This is only allowed if all modules and the request method is GET. _theme()
    * should be very rarely called on POST requests and this avoids polluting
    * the runtime cache.
+   *
+   * @var bool
    */
   protected $persistable;
 
@@ -96,7 +98,7 @@ class ThemeRegistry extends CacheCollector implements DestructableInterface {
     // are not registered, just check the existence of the key in the registry.
     // Use array_key_exists() here since a NULL value indicates that the theme
     // hook exists but has not yet been requested.
-    return array_key_exists($key, $this->storage);
+    return isset($this->storage[$key]) || array_key_exists($key, $this->storage);
   }
 
   /**

@@ -2,8 +2,14 @@
 
 namespace Drupal\Tests\text\Kernel;
 
+use Drupal\Component\Render\FormattableMarkup;
+use Drupal\Core\Entity\Entity\EntityFormDisplay;
+use Drupal\entity_test\Entity\EntityTest;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\filter\Entity\FilterFormat;
+use Drupal\Tests\user\Traits\UserCreationTrait;
 
 /**
  * Tests text_summary() with different strings and lengths.
@@ -12,9 +18,18 @@ use Drupal\filter\Entity\FilterFormat;
  */
 class TextSummaryTest extends KernelTestBase {
 
-  public static $modules = ['system', 'user', 'filter', 'text'];
+  use UserCreationTrait;
 
-  protected function setUp() {
+  protected static $modules = [
+    'system',
+    'user',
+    'filter',
+    'text',
+    'field',
+    'entity_test',
+  ];
+
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installConfig(['text']);
@@ -35,13 +50,20 @@ class TextSummaryTest extends KernelTestBase {
    * Test summary with long example.
    */
   public function testLongSentence() {
-    $text = 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ' . // 125
-            'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. ' . // 108
-            'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. ' . // 103
-            'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.'; // 110
+    // 125.
+    // cSpell:disable
+    $text =
+      'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ' .
+      // 108.
+      'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. ' .
+      // 103.
+      'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. ' .
+      // 110.
+      'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
     $expected = 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ' .
                 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. ' .
                 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.';
+    // cSpell:enable
     // First three sentences add up to: 336, so add one for space and then 3 to get half-way into next word.
     $this->assertTextSummary($text, $expected, NULL, 340);
   }
@@ -203,14 +225,82 @@ class TextSummaryTest extends KernelTestBase {
   }
 
   /**
+   * Test text_summary() returns an empty string without any error when called
+   * with an invalid format.
+   */
+  public function testInvalidFilterFormat() {
+
+    $this->assertTextSummary($this->randomString(100), '', 'non_existent_format');
+  }
+
+  /**
    * Calls text_summary() and asserts that the expected teaser is returned.
    */
   public function assertTextSummary($text, $expected, $format = NULL, $size = NULL) {
     $summary = text_summary($text, $format, $size);
-    $this->assertIdentical($summary, $expected, format_string('<pre style="white-space: pre-wrap">@actual</pre> is identical to <pre style="white-space: pre-wrap">@expected</pre>', [
-      '@actual' => $summary,
-      '@expected' => $expected,
-    ]));
+    $this->assertSame($expected, $summary, new FormattableMarkup('<pre style="white-space: pre-wrap">@actual</pre> is identical to <pre style="white-space: pre-wrap">@expected</pre>', ['@actual' => $summary, '@expected' => $expected]));
+  }
+
+  /**
+   * Test required summary.
+   */
+  public function testRequiredSummary() {
+    $this->installEntitySchema('entity_test');
+    $this->setUpCurrentUser();
+    $field_definition = FieldStorageConfig::create([
+      'field_name' => 'test_textwithsummary',
+      'type' => 'text_with_summary',
+      'entity_type' => 'entity_test',
+      'cardinality' => 1,
+      'settings' => [
+        'max_length' => 200,
+      ],
+    ]);
+    $field_definition->save();
+
+    $instance = FieldConfig::create([
+      'field_name' => 'test_textwithsummary',
+      'label' => 'A text field',
+      'entity_type' => 'entity_test',
+      'bundle' => 'entity_test',
+      'settings' => [
+        'text_processing' => TRUE,
+        'display_summary' => TRUE,
+        'required_summary' => TRUE,
+      ],
+    ]);
+    $instance->save();
+
+    EntityFormDisplay::create([
+      'targetEntityType' => 'entity_test',
+      'bundle' => 'entity_test',
+      'mode' => 'default',
+      'status' => TRUE,
+    ])->setComponent('test_textwithsummary', [
+      'type' => 'text_textarea_with_summary',
+      'settings' => [
+        'summary_rows' => 2,
+        'show_summary' => TRUE,
+      ],
+    ])
+      ->save();
+
+    // Check the required summary.
+    $entity = EntityTest::create([
+      'name' => $this->randomMachineName(),
+      'type' => 'entity_test',
+      'test_textwithsummary' => ['value' => $this->randomMachineName()],
+    ]);
+    $form = \Drupal::service('entity.form_builder')->getForm($entity);
+    $this->assertTrue(!empty($form['test_textwithsummary']['widget'][0]['summary']), 'Summary field is shown');
+    $this->assertTrue(!empty($form['test_textwithsummary']['widget'][0]['summary']['#required']), 'Summary field is required');
+
+    // Test validation.
+    /** @var \Symfony\Component\Validator\ConstraintViolation[] $violations */
+    $violations = $entity->validate();
+    $this->assertCount(1, $violations);
+    $this->assertEquals('test_textwithsummary.0.summary', $violations[0]->getPropertyPath());
+    $this->assertEquals('The summary field is required for A text field', $violations[0]->getMessage());
   }
 
 }

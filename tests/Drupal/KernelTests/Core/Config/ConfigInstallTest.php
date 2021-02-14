@@ -6,6 +6,7 @@ use Drupal\Core\Config\InstallStorage;
 use Drupal\Core\Config\PreExistingConfigException;
 use Drupal\Core\Config\UnmetDependenciesException;
 use Drupal\KernelTests\KernelTestBase;
+use PHPUnit\Framework\Error\Warning;
 
 /**
  * Tests installation of configuration objects in installation functionality.
@@ -18,12 +19,12 @@ class ConfigInstallTest extends KernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['system'];
+  protected static $modules = ['system'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Ensure the global variable being asserted by this test does not exist;
@@ -40,9 +41,9 @@ class ConfigInstallTest extends KernelTestBase {
 
     // Verify that default module config does not exist before installation yet.
     $config = $this->config($default_config);
-    $this->assertIdentical($config->isNew(), TRUE);
+    $this->assertTrue($config->isNew());
     $config = $this->config($default_configuration_entity);
-    $this->assertIdentical($config->isNew(), TRUE);
+    $this->assertTrue($config->isNew());
 
     // Ensure that schema provided by modules that are not installed is not
     // available.
@@ -55,9 +56,9 @@ class ConfigInstallTest extends KernelTestBase {
     \Drupal::configFactory()->reset($default_config);
     \Drupal::configFactory()->reset($default_configuration_entity);
     $config = $this->config($default_config);
-    $this->assertIdentical($config->isNew(), FALSE);
+    $this->assertFalse($config->isNew());
     $config = $this->config($default_configuration_entity);
-    $this->assertIdentical($config->isNew(), FALSE);
+    $this->assertFalse($config->isNew());
 
     // Verify that config_test API hooks were invoked for the dynamic default
     // configuration entity.
@@ -123,13 +124,9 @@ class ConfigInstallTest extends KernelTestBase {
       $this->fail('Expected PreExistingConfigException not thrown.');
     }
     catch (PreExistingConfigException $e) {
-      $this->assertEqual($e->getExtension(), 'config_collection_clash_install_test');
-      $this->assertEqual($e->getConfigObjects(), [
-        'another_collection' => ['config_collection_install_test.test'],
-        'collection.test1' => ['config_collection_install_test.test'],
-        'collection.test2' => ['config_collection_install_test.test'],
-      ]);
-      $this->assertEqual($e->getMessage(), 'Configuration objects (another_collection/config_collection_install_test.test, collection/test1/config_collection_install_test.test, collection/test2/config_collection_install_test.test) provided by config_collection_clash_install_test already exist in active configuration');
+      $this->assertEqual('config_collection_clash_install_test', $e->getExtension());
+      $this->assertEqual(['another_collection' => ['config_collection_install_test.test'], 'collection.test1' => ['config_collection_install_test.test'], 'collection.test2' => ['config_collection_install_test.test']], $e->getConfigObjects());
+      $this->assertEqual('Configuration objects (another_collection/config_collection_install_test.test, collection/test1/config_collection_install_test.test, collection/test2/config_collection_install_test.test) provided by config_collection_clash_install_test already exist in active configuration', $e->getMessage());
     }
 
     // Test that the we can use the config installer to install all the
@@ -198,9 +195,9 @@ class ConfigInstallTest extends KernelTestBase {
       $this->fail('Expected UnmetDependenciesException not thrown.');
     }
     catch (UnmetDependenciesException $e) {
-      $this->assertEqual($e->getExtension(), 'config_install_dependency_test');
-      $this->assertEqual($e->getConfigObjects(), ['config_test.dynamic.other_module_test_with_dependency' => ['config_other_module_config_test', 'config_test.dynamic.dotted.english']]);
-      $this->assertEqual($e->getMessage(), 'Configuration objects provided by <em class="placeholder">config_install_dependency_test</em> have unmet dependencies: <em class="placeholder">config_test.dynamic.other_module_test_with_dependency (config_other_module_config_test, config_test.dynamic.dotted.english)</em>');
+      $this->assertEqual('config_install_dependency_test', $e->getExtension());
+      $this->assertEqual(['config_test.dynamic.other_module_test_with_dependency' => ['config_other_module_config_test', 'config_test.dynamic.dotted.english']], $e->getConfigObjects());
+      $this->assertEqual('Configuration objects provided by <em class="placeholder">config_install_dependency_test</em> have unmet dependencies: <em class="placeholder">config_test.dynamic.other_module_test_with_dependency (config_other_module_config_test, config_test.dynamic.dotted.english)</em>', $e->getMessage());
     }
     try {
       $this->installModules(['config_install_double_dependency_test']);
@@ -217,14 +214,14 @@ class ConfigInstallTest extends KernelTestBase {
       $this->fail('Expected UnmetDependenciesException not thrown.');
     }
     catch (UnmetDependenciesException $e) {
-      $this->assertEqual($e->getExtension(), 'config_install_dependency_test');
-      $this->assertEqual($e->getConfigObjects(), ['config_test.dynamic.other_module_test_with_dependency' => ['config_other_module_config_test']]);
-      $this->assertEqual($e->getMessage(), 'Configuration objects provided by <em class="placeholder">config_install_dependency_test</em> have unmet dependencies: <em class="placeholder">config_test.dynamic.other_module_test_with_dependency (config_other_module_config_test)</em>');
+      $this->assertEqual('config_install_dependency_test', $e->getExtension());
+      $this->assertEqual(['config_test.dynamic.other_module_test_with_dependency' => ['config_other_module_config_test']], $e->getConfigObjects());
+      $this->assertEqual('Configuration objects provided by <em class="placeholder">config_install_dependency_test</em> have unmet dependencies: <em class="placeholder">config_test.dynamic.other_module_test_with_dependency (config_other_module_config_test)</em>', $e->getMessage());
     }
     $this->installModules(['config_other_module_config_test']);
     $this->installModules(['config_install_dependency_test']);
-    $entity = \Drupal::entityManager()->getStorage('config_test')->load('other_module_test_with_dependency');
-    $this->assertTrue($entity, 'The config_test.dynamic.other_module_test_with_dependency configuration has been created during install.');
+    $entity = \Drupal::entityTypeManager()->getStorage('config_test')->load('other_module_test_with_dependency');
+    $this->assertNotEmpty($entity, 'The config_test.dynamic.other_module_test_with_dependency configuration has been created during install.');
     // Ensure that dependencies can be added during module installation by
     // hooks.
     $this->assertSame('config_install_dependency_test', $entity->getDependencies()['module'][0]);
@@ -239,18 +236,21 @@ class ConfigInstallTest extends KernelTestBase {
     $storage = new InstallStorage();
     $data = $storage->read('config_test.dynamic.dotted.english');
     $this->assertTrue(!isset($data['langcode']));
-    $this->assertEqual(
-      $this->config('config_test.dynamic.dotted.english')->get('langcode'),
-      'en'
-    );
+    $this->assertEqual('en', $this->config('config_test.dynamic.dotted.english')->get('langcode'));
 
     // Test imported configuration with explicit language code.
     $data = $storage->read('config_test.dynamic.dotted.french');
-    $this->assertEqual($data['langcode'], 'fr');
-    $this->assertEqual(
-      $this->config('config_test.dynamic.dotted.french')->get('langcode'),
-      'fr'
-    );
+    $this->assertEqual('fr', $data['langcode']);
+    $this->assertEqual('fr', $this->config('config_test.dynamic.dotted.french')->get('langcode'));
+  }
+
+  /**
+   * Tests installing configuration where the filename and ID do not match.
+   */
+  public function testIdMisMatch() {
+    $this->expectException(Warning::class);
+    $this->expectExceptionMessage('The configuration name "config_test.dynamic.no_id_match" does not match the ID "does_not_match"');
+    $this->installModules(['config_test_id_mismatch']);
   }
 
   /**

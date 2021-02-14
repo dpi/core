@@ -16,7 +16,7 @@ class MigrateDefaultLanguageTest extends MigrateDrupal6TestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['language'];
+  protected static $modules = ['language'];
 
   /**
    * Tests language_default migration with an existing language.
@@ -41,14 +41,14 @@ class MigrateDefaultLanguageTest extends MigrateDrupal6TestBase {
     $this->executeMigrations(['language', 'default_language']);
 
     // Tests the migration log contains an error message.
-    $messages = $this->migration->getIdMap()->getMessageIterator();
+    $messages = $this->migration->getIdMap()->getMessages();
     $count = 0;
     foreach ($messages as $message) {
       $count++;
-      $this->assertSame($message->message, "The language 'tv' does not exist on this site.");
-      $this->assertSame((int) $message->level, MigrationInterface::MESSAGE_ERROR);
+      $this->assertSame("The language 'tv' does not exist on this site.", $message->message);
+      $this->assertSame(MigrationInterface::MESSAGE_ERROR, (int) $message->level);
     }
-    $this->assertSame($count, 1);
+    $this->assertSame(1, $count);
   }
 
   /**
@@ -62,7 +62,7 @@ class MigrateDefaultLanguageTest extends MigrateDrupal6TestBase {
     $this->startCollectingMessages();
     $this->executeMigrations(['language', 'default_language']);
 
-    $messages = $this->migration->getIdMap()->getMessageIterator()->fetchAll();
+    $messages = $this->migration->getIdMap()->getMessages()->fetchAll();
     // Make sure there's no migration exceptions.
     $this->assertEmpty($messages);
     // Make sure the default langcode is 'en', as it was the default on D6 & D7.

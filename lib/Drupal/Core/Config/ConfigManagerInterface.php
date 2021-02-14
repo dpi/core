@@ -30,18 +30,18 @@ interface ConfigManagerInterface {
   public function loadConfigEntityByName($name);
 
   /**
-   * Gets the entity manager.
+   * Gets the entity type manager.
    *
-   * @return \Drupal\Core\Entity\EntityManagerInterface
-   *   The entity manager.
+   * @return \Drupal\Core\Entity\EntityTypeManagerInterface
+   *   The entity type manager.
    */
-  public function getEntityManager();
+  public function getEntityTypeManager();
 
   /**
    * Gets the config factory.
    *
    * @return \Drupal\Core\Config\ConfigFactoryInterface
-   *   The entity manager.
+   *   The config factory.
    */
   public function getConfigFactory();
 

@@ -41,6 +41,13 @@ class ContentEntityNullStorage extends ContentEntityStorageBase {
   /**
    * {@inheritdoc}
    */
+  public function loadMultipleRevisions(array $revision_ids) {
+    return [];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function deleteRevision($revision_id) {
   }
 
@@ -79,7 +86,8 @@ class ContentEntityNullStorage extends ContentEntityStorageBase {
   /**
    * {@inheritdoc}
    */
-  protected function doLoadRevisionFieldItems($revision_id) {
+  protected function doLoadMultipleRevisionsFieldItems($revision_ids) {
+    return [];
   }
 
   /**

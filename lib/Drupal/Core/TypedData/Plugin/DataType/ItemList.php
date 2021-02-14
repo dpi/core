@@ -87,7 +87,7 @@ class ItemList extends TypedData implements \IteratorAggregate, ListInterface {
       $strings[] = $item->getString();
     }
     // Remove any empty strings resulting from empty items.
-    return implode(', ', array_filter($strings, '\Drupal\Component\Utility\Unicode::strlen'));
+    return implode(', ', array_filter($strings, 'mb_strlen'));
   }
 
   /**
@@ -96,10 +96,6 @@ class ItemList extends TypedData implements \IteratorAggregate, ListInterface {
   public function get($index) {
     if (!is_numeric($index)) {
       throw new \InvalidArgumentException('Unable to get a value with a non-numeric delta in a list.');
-    }
-    // Automatically create the first item for computed fields.
-    if ($index == 0 && !isset($this->list[0]) && $this->definition->isComputed()) {
-      $this->list[0] = $this->createItem(0);
     }
     return isset($this->list[$index]) ? $this->list[$index] : NULL;
   }

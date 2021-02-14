@@ -42,7 +42,14 @@ window.Drupal = { behaviors: {}, locale: {} };
 
 // JavaScript should be made compatible with libraries other than jQuery by
 // wrapping it in an anonymous closure.
-(function (Drupal, drupalSettings, drupalTranslations) {
+(function (
+  Drupal,
+  drupalSettings,
+  drupalTranslations,
+  console,
+  Proxy,
+  Reflect,
+) {
   /**
    * Helper to rethrow errors asynchronously.
    *
@@ -152,17 +159,16 @@ window.Drupal = { behaviors: {}, locale: {} };
     settings = settings || drupalSettings;
     const behaviors = Drupal.behaviors;
     // Execute all of them.
-    for (const i in behaviors) {
-      if (behaviors.hasOwnProperty(i) && typeof behaviors[i].attach === 'function') {
+    Object.keys(behaviors || {}).forEach((i) => {
+      if (typeof behaviors[i].attach === 'function') {
         // Don't stop the execution of behaviors in case of an error.
         try {
           behaviors[i].attach(context, settings);
-        }
-        catch (e) {
+        } catch (e) {
           Drupal.throwError(e);
         }
       }
-    }
+    });
   };
 
   /**
@@ -212,17 +218,16 @@ window.Drupal = { behaviors: {}, locale: {} };
     trigger = trigger || 'unload';
     const behaviors = Drupal.behaviors;
     // Execute all of them.
-    for (const i in behaviors) {
-      if (behaviors.hasOwnProperty(i) && typeof behaviors[i].detach === 'function') {
+    Object.keys(behaviors || {}).forEach((i) => {
+      if (typeof behaviors[i].detach === 'function') {
         // Don't stop the execution of behaviors in case of an error.
         try {
           behaviors[i].detach(context, settings, trigger);
-        }
-        catch (e) {
+        } catch (e) {
           Drupal.throwError(e);
         }
       }
-    }
+    });
   };
 
   /**
@@ -237,11 +242,13 @@ window.Drupal = { behaviors: {}, locale: {} };
    * @ingroup sanitization
    */
   Drupal.checkPlain = function (str) {
-    str = str.toString()
+    str = str
+      .toString()
       .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
     return str;
   };
 
@@ -269,26 +276,24 @@ window.Drupal = { behaviors: {}, locale: {} };
     // Keep args intact.
     const processedArgs = {};
     // Transform arguments before inserting them.
-    for (const key in args) {
-      if (args.hasOwnProperty(key)) {
-        switch (key.charAt(0)) {
-          // Escaped only.
-          case '@':
-            processedArgs[key] = Drupal.checkPlain(args[key]);
-            break;
+    Object.keys(args || {}).forEach((key) => {
+      switch (key.charAt(0)) {
+        // Escaped only.
+        case '@':
+          processedArgs[key] = Drupal.checkPlain(args[key]);
+          break;
 
-          // Pass-through.
-          case '!':
-            processedArgs[key] = args[key];
-            break;
+        // Pass-through.
+        case '!':
+          processedArgs[key] = args[key];
+          break;
 
-          // Escaped and placeholder.
-          default:
-            processedArgs[key] = Drupal.theme('placeholder', args[key]);
-            break;
-        }
+        // Escaped and placeholder.
+        default:
+          processedArgs[key] = Drupal.theme('placeholder', args[key]);
+          break;
       }
-    }
+    });
 
     return Drupal.stringReplace(str, processedArgs, null);
   };
@@ -316,12 +321,7 @@ window.Drupal = { behaviors: {}, locale: {} };
 
     // If the array of keys is not passed then collect the keys from the args.
     if (!Array.isArray(keys)) {
-      keys = [];
-      for (const k in args) {
-        if (args.hasOwnProperty(k)) {
-          keys.push(k);
-        }
-      }
+      keys = Object.keys(args || {});
 
       // Order the keys by the character length. The shortest one is the first.
       keys.sort((a, b) => a.length - b.length);
@@ -370,7 +370,12 @@ window.Drupal = { behaviors: {}, locale: {} };
     options.context = options.context || '';
 
     // Fetch the localized version of the string.
-    if (typeof drupalTranslations !== 'undefined' && drupalTranslations.strings && drupalTranslations.strings[options.context] && drupalTranslations.strings[options.context][str]) {
+    if (
+      typeof drupalTranslations !== 'undefined' &&
+      drupalTranslations.strings &&
+      drupalTranslations.strings[options.context] &&
+      drupalTranslations.strings[options.context][str]
+    ) {
       str = drupalTranslations.strings[options.context][str];
     }
 
@@ -413,8 +418,7 @@ window.Drupal = { behaviors: {}, locale: {} };
     // strings may throw an exception.
     try {
       url = decodeURIComponent(url);
-    }
-    catch (e) {
+    } catch (e) {
       // Empty.
     }
 
@@ -440,26 +444,26 @@ window.Drupal = { behaviors: {}, locale: {} };
     // Always use browser-derived absolute URLs in the comparison, to avoid
     // attempts to break out of the base path using directory traversal.
     let absoluteUrl = Drupal.url.toAbsolute(url);
-    let protocol = location.protocol;
+    let { protocol } = window.location;
 
     // Consider URLs that match this site's base URL but use HTTPS instead of HTTP
     // as local as well.
     if (protocol === 'http:' && absoluteUrl.indexOf('https:') === 0) {
       protocol = 'https:';
     }
-    let baseUrl = `${protocol}//${location.host}${drupalSettings.path.baseUrl.slice(0, -1)}`;
+    let baseUrl = `${protocol}//${
+      window.location.host
+    }${drupalSettings.path.baseUrl.slice(0, -1)}`;
 
     // Decoding non-UTF-8 strings may throw an exception.
     try {
       absoluteUrl = decodeURIComponent(absoluteUrl);
-    }
-    catch (e) {
+    } catch (e) {
       // Empty.
     }
     try {
       baseUrl = decodeURIComponent(baseUrl);
-    }
-    catch (e) {
+    } catch (e) {
       // Empty.
     }
 
@@ -506,14 +510,23 @@ window.Drupal = { behaviors: {}, locale: {} };
     args['@count'] = count;
 
     const pluralDelimiter = drupalSettings.pluralDelimiter;
-    const translations = Drupal.t(singular + pluralDelimiter + plural, args, options).split(pluralDelimiter);
+    const translations = Drupal.t(
+      singular + pluralDelimiter + plural,
+      args,
+      options,
+    ).split(pluralDelimiter);
     let index = 0;
 
     // Determine the index of the plural form.
-    if (typeof drupalTranslations !== 'undefined' && drupalTranslations.pluralFormula) {
-      index = count in drupalTranslations.pluralFormula ? drupalTranslations.pluralFormula[count] : drupalTranslations.pluralFormula.default;
-    }
-    else if (args['@count'] !== 1) {
+    if (
+      typeof drupalTranslations !== 'undefined' &&
+      drupalTranslations.pluralFormula
+    ) {
+      index =
+        count in drupalTranslations.pluralFormula
+          ? drupalTranslations.pluralFormula[count]
+          : drupalTranslations.pluralFormula.default;
+    } else if (args['@count'] !== 1) {
       index = 1;
     }
 
@@ -533,6 +546,61 @@ window.Drupal = { behaviors: {}, locale: {} };
    */
   Drupal.encodePath = function (item) {
     return window.encodeURIComponent(item).replace(/%2F/g, '/');
+  };
+
+  /**
+   * Triggers deprecation error.
+   *
+   * Deprecation errors are only triggered if deprecation errors haven't
+   * been suppressed.
+   *
+   * @param {Object} deprecation
+   *   The deprecation options.
+   * @param {string} deprecation.message
+   *   The deprecation message.
+   *
+   * @see https://www.drupal.org/core/deprecation#javascript
+   */
+  Drupal.deprecationError = ({ message }) => {
+    if (
+      drupalSettings.suppressDeprecationErrors === false &&
+      typeof console !== 'undefined' &&
+      console.warn
+    ) {
+      console.warn(`[Deprecation] ${message}`);
+    }
+  };
+
+  /**
+   * Triggers deprecation error when object property is being used.
+   *
+   * @param {Object} deprecation
+   *   The deprecation options.
+   * @param {Object} deprecation.target
+   *   The targeted object.
+   * @param {string} deprecation.deprecatedProperty
+   *   A key of the deprecated property.
+   * @param {string} deprecation.message
+   *   The deprecation message.
+   * @returns {Object}
+   *
+   * @see https://www.drupal.org/core/deprecation#javascript
+   */
+  Drupal.deprecatedProperty = ({ target, deprecatedProperty, message }) => {
+    // Proxy and Reflect are not supported by all browsers. Unsupported browsers
+    // are ignored since this is a development feature.
+    if (!Proxy || !Reflect) {
+      return target;
+    }
+
+    return new Proxy(target, {
+      get: (target, key, ...rest) => {
+        if (key === deprecatedProperty) {
+          Drupal.deprecationError({ message });
+        }
+        return Reflect.get(target, key, ...rest);
+      },
+    });
   };
 
   /**
@@ -559,10 +627,9 @@ window.Drupal = { behaviors: {}, locale: {} };
    *   Any data the theme function returns. This could be a plain HTML string,
    *   but also a complex object.
    */
-  Drupal.theme = function (func) {
-    const args = Array.prototype.slice.apply(arguments, [1]);
+  Drupal.theme = function (func, ...args) {
     if (func in Drupal.theme) {
-      return Drupal.theme[func].apply(this, args);
+      return Drupal.theme[func](...args);
     }
   };
 
@@ -578,4 +645,11 @@ window.Drupal = { behaviors: {}, locale: {} };
   Drupal.theme.placeholder = function (str) {
     return `<em class="placeholder">${Drupal.checkPlain(str)}</em>`;
   };
-}(Drupal, window.drupalSettings, window.drupalTranslations));
+})(
+  Drupal,
+  window.drupalSettings,
+  window.drupalTranslations,
+  window.console,
+  window.Proxy,
+  window.Reflect,
+);

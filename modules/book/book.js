@@ -14,7 +14,9 @@
 
         if (val === '0') {
           return Drupal.t('Not in book');
-        } else if (val === 'new') {
+        }
+
+        if (val === 'new') {
           return Drupal.t('New book');
         }
 

@@ -7,11 +7,14 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\language\Plugin\LanguageNegotiation\LanguageNegotiationUrl;
 
 /**
  * Configure the URL language negotiation method for this site.
+ *
+ * @internal
  */
 class NegotiationUrlForm extends ConfigFormBase {
 
@@ -149,7 +152,7 @@ class NegotiationUrlForm extends ConfigFormBase {
           // Throw a form error if the prefix is blank for a non-default language,
           // although it is required for selected negotiation type.
           $form_state->setErrorByName("prefix][$langcode", $this->t('The prefix may only be left blank for the <a href=":url">selected detection fallback language.</a>', [
-            ':url' => $this->getUrlGenerator()->generate('language.negotiation_selected'),
+            ':url' => Url::fromRoute('language.negotiation_selected')->toString(),
           ]));
         }
       }

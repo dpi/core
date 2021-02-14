@@ -3,7 +3,6 @@ type: theme
 description: A default base theme using Drupal 8.0.0's core markup and CSS.
 package: Core
 version: VERSION
-core: 8.x
 base theme: false
 hidden: true
 
@@ -45,6 +44,13 @@ libraries-override:
       theme:
         css/content_translation.admin.css: css/content_translation/content_translation.admin.css
 
+  content_moderation/content_moderation:
+    css:
+      component:
+        css/content_moderation.module.css: css/content_moderation/content_moderation.module.css
+      theme:
+        css/content_moderation.theme.css: css/content_moderation/content_moderation.theme.css
+
   contextual/drupal.contextual-links:
     css:
       component:
@@ -57,6 +63,23 @@ libraries-override:
       component:
         css/contextual.toolbar.css: css/contextual/contextual.toolbar.css
 
+  core/drupal.dialog.off_canvas:
+    css:
+      base:
+        misc/dialog/off-canvas.reset.css: css/core/dialog/off-canvas.reset.css
+        misc/dialog/off-canvas.base.css: css/core/dialog/off-canvas.base.css
+        misc/dialog/off-canvas.css: css/core/dialog/off-canvas.css
+        misc/dialog/off-canvas.theme.css: css/core/dialog/off-canvas.theme.css
+      component:
+        misc/dialog/off-canvas.motion.css: css/core/dialog/off-canvas.motion.css
+        misc/dialog/off-canvas.button.css: css/core/dialog/off-canvas.button.css
+        misc/dialog/off-canvas.form.css: css/core/dialog/off-canvas.form.css
+        misc/dialog/off-canvas.table.css: css/core/dialog/off-canvas.table.css
+        misc/dialog/off-canvas.details.css: css/core/dialog/off-canvas.details.css
+        misc/dialog/off-canvas.tabledrag.css: css/core/dialog/off-canvas.tabledrag.css
+        misc/dialog/off-canvas.dropbutton.css: css/core/dialog/off-canvas.dropbutton.css
+        misc/dialog/off-canvas.layout.css: css/core/dialog/off-canvas.layout.css
+
   core/drupal.dropbutton:
     css:
       component:
@@ -65,6 +88,9 @@ libraries-override:
     css:
       component:
         misc/vertical-tabs.css: css/core/vertical-tabs.css
+
+  # Load version 3.0.3 of normalize.css for backwards compatibility.
+  core/normalize: stable/normalize
 
   dblog/drupal.dblog:
     css:
@@ -110,15 +136,39 @@ libraries-override:
       theme:
         css/language.admin.css: css/language/language.admin.css
 
+  layout_builder/drupal.layout_builder:
+    css:
+      theme:
+        css/layout-builder.css: css/layout_builder/layout-builder.css
+
   locale/drupal.locale.admin:
     css:
       component:
         css/locale.admin.css: css/locale/locale.admin.css
 
+  media/filter.caption:
+    css:
+      component:
+        css/filter.caption.css: css/media/filter.caption.css
+
+  media/oembed.formatter:
+    css:
+      component:
+        css/oembed.formatter.css: css/media/oembed.formatter.css
+  media/oembed.frame:
+    css:
+      component:
+        css/oembed.frame.css: css/media/oembed.frame.css
+
   menu_ui/drupal.menu_ui.adminforms:
     css:
       theme:
         css/menu_ui.admin.css: css/menu_ui/menu_ui.admin.css
+
+  migrate_drupal_ui/base:
+    css:
+      component:
+        css/components/upgrade-analysis-report-tables.css: css/migrate_drupal_ui/components/upgrade-analysis-report-tables.css
 
   node/drupal.node:
     css:
@@ -145,16 +195,20 @@ libraries-override:
         css/quickedit.theme.css: css/quickedit/quickedit.theme.css
         css/quickedit.icons.theme.css: css/quickedit/quickedit.icons.theme.css
 
+  settings_tray/drupal.settings_tray:
+    css:
+      component:
+        css/settings_tray.module.css: css/settings_tray/settings_tray.module.css
+        css/settings_tray.motion.css: css/settings_tray/settings_tray.motion.css
+        css/settings_tray.toolbar.css: css/settings_tray/settings_tray.toolbar.css
+      theme:
+        css/settings_tray.theme.css: css/settings_tray/settings_tray.theme.css
+
   shortcut/drupal.shortcut:
     css:
       theme:
         css/shortcut.theme.css: css/shortcut/shortcut.theme.css
         css/shortcut.icons.theme.css: css/shortcut/shortcut.icons.theme.css
-
-  simpletest/drupal.simpletest:
-    css:
-      component:
-        css/simpletest.module.css: css/simpletest/simpletest.module.css
 
   system/base:
     css:
@@ -246,3 +300,9 @@ libraries-override:
       theme:
         css/views_ui.admin.theme.css: css/views_ui/views_ui.admin.theme.css
         css/views_ui.contextual.css: css/views_ui/views_ui.contextual.css
+
+libraries-extend:
+  core/drupal.ajax:
+    - stable/drupal.ajax
+  user/drupal.user:
+    - stable/drupal.user

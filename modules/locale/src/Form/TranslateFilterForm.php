@@ -6,6 +6,8 @@ use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Provides a filtered translation edit form.
+ *
+ * @internal
  */
 class TranslateFilterForm extends TranslateFormBase {
 
@@ -83,7 +85,7 @@ class TranslateFilterForm extends TranslateFormBase {
     $filters = $this->translateFilters();
     foreach ($filters as $name => $filter) {
       if ($form_state->hasValue($name)) {
-        $_SESSION['locale_translate_filter'][$name] = $form_state->getValue($name);
+        $_SESSION['locale_translate_filter'][$name] = trim($form_state->getValue($name));
       }
     }
     $form_state->setRedirect('locale.translate_page');

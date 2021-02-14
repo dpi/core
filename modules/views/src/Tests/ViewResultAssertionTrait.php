@@ -2,6 +2,7 @@
 
 namespace Drupal\views\Tests;
 
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\views\Plugin\views\field\EntityField;
 
 /**
@@ -77,7 +78,7 @@ trait ViewResultAssertionTrait {
    *   (optional) The message to display with the assertion.
    *
    * @return bool
-   *   TRUE if the assertion succeeded, or FALSE otherwise.
+   *   TRUE if the assertion succeeded.
    */
   protected function assertIdenticalResultsetHelper($view, $expected_result, $column_map, $assert_method, $message = NULL) {
     // Convert $view->result to an array of arrays.
@@ -88,7 +89,6 @@ trait ViewResultAssertionTrait {
         if (property_exists($value, $view_column)) {
           $row[$expected_column] = (string) $value->$view_column;
         }
-        // The comparison will be done on the string representation of the value.
         // For entity fields we don't have the raw value. Let's try to fetch it
         // using the entity itself.
         elseif (empty($value->$view_column) && isset($view->field[$expected_column]) && ($field = $view->field[$expected_column]) && $field instanceof EntityField) {
@@ -96,7 +96,10 @@ trait ViewResultAssertionTrait {
           if (count(explode(':', $view_column)) == 2) {
             $column = explode(':', $view_column)[1];
           }
-          $row[$expected_column] = $field->getValue($value, $column);
+          // The comparison will be done on the string representation of the
+          // value.
+          $field_value = $field->getValue($value, $column);
+          $row[$expected_column] = is_array($field_value) ? array_map('strval', $field_value) : (string) $field_value;
         }
       }
       $result[$key] = $row;
@@ -123,12 +126,6 @@ trait ViewResultAssertionTrait {
       $expected_result[$key] = $row;
     }
 
-    $this->verbose('<pre style="white-space: pre-wrap;">'
-      . "\n\nQuery:\n" . $view->build_info['query']
-      . "\n\nQuery arguments:\n" . var_export($view->build_info['query']->getArguments(), TRUE)
-      . "\n\nActual result:\n" . var_export($result, TRUE)
-      . "\n\nExpected result:\n" . var_export($expected_result, TRUE));
-
     // Reset the numbering of the arrays.
     $result = array_values($result);
     $expected_result = array_values($expected_result);
@@ -136,12 +133,22 @@ trait ViewResultAssertionTrait {
     // Do the actual comparison.
     if (!isset($message)) {
       $not = (strpos($assert_method, 'Not') ? 'not' : '');
-      $message = format_string("Actual result <pre>\n@actual\n</pre> is $not identical to expected <pre>\n@expected\n</pre>", [
+      $message = new FormattableMarkup("Actual result <pre>\n@actual\n</pre> is $not identical to expected <pre>\n@expected\n</pre>", [
         '@actual' => var_export($result, TRUE),
         '@expected' => var_export($expected_result, TRUE),
       ]);
     }
-    return $this->$assert_method($result, $expected_result, $message);
+
+    switch ($assert_method) {
+      case 'assertIdentical':
+        $this->assertSame($expected_result, $result, $message);
+        return TRUE;
+
+      case 'assertNotIdentical':
+        $this->assertNotSame($expected_result, $result, $message);
+        return TRUE;
+
+    }
   }
 
 }

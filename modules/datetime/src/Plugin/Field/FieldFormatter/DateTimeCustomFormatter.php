@@ -5,6 +5,7 @@ namespace Drupal\datetime\Plugin\Field\FieldFormatter;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 
 /**
  * Plugin implementation of the 'Custom' formatter for 'datetime' fields.
@@ -24,7 +25,7 @@ class DateTimeCustomFormatter extends DateTimeFormatterBase {
    */
   public static function defaultSettings() {
     return [
-      'date_format' => DATETIME_DATETIME_STORAGE_FORMAT,
+      'date_format' => DateTimeItemInterface::DATETIME_STORAGE_FORMAT,
     ] + parent::defaultSettings();
   }
 
@@ -54,7 +55,7 @@ class DateTimeCustomFormatter extends DateTimeFormatterBase {
    */
   protected function formatDate($date) {
     $format = $this->getSetting('date_format');
-    $timezone = $this->getSetting('timezone_override');
+    $timezone = $this->getSetting('timezone_override') ?: $date->getTimezone()->getName();
     return $this->dateFormatter->format($date->getTimestamp(), 'custom', $format, $timezone != '' ? $timezone : NULL);
   }
 
@@ -67,7 +68,7 @@ class DateTimeCustomFormatter extends DateTimeFormatterBase {
     $form['date_format'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Date/time format'),
-      '#description' => $this->t('See <a href="http://php.net/manual/function.date.php" target="_blank">the documentation for PHP date formats</a>.'),
+      '#description' => $this->t('See <a href="https://www.php.net/manual/datetime.format.php#refsect1-datetime.format-parameters" target="_blank">the documentation for PHP date formats</a>.'),
       '#default_value' => $this->getSetting('date_format'),
     ];
 

@@ -2,7 +2,6 @@
 
 namespace Drupal\KernelTests\Core\Field;
 
-use Drupal\Component\Utility\Unicode;
 use Drupal\entity_test\Entity\EntityTest;
 use Drupal\entity_test\Entity\EntityTestMulRev;
 use Drupal\field\Entity\FieldConfig;
@@ -24,16 +23,16 @@ class FieldItemTest extends EntityKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->container->get('state')->set('entity_test.field_test_item', TRUE);
-    $this->entityManager->clearCachedDefinitions();
+    $this->entityTypeManager->clearCachedDefinitions();
 
     $entity_type_id = 'entity_test_mulrev';
     $this->installEntitySchema($entity_type_id);
 
-    $this->fieldName = Unicode::strtolower($this->randomMachineName());
+    $this->fieldName = mb_strtolower($this->randomMachineName());
 
     /** @var \Drupal\field\Entity\FieldStorageConfig $field_storage */
     FieldStorageConfig::create([
@@ -50,8 +49,8 @@ class FieldItemTest extends EntityKernelTestBase {
       'label' => 'Test field',
     ])->save();
 
-    $this->entityManager->clearCachedDefinitions();
-    $definitions = $this->entityManager->getFieldStorageDefinitions($entity_type_id);
+    $this->entityTypeManager->clearCachedDefinitions();
+    $definitions = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions($entity_type_id);
     $this->assertTrue(!empty($definitions[$this->fieldName]));
   }
 
@@ -94,11 +93,11 @@ class FieldItemTest extends EntityKernelTestBase {
     $entity->setNewRevision(TRUE);
     $entity->save();
     $base_field_expected_value = str_replace($this->fieldName, 'field_test_item', $expected_value);
-    $result = $this->assertEqual($entity->field_test_item->value, $base_field_expected_value);
-    $result = $result && $this->assertEqual($entity->{$this->fieldName}->value, $expected_value);
+    $result = $this->assertEqual($base_field_expected_value, $entity->field_test_item->value);
+    $result = $result && $this->assertEqual($expected_value, $entity->{$this->fieldName}->value);
     $entity = $this->reloadEntity($entity);
-    $result = $result && $this->assertEqual($entity->field_test_item->value, $base_field_expected_value);
-    $result = $result && $this->assertEqual($entity->{$this->fieldName}->value, $expected_value);
+    $result = $result && $this->assertEqual($base_field_expected_value, $entity->field_test_item->value);
+    $result = $result && $this->assertEqual($expected_value, $entity->{$this->fieldName}->value);
     return $result;
   }
 

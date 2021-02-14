@@ -37,11 +37,17 @@ class TestHttpClientMiddleware {
             foreach ($headers as $header_name => $header_values) {
               if (preg_match('/^X-Drupal-Assertion-[0-9]+$/', $header_name, $matches)) {
                 foreach ($header_values as $header_value) {
-                  // Call \Drupal\simpletest\WebTestBase::error() with the parameters from
-                  // the header.
                   $parameters = unserialize(urldecode($header_value));
                   if (count($parameters) === 3) {
-                    throw new \Exception($parameters[1] . ': ' . $parameters[0] . "\n" . Error::formatBacktrace([$parameters[2]]));
+                    if ($parameters[1] === 'User deprecated function') {
+                      // Fire the same deprecation message to allow it to be
+                      // collected by
+                      // \Symfony\Bridge\PhpUnit\DeprecationErrorHandler::collectDeprecations().
+                      @trigger_error((string) $parameters[0], E_USER_DEPRECATED);
+                    }
+                    else {
+                      throw new \Exception($parameters[1] . ': ' . $parameters[0] . "\n" . Error::formatBacktrace([$parameters[2]]));
+                    }
                   }
                   else {
                     throw new \Exception('Error thrown with the wrong amount of parameters.');

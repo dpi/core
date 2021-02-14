@@ -4,6 +4,7 @@ namespace Drupal\Tests\Core\Update;
 
 use Drupal\Core\KeyValueStore\KeyValueStoreInterface;
 use Drupal\Core\Site\Settings;
+use Drupal\Core\Update\RemovedPostUpdateNameException;
 use Drupal\Core\Update\UpdateRegistry;
 use Drupal\Tests\UnitTestCase;
 use org\bovigo\vfs\vfsStream;
@@ -22,7 +23,7 @@ class UpdateRegistryTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $settings = [];
@@ -37,13 +38,19 @@ class UpdateRegistryTest extends UnitTestCase {
     $info_a = <<<'EOS'
 type: module
 name: Module A
-core: 8.x
+core_version_requirement: '*'
 EOS;
 
     $info_b = <<<'EOS'
 type: module
 name: Module B
-core: 8.x
+core_version_requirement: '*'
+EOS;
+
+    $info_c = <<<'EOS'
+type: module
+name: Module C
+core_version_requirement: '*'
 EOS;
 
     $module_a = <<<'EOS'
@@ -71,6 +78,43 @@ EOS;
 function module_b_post_update_a() {
 }
 
+/**
+ * Implements hook_removed_post_updates().
+ */
+function module_b_removed_post_updates() {
+  return [
+    'module_b_post_update_b' => '8.9.0',
+    'module_b_post_update_c' => '8.9.0',
+  ];
+}
+
+EOS;
+
+    $module_c = <<<'EOS'
+<?php
+
+/**
+ * Module C update A.
+ */
+function module_c_post_update_a() {
+}
+
+/**
+ * Module C update B.
+ */
+function module_c_post_update_b() {
+}
+
+/**
+ * Implements hook_removed_post_updates().
+ */
+function module_c_removed_post_updates() {
+  return [
+    'module_c_post_update_b' => '8.9.0',
+    'module_c_post_update_c' => '8.9.0',
+  ];
+}
+
 EOS;
     vfsStream::setup('drupal');
     vfsStream::create([
@@ -79,14 +123,18 @@ EOS;
           'modules' => [
             'module_a' => [
               'module_a.post_update.php' => $module_a,
-              'module_a.info.yml' => $info_a
+              'module_a.info.yml' => $info_a,
             ],
             'module_b' => [
               'module_b.post_update.php' => $module_b,
-              'module_b.info.yml' => $info_b
+              'module_b.info.yml' => $info_b,
             ],
-          ]
-        ]
+            'module_c' => [
+              'module_c.post_update.php' => $module_c,
+              'module_c.info.yml' => $info_c,
+            ],
+          ],
+        ],
       ],
     ]);
   }
@@ -103,13 +151,13 @@ EOS;
 
     $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
       'module_a',
-      'module_b'
+      'module_b',
     ], $key_value, FALSE);
 
     $this->assertEquals([
       'module_a_post_update_a',
       'module_a_post_update_b',
-      'module_b_post_update_a'
+      'module_b_post_update_a',
     ], $update_registry->getPendingUpdateFunctions());
   }
 
@@ -150,12 +198,12 @@ EOS;
 
     $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
       'module_a',
-      'module_b'
+      'module_b',
     ], $key_value, FALSE);
 
     $this->assertEquals(array_values([
       'module_a_post_update_b',
-      'module_b_post_update_a'
+      'module_b_post_update_a',
     ]), array_values($update_registry->getPendingUpdateFunctions()));
 
   }
@@ -172,7 +220,7 @@ EOS;
 
     $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
       'module_a',
-      'module_b'
+      'module_b',
     ], $key_value, FALSE);
 
     $expected = [];
@@ -197,7 +245,7 @@ EOS;
 
     $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
       'module_a',
-      'module_b'
+      'module_b',
     ], $key_value, FALSE);
 
     $expected = [];
@@ -210,6 +258,24 @@ EOS;
   }
 
   /**
+   * @covers ::getPendingUpdateInformation
+   */
+  public function testGetPendingUpdateInformationWithRemovedUpdates() {
+    $this->setupBasicModules();
+
+    $key_value = $this->prophesize(KeyValueStoreInterface::class);
+    $key_value->get('existing_updates', [])->willReturn(['module_a_post_update_a']);
+    $key_value = $key_value->reveal();
+
+    $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
+      'module_c',
+    ], $key_value, FALSE);
+
+    $this->expectException(RemovedPostUpdateNameException::class);
+    $update_registry->getPendingUpdateInformation();
+  }
+
+  /**
    * @covers ::getModuleUpdateFunctions
    */
   public function testGetModuleUpdateFunctions() {
@@ -218,7 +284,7 @@ EOS;
 
     $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
       'module_a',
-      'module_b'
+      'module_b',
     ], $key_value, FALSE);
 
     $this->assertEquals(['module_a_post_update_a', 'module_a_post_update_b'], array_values($update_registry->getModuleUpdateFunctions('module_a')));
@@ -241,7 +307,7 @@ EOS;
 
     $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
       'module_a',
-      'module_b'
+      'module_b',
     ], $key_value, FALSE);
     $update_registry->registerInvokedUpdates(['module_a_post_update_a']);
   }
@@ -262,7 +328,7 @@ EOS;
 
     $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
       'module_a',
-      'module_b'
+      'module_b',
     ], $key_value, FALSE);
     $update_registry->registerInvokedUpdates(['module_a_post_update_a', 'module_a_post_update_b']);
   }
@@ -283,7 +349,7 @@ EOS;
 
     $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
       'module_a',
-      'module_b'
+      'module_b',
     ], $key_value, FALSE);
     $update_registry->registerInvokedUpdates(['module_a_post_update_a']);
   }
@@ -304,7 +370,7 @@ EOS;
 
     $update_registry = new UpdateRegistry('vfs://drupal', 'sites/default', [
       'module_a',
-      'module_b'
+      'module_b',
     ], $key_value, FALSE);
 
     $update_registry->filterOutInvokedUpdatesByModule('module_a');

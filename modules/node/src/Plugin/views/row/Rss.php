@@ -2,7 +2,6 @@
 
 namespace Drupal\node\Plugin\views\row;
 
-use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\views\Plugin\views\row\RssPluginBase;
 
 /**
@@ -35,30 +34,6 @@ class Rss extends RssPluginBase {
   protected $entityTypeId = 'node';
 
   /**
-   * The node storage
-   *
-   * @var \Drupal\node\NodeStorageInterface
-   */
-  protected $nodeStorage;
-
-  /**
-   * Constructs the Rss object.
-   *
-   * @param array $configuration
-   *   A configuration array containing information about the plugin instance.
-   * @param string $plugin_id
-   *   The plugin_id for the plugin instance.
-   * @param mixed $plugin_definition
-   *   The plugin implementation definition.
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
-   *   The entity manager.
-   */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_manager);
-    $this->nodeStorage = $entity_manager->getStorage('node');
-  }
-
-  /**
    * {@inheritdoc}
    */
   public function buildOptionsForm_summary_options() {
@@ -79,7 +54,7 @@ class Rss extends RssPluginBase {
       $nids[] = $row->{$this->field_alias};
     }
     if (!empty($nids)) {
-      $this->nodes = $this->nodeStorage->loadMultiple($nids);
+      $this->nodes = $this->entityTypeManager->getStorage('node')->loadMultiple($nids);
     }
   }
 
@@ -103,7 +78,7 @@ class Rss extends RssPluginBase {
       return;
     }
 
-    $node->link = $node->url('canonical', ['absolute' => TRUE]);
+    $node->link = $node->toUrl('canonical', ['absolute' => TRUE])->toString();
     $node->rss_namespaces = [];
     $node->rss_elements = [
       [
@@ -126,7 +101,9 @@ class Rss extends RssPluginBase {
 
     $build_mode = $display_mode;
 
-    $build = node_view($node, $build_mode);
+    $build = \Drupal::entityTypeManager()
+      ->getViewBuilder('node')
+      ->view($node, $build_mode);
     unset($build['#theme']);
 
     if (!empty($node->rss_namespaces)) {

@@ -149,7 +149,7 @@ class GraphTest extends TestCase {
         $result_components[] = $graph[$vertex]['component'];
         unset($unassigned_vertices[$vertex]);
       }
-      $this->assertEquals(1, count(array_unique($result_components)), sprintf('Expected one unique component for vertices %s, got %s', $this->displayArray($component), $this->displayArray($result_components)));
+      $this->assertCount(1, array_unique($result_components), sprintf('Expected one unique component for vertices %s, got %s', $this->displayArray($component), $this->displayArray($result_components)));
     }
     $this->assertEquals([], $unassigned_vertices, sprintf('Vertices not assigned to a component: %s', $this->displayArray($unassigned_vertices, TRUE)));
   }
@@ -166,7 +166,7 @@ class GraphTest extends TestCase {
     foreach ($expected_orders as $order) {
       $previous_vertex = array_shift($order);
       foreach ($order as $vertex) {
-        $this->assertTrue($graph[$previous_vertex]['weight'] < $graph[$vertex]['weight'], sprintf('Weights of %s and %s are correct relative to each other', $previous_vertex, $vertex));
+        $this->assertLessThan($graph[$vertex]['weight'], $graph[$previous_vertex]['weight'], sprintf("Weight of vertex %s should be less than vertex %s.", $previous_vertex, $vertex));
       }
     }
   }

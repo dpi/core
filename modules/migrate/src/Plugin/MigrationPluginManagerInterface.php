@@ -40,4 +40,16 @@ interface MigrationPluginManagerInterface extends PluginManagerInterface {
    */
   public function createStubMigration(array $definition);
 
+  /**
+   * Create migrations given a tag.
+   *
+   * @param string $tag
+   *   A migration tag we want to filter by.
+   *
+   * @return array|\Drupal\migrate\Plugin\MigrationInterface[]
+   *   An array of migration objects with the given tag, or an empty array if no
+   *   migrations with that tag exist.
+   */
+  public function createInstancesByTag($tag);
+
 }

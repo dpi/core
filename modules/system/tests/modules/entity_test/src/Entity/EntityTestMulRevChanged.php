@@ -21,7 +21,6 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *     "route_provider" = {
  *       "html" = "Drupal\Core\Entity\Routing\DefaultHtmlRouteProvider",
  *     },
- *     "translation" = "Drupal\content_translation\ContentTranslationHandler",
  *     "views_data" = "Drupal\views\EntityViewsData"
  *   },
  *   base_table = "entity_test_mulrev_changed",
@@ -71,6 +70,7 @@ class EntityTestMulRevChanged extends EntityTestMulChanged {
     $fields['name']->setRevisionable(TRUE);
     $fields['user_id']->setRevisionable(TRUE);
     $fields['changed']->setRevisionable(TRUE);
+    $fields['not_translatable']->setRevisionable(TRUE);
 
     return $fields;
   }

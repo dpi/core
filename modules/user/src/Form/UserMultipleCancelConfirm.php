@@ -2,23 +2,26 @@
 
 namespace Drupal\user\Form;
 
-use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\ConfirmFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Url;
-use Drupal\user\PrivateTempStoreFactory;
+use Drupal\Core\TempStore\PrivateTempStoreFactory;
 use Drupal\user\UserStorageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Provides a confirmation form for cancelling multiple user accounts.
+ *
+ * @internal
  */
 class UserMultipleCancelConfirm extends ConfirmFormBase {
 
   /**
    * The temp store factory.
    *
-   * @var \Drupal\user\PrivateTempStoreFactory
+   * @var \Drupal\Core\TempStore\PrivateTempStoreFactory
    */
   protected $tempStoreFactory;
 
@@ -30,26 +33,26 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
   protected $userStorage;
 
   /**
-   * The entity manager.
+   * The entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityManager;
+  protected $entityTypeManager;
 
   /**
    * Constructs a new UserMultipleCancelConfirm.
    *
-   * @param \Drupal\user\PrivateTempStoreFactory $temp_store_factory
+   * @param \Drupal\Core\TempStore\PrivateTempStoreFactory $temp_store_factory
    *   The temp store factory.
    * @param \Drupal\user\UserStorageInterface $user_storage
    *   The user storage.
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
-   *   The entity manager.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
    */
-  public function __construct(PrivateTempStoreFactory $temp_store_factory, UserStorageInterface $user_storage, EntityManagerInterface $entity_manager) {
+  public function __construct(PrivateTempStoreFactory $temp_store_factory, UserStorageInterface $user_storage, EntityTypeManagerInterface $entity_type_manager) {
     $this->tempStoreFactory = $temp_store_factory;
     $this->userStorage = $user_storage;
-    $this->entityManager = $entity_manager;
+    $this->entityTypeManager = $entity_type_manager;
   }
 
   /**
@@ -57,9 +60,9 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('user.private_tempstore'),
-      $container->get('entity.manager')->getStorage('user'),
-      $container->get('entity.manager')
+      $container->get('tempstore.private'),
+      $container->get('entity_type.manager')->getStorage('user'),
+      $container->get('entity_type.manager')
     );
   }
 
@@ -130,7 +133,7 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
     if (isset($root)) {
       $redirect = (count($accounts) == 1);
       $message = $this->t('The user account %name cannot be canceled.', ['%name' => $root->label()]);
-      drupal_set_message($message, $redirect ? 'error' : 'warning');
+      $this->messenger()->addMessage($message, $redirect ? MessengerInterface::TYPE_ERROR : MessengerInterface::TYPE_WARNING);
       // If only user 1 was selected, redirect to the overview.
       if ($redirect) {
         return $this->redirect('entity.user.collection');
@@ -139,12 +142,27 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
 
     $form['operation'] = ['#type' => 'hidden', '#value' => 'cancel'];
 
+    // Display account cancellation method selection, if allowed.
+    $user = $this->currentUser();
+    $selectCancel = $user->hasPermission('administer users') || $user->hasPermission('select account cancellation method');
+
     $form['user_cancel_method'] = [
       '#type' => 'radios',
       '#title' => $this->t('When cancelling these accounts'),
+      '#access' => $selectCancel,
     ];
 
     $form['user_cancel_method'] += user_cancel_methods();
+
+    if (!$selectCancel) {
+      // Display an item to inform the user of the setting.
+      $default_method = $form['user_cancel_method']['#default_value'];
+      $form['user_cancel_method_show'] = [
+        '#type' => 'item',
+        '#title' => $this->t('When cancelling these accounts'),
+        '#plain_text' => $form['user_cancel_method']['#options'][$default_method],
+      ];
+    }
 
     // Allow to send the account cancellation confirmation mail.
     $form['user_cancel_confirm'] = [
@@ -189,7 +207,7 @@ class UserMultipleCancelConfirm extends ConfirmFormBase {
           // The $user global is not a complete user entity, so load the full
           // entity.
           $account = $this->userStorage->load($uid);
-          $admin_form = $this->entityManager->getFormObject('user', 'cancel');
+          $admin_form = $this->entityTypeManager->getFormObject('user', 'cancel');
           $admin_form->setEntity($account);
           // Calling this directly required to init form object with $account.
           $admin_form->buildForm($admin_form_mock, $admin_form_state);

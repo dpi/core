@@ -5,32 +5,8 @@
  * Interface translation summary, editing and deletion user interfaces.
  */
 
+use Drupal\Core\Link;
 use Drupal\Core\Url;
-use Symfony\Component\HttpFoundation\RedirectResponse;
-
-/**
- * Page callback: Checks for translation updates and displays the status.
- *
- * Manually checks the translation status without the use of cron.
- *
- * @see locale_menu()
- */
-function locale_translation_manual_status() {
-  module_load_include('compare.inc', 'locale');
-
-  // Check the translation status of all translatable projects in all languages.
-  // First we clear the cached list of projects. Although not strictly
-  // necessary, this is helpful in case the project list is out of sync.
-  locale_translation_flush_projects();
-  locale_translation_check_projects();
-
-  // Execute a batch if required. A batch is only used when remote files
-  // are checked.
-  if (batch_get()) {
-    return batch_process('admin/reports/translations');
-  }
-  return new RedirectResponse(\Drupal::url('locale.translate_status', [], ['absolute' => TRUE]));
-}
 
 /**
  * Prepares variables for translation status information templates.
@@ -72,5 +48,5 @@ function template_preprocess_locale_translation_last_check(array &$variables) {
   $last = $variables['last'];
   $variables['last_checked'] = ($last != NULL);
   $variables['time'] = \Drupal::service('date.formatter')->formatTimeDiffSince($last);
-  $variables['link'] = \Drupal::l(t('Check manually'), new Url('locale.check_translation', [], ['query' => \Drupal::destination()->getAsArray()]));
+  $variables['link'] = Link::fromTextAndUrl(t('Check manually'), Url::fromRoute('locale.check_translation', [], ['query' => \Drupal::destination()->getAsArray()]))->toString();
 }

@@ -4,8 +4,7 @@ namespace Drupal\migrate_drupal\Plugin\migrate\source;
 
 use Drupal\Component\Plugin\DependentPluginInterface;
 use Drupal\Core\Entity\DependencyTrait;
-use Drupal\Core\Entity\EntityManagerInterface;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\State\StateInterface;
 use Drupal\migrate\Plugin\MigrationInterface;
 use Drupal\migrate\Exception\RequirementsException;
@@ -13,12 +12,21 @@ use Drupal\migrate\Plugin\migrate\source\SqlBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * A base source class for Drupal migrate sources.
+ * A base class for source plugins using a Drupal database as a source.
  *
- * Mainly to let children retrieve information from the origin system in an
- * easier way.
+ * Provides general purpose helper methods that are commonly needed
+ * when writing source plugins that use a Drupal database as a source, for
+ * example:
+ * - Check if the given module exists in the source database.
+ * - Read Drupal configuration variables from the source database.
+ *
+ * For a full list, refer to the methods of this class.
+ *
+ * For available configuration keys, refer to the parent classes:
+ * @see \Drupal\migrate\Plugin\migrate\source\SqlBase
+ * @see \Drupal\migrate\Plugin\migrate\source\SourcePluginBase
  */
-abstract class DrupalSqlBase extends SqlBase implements ContainerFactoryPluginInterface, DependentPluginInterface {
+abstract class DrupalSqlBase extends SqlBase implements DependentPluginInterface {
 
   use DependencyTrait;
 
@@ -37,22 +45,22 @@ abstract class DrupalSqlBase extends SqlBase implements ContainerFactoryPluginIn
   protected $requirements = TRUE;
 
   /**
-   * The entity manager.
+   * The entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityManager;
+  protected $entityTypeManager;
 
   /**
    * {@inheritdoc}
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, MigrationInterface $migration, StateInterface $state, EntityManagerInterface $entity_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, MigrationInterface $migration, StateInterface $state, EntityTypeManagerInterface $entity_type_manager) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $migration, $state);
-    $this->entityManager = $entity_manager;
+    $this->entityTypeManager = $entity_type_manager;
   }
 
   /**
-   * Retrieves all system data information from origin system.
+   * Retrieves all system data information from the source Drupal database.
    *
    * @return array
    *   List of system table information keyed by type and name.
@@ -85,7 +93,7 @@ abstract class DrupalSqlBase extends SqlBase implements ContainerFactoryPluginIn
       $plugin_definition,
       $migration,
       $container->get('state'),
-      $container->get('entity.manager')
+      $container->get('entity_type.manager')
     );
   }
 
@@ -93,11 +101,16 @@ abstract class DrupalSqlBase extends SqlBase implements ContainerFactoryPluginIn
    * {@inheritdoc}
    */
   public function checkRequirements() {
+    parent::checkRequirements();
     if ($this->pluginDefinition['requirements_met'] === TRUE) {
       if (isset($this->pluginDefinition['source_module'])) {
         if ($this->moduleExists($this->pluginDefinition['source_module'])) {
-          if (isset($this->pluginDefinition['minimum_schema_version']) && !$this->getModuleSchemaVersion($this->pluginDefinition['source_module']) < $this->pluginDefinition['minimum_schema_version']) {
-            throw new RequirementsException('Required minimum schema version ' . $this->pluginDefinition['minimum_schema_version'], ['minimum_schema_version' => $this->pluginDefinition['minimum_schema_version']]);
+          if (isset($this->pluginDefinition['minimum_version'])) {
+            $minimum_version = $this->pluginDefinition['minimum_version'];
+            $installed_version = $this->getModuleSchemaVersion($this->pluginDefinition['source_module']);
+            if ($minimum_version > $installed_version) {
+              throw new RequirementsException('Required minimum version ' . $this->pluginDefinition['minimum_version'], ['minimum_version' => $this->pluginDefinition['minimum_version']]);
+            }
           }
         }
         else {
@@ -105,11 +118,10 @@ abstract class DrupalSqlBase extends SqlBase implements ContainerFactoryPluginIn
         }
       }
     }
-    parent::checkRequirements();
   }
 
   /**
-   * Get a module schema_version value in the source installation.
+   * Retrieves a module schema_version from the source Drupal database.
    *
    * @param string $module
    *   Name of module.
@@ -124,7 +136,7 @@ abstract class DrupalSqlBase extends SqlBase implements ContainerFactoryPluginIn
   }
 
   /**
-   * Check to see if a given module is enabled in the source installation.
+   * Checks if a given module is enabled in the source Drupal database.
    *
    * @param string $module
    *   Name of module to check.
@@ -138,12 +150,13 @@ abstract class DrupalSqlBase extends SqlBase implements ContainerFactoryPluginIn
   }
 
   /**
-   * Read a variable from a Drupal database.
+   * Reads a variable from a source Drupal database.
    *
    * @param $name
    *   Name of the variable.
    * @param $default
    *   The default value.
+   *
    * @return mixed
    */
   protected function variableGet($name, $default) {
@@ -167,7 +180,7 @@ abstract class DrupalSqlBase extends SqlBase implements ContainerFactoryPluginIn
   public function calculateDependencies() {
     // Generic handling for Drupal source plugin constants.
     if (isset($this->configuration['constants']['entity_type'])) {
-      $this->addDependency('module', $this->entityManager->getDefinition($this->configuration['constants']['entity_type'])->getProvider());
+      $this->addDependency('module', $this->entityTypeManager->getDefinition($this->configuration['constants']['entity_type'])->getProvider());
     }
     if (isset($this->configuration['constants']['module'])) {
       $this->addDependency('module', $this->configuration['constants']['module']);

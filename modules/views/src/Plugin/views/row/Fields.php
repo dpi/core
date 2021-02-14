@@ -5,7 +5,7 @@ namespace Drupal\views\Plugin\views\row;
 use Drupal\Core\Form\FormStateInterface;
 
 /**
- * The basic 'fields' row plugin
+ * The basic 'fields' row plugin.
  *
  * This displays fields one after another, giving options for inline
  * or not.
@@ -23,7 +23,7 @@ use Drupal\Core\Form\FormStateInterface;
 class Fields extends RowPluginBase {
 
   /**
-   * Does the row plugin support to add fields to it's output.
+   * Does the row plugin support to add fields to its output.
    *
    * @var bool
    */

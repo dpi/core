@@ -100,10 +100,6 @@ function file_requirements($phase) {
       $value = t('Not enabled');
       $description = t('Your server is capable of displaying file upload progress, but does not have the required libraries. It is recommended to install the <a href="http://pecl.php.net/package/uploadprogress">PECL uploadprogress library</a>.');
     }
-    elseif ($implementation == 'apc') {
-      $value = t('Enabled (<a href="http://php.net/manual/apcu.configuration.php#ini.apcu.rfc1867">APC RFC1867</a>)');
-      $description = t('Your server is capable of displaying file upload progress using APC RFC1867. Note that only one upload at a time is supported. It is recommended to use the <a href="http://pecl.php.net/package/uploadprogress">PECL uploadprogress library</a> if possible.');
-    }
     elseif ($implementation == 'uploadprogress') {
       $value = t('Enabled (<a href="http://pecl.php.net/package/uploadprogress">PECL uploadprogress</a>)');
     }
@@ -118,13 +114,8 @@ function file_requirements($phase) {
 }
 
 /**
- * Prevent unused files from being deleted.
+ * Implements hook_update_last_removed().
  */
-function file_update_8300() {
-  // Disable deletion of unused permanent files.
-  \Drupal::configFactory()->getEditable('file.settings')
-    ->set('make_unused_managed_files_temporary', FALSE)
-    ->save();
-
-  return t('Files that have no remaining usages are no longer deleted by default.');
+function file_update_last_removed() {
+  return 8700;
 }

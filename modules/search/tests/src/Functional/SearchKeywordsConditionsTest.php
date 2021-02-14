@@ -3,6 +3,7 @@
 namespace Drupal\Tests\search\Functional;
 
 use Drupal\Component\Utility\Html;
+use Drupal\Tests\BrowserTestBase;
 
 /**
  * Verify the search without keywords set and extra conditions.
@@ -13,14 +14,22 @@ use Drupal\Component\Utility\Html;
  *
  * @group search
  */
-class SearchKeywordsConditionsTest extends SearchTestBase {
+class SearchKeywordsConditionsTest extends BrowserTestBase {
 
   /**
-   * Modules to enable.
-   *
-   * @var array
+   * {@inheritdoc}
    */
-  public static $modules = ['comment', 'search_extra_type', 'test_page_test'];
+  protected static $modules = [
+    'comment',
+    'search',
+    'search_extra_type',
+    'test_page_test',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * A user with permission to search and post comments.
@@ -29,11 +38,16 @@ class SearchKeywordsConditionsTest extends SearchTestBase {
    */
   protected $searchingUser;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create searching user.
-    $this->searchingUser = $this->drupalCreateUser(['search content', 'access content', 'access comments', 'skip comment approval']);
+    $this->searchingUser = $this->drupalCreateUser([
+      'search content',
+      'access content',
+      'access comments',
+      'skip comment approval',
+    ]);
     // Log in with sufficient privileges.
     $this->drupalLogin($this->searchingUser);
   }

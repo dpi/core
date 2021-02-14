@@ -2,7 +2,6 @@
 
 namespace Drupal\Tests\comment\Functional;
 
-
 use Drupal\comment\Tests\CommentTestTrait;
 use Drupal\node\Entity\NodeType;
 use Drupal\Tests\BrowserTestBase;
@@ -22,6 +21,11 @@ class CommentStatusFieldAccessTest extends BrowserTestBase {
   public $profile = 'testing';
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * Comment admin.
    *
    * @var \Drupal\user\UserInterface
@@ -38,7 +42,7 @@ class CommentStatusFieldAccessTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'node',
     'comment',
     'user',
@@ -49,7 +53,7 @@ class CommentStatusFieldAccessTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $node_type = NodeType::create([
       'type' => 'article',

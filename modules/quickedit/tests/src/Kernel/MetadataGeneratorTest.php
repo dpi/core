@@ -18,7 +18,7 @@ class MetadataGeneratorTest extends QuickEditTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['quickedit_test'];
+  protected static $modules = ['quickedit_test'];
 
   /**
    * The manager for editor plugins.
@@ -30,7 +30,7 @@ class MetadataGeneratorTest extends QuickEditTestBase {
   /**
    * The metadata generator object to be tested.
    *
-   * @var \Drupal\quickedit\MetadataGeneratorInterface.php
+   * @var \Drupal\quickedit\MetadataGeneratorInterface
    */
   protected $metadataGenerator;
 
@@ -48,7 +48,7 @@ class MetadataGeneratorTest extends QuickEditTestBase {
    */
   protected $accessChecker;
 
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->editorManager = $this->container->get('plugin.manager.quickedit.editor');
@@ -169,10 +169,10 @@ class MetadataGeneratorTest extends QuickEditTestBase {
       'label' => 'Rich text field',
       'editor' => 'wysiwyg',
       'custom' => [
-        'format' => 'full_html'
+        'format' => 'full_html',
       ],
     ];
-    $this->assertEqual($expected, $metadata); // , 'The correct metadata (including custom metadata) is generated.');
+    $this->assertEqual($expected, $metadata, 'The correct metadata (including custom metadata) is generated.');
   }
 
 }

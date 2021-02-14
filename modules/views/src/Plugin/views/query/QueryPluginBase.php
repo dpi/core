@@ -136,7 +136,7 @@ abstract class QueryPluginBase extends PluginBase implements CacheableDependency
   }
 
   /**
-   * Set an OFFSET on the query, specifying a number of results to skip
+   * Set an OFFSET on the query, specifying a number of results to skip.
    */
   public function setOffset($offset) {
     $this->offset = $offset;
@@ -192,7 +192,7 @@ abstract class QueryPluginBase extends PluginBase implements CacheableDependency
 
   /**
    * Loads all entities contained in the passed-in $results.
-   *.
+   *
    * If the entity belongs to the base table, then it gets stored in
    * $result->_entity. Otherwise, it gets stored in
    * $result->_relationship_entities[$relationship_id];
@@ -206,22 +206,28 @@ abstract class QueryPluginBase extends PluginBase implements CacheableDependency
    *
    * @param string $field
    *   The query field that will be used in the expression.
+   * @param bool $string_date
+   *   For certain databases, date format functions vary depending on string or
+   *   numeric storage.
+   * @param bool $calculate_offset
+   *   If set to TRUE, the timezone offset will be included in the returned
+   *   field.
    *
    * @return string
    *   An expression representing a timestamp with time zone.
    */
-  public function getDateField($field) {
+  public function getDateField($field, $string_date = FALSE, $calculate_offset = TRUE) {
     return $field;
   }
 
   /**
-   * Set the database to the current user timezone,
+   * Set the database to the current user timezone.
    *
    * @return string
-   *   The current timezone as returned by drupal_get_user_timezone().
+   *   The current timezone as returned by date_default_timezone_get().
    */
   public function setupTimezone() {
-    return drupal_get_user_timezone();
+    return date_default_timezone_get();
   }
 
   /**
@@ -310,7 +316,7 @@ abstract class QueryPluginBase extends PluginBase implements CacheableDependency
 
     // Determine which of the tables are revision tables.
     foreach ($entity_tables as $table_alias => $table) {
-      $entity_type = \Drupal::entityManager()->getDefinition($table['entity_type']);
+      $entity_type = \Drupal::entityTypeManager()->getDefinition($table['entity_type']);
       if ($entity_type->getRevisionTable() == $table['base']) {
         $entity_tables[$table_alias]['revision'] = TRUE;
       }
@@ -333,7 +339,7 @@ abstract class QueryPluginBase extends PluginBase implements CacheableDependency
     $contexts = [];
     if (($views_data = Views::viewsData()->get($this->view->storage->get('base_table'))) && !empty($views_data['table']['entity type'])) {
       $entity_type_id = $views_data['table']['entity type'];
-      $entity_type = \Drupal::entityManager()->getDefinition($entity_type_id);
+      $entity_type = \Drupal::entityTypeManager()->getDefinition($entity_type_id);
       $contexts = $entity_type->getListCacheContexts();
     }
     return $contexts;
@@ -344,6 +350,36 @@ abstract class QueryPluginBase extends PluginBase implements CacheableDependency
    */
   public function getCacheTags() {
     return [];
+  }
+
+  /**
+   * Applies a timezone offset to the given field.
+   *
+   * @param string &$field
+   *   The date field, in string format.
+   * @param int $offset
+   *   The timezone offset to apply to the field.
+   */
+  public function setFieldTimezoneOffset(&$field, $offset) {
+    // No-op. Timezone offsets are implementation-specific and should implement
+    // this method as needed.
+  }
+
+  /**
+   * Get the timezone offset in seconds.
+   *
+   * @return int
+   *   The offset, in seconds, for the timezone being used.
+   */
+  public function getTimezoneOffset() {
+    $timezone = $this->setupTimezone();
+    $offset = 0;
+    if ($timezone) {
+      $dtz = new \DateTimeZone($timezone);
+      $dt = new \DateTime('now', $dtz);
+      $offset = $dtz->getOffset($dt);
+    }
+    return $offset;
   }
 
 }

@@ -27,8 +27,8 @@ class ContainerBuilder extends SymfonyContainerBuilder {
    * {@inheritdoc}
    */
   public function __construct(ParameterBagInterface $parameterBag = NULL) {
-    $this->setResourceTracking(FALSE);
     parent::__construct($parameterBag);
+    $this->setResourceTracking(FALSE);
   }
 
   /**
@@ -46,9 +46,12 @@ class ContainerBuilder extends SymfonyContainerBuilder {
   }
 
   /**
-   * {@inheritdoc}
+   * A 1to1 copy of parent::shareService.
+   *
+   * @todo https://www.drupal.org/project/drupal/issues/2937010 Since Symfony
+   *   3.4 this is not a 1to1 copy.
    */
-  protected function shareService(Definition $definition, $service, $id)
+  protected function shareService(Definition $definition, $service, $id, array &$inlineServices)
   {
     if ($definition->isShared()) {
       $this->services[$lowerId = strtolower($id)] = $service;
@@ -85,7 +88,38 @@ class ContainerBuilder extends SymfonyContainerBuilder {
     if (strtolower($id) !== $id) {
       throw new \InvalidArgumentException("Service ID names must be lowercase: $id");
     }
-    return parent::register($id, $class);
+    $definition = new Definition($class);
+    // As of Symfony 5.2 all services are private by default, but in Drupal
+    // services are still public by default.
+    $definition->setPublic(TRUE);
+    return $this->setDefinition($id, $definition);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setAlias($alias, $id) {
+    $alias = parent::setAlias($alias, $id);
+    // As of Symfony 3.4 all aliases are private by default.
+    $alias->setPublic(TRUE);
+    return $alias;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setDefinition($id, Definition $definition) {
+    $definition = parent::setDefinition($id, $definition);
+    // As of Symfony 3.4 all definitions are private by default.
+    // \Symfony\Component\DependencyInjection\Compiler\ResolvePrivatesPassOnly
+    // removes services marked as private from the container even if they are
+    // also marked as public. Drupal requires services that are public to
+    // remain in the container and not be removed.
+    if ($definition->isPublic() && $definition->isPrivate()) {
+      @trigger_error('Not marking service definitions as public is deprecated in drupal:9.2.0 and is required in drupal:10.0.0. Call $definition->setPublic(TRUE) before calling ::setDefinition(). See https://www.drupal.org/node/3194517', E_USER_DEPRECATED);
+      $definition->setPrivate(FALSE);
+    }
+    return $definition;
   }
 
   /**
@@ -100,8 +134,11 @@ class ContainerBuilder extends SymfonyContainerBuilder {
 
   /**
    * A 1to1 copy of parent::callMethod.
+   *
+   * @todo https://www.drupal.org/project/drupal/issues/2937010 Since Symfony
+   *   3.4 this is not a 1to1 copy.
    */
-  protected function callMethod($service, $call) {
+  protected function callMethod($service, $call, array &$inlineServices = array()) {
     $services = self::getServiceConditionals($call[1]);
 
     foreach ($services as $s) {

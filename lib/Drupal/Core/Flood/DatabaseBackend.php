@@ -2,7 +2,7 @@
 
 namespace Drupal\Core\Flood;
 
-use Drupal\Core\Database\SchemaObjectExistsException;
+use Drupal\Core\Database\DatabaseException;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Drupal\Core\Database\Connection;
 
@@ -67,7 +67,7 @@ class DatabaseBackend implements FloodInterface {
   }
 
   /**
-   * Inserts an event into the flood table
+   * Inserts an event into the flood table.
    *
    * @param string $name
    *   The name of an event.
@@ -159,7 +159,7 @@ class DatabaseBackend implements FloodInterface {
     // If another process has already created the table, attempting to create
     // it will throw an exception. In this case just catch the exception and do
     // nothing.
-    catch (SchemaObjectExistsException $e) {
+    catch (DatabaseException $e) {
       return TRUE;
     }
     return FALSE;
@@ -185,6 +185,8 @@ class DatabaseBackend implements FloodInterface {
 
   /**
    * Defines the schema for the flood table.
+   *
+   * @internal
    */
   public function schemaDefinition() {
     return [

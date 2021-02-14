@@ -2,13 +2,13 @@
 
 namespace Drupal\Core\Routing;
 
-use Symfony\Cmf\Component\Routing\PagedRouteProviderInterface;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
  * A Route Provider front-end for all Drupal-stored routes.
  */
-class RouteProviderLazyBuilder implements PreloadableRouteProviderInterface, PagedRouteProviderInterface {
+class RouteProviderLazyBuilder implements PreloadableRouteProviderInterface, EventSubscriberInterface {
 
   /**
    * The route provider service.
@@ -32,6 +32,18 @@ class RouteProviderLazyBuilder implements PreloadableRouteProviderInterface, Pag
   protected $rebuilt = FALSE;
 
   /**
+   * Flag to determine if router is currently being rebuilt.
+   *
+   * Used to prevent recursive router rebuilds during module installation.
+   * Recursive rebuilds can occur when route information is required by alter
+   * hooks that are triggered during a rebuild, for example,
+   * hook_menu_links_discovered_alter().
+   *
+   * @var bool
+   */
+  protected $rebuilding = FALSE;
+
+  /**
    * RouteProviderLazyBuilder constructor.
    *
    * @param \Drupal\Core\Routing\RouteProviderInterface $route_provider
@@ -51,9 +63,8 @@ class RouteProviderLazyBuilder implements PreloadableRouteProviderInterface, Pag
    *   The route provider service.
    */
   protected function getRouteProvider() {
-    if (!$this->rebuilt) {
+    if (!$this->rebuilt && !$this->rebuilding) {
       $this->routeBuilder->rebuild();
-      $this->rebuilt = TRUE;
     }
     return $this->routeProvider;
   }
@@ -109,16 +120,41 @@ class RouteProviderLazyBuilder implements PreloadableRouteProviderInterface, Pag
   }
 
   /**
-   * {@inheritdoc}
+   * Returns a chunk of routes.
+   *
+   * Should only be used in conjunction with an iterator.
+   *
+   * @param int $offset
+   *   The query offset.
+   * @param int $length
+   *   The number of records.
+   *
+   * @return \Symfony\Component\Routing\Route[]
+   *   Routes keyed by the route name.
+   *
+   * @deprecated in drupal:9.1.0 and is removed from drupal:10.0.0. No direct
+   *   replacement is provided.
+   *
+   * @see https://www.drupal.org/node/3151009
    */
   public function getRoutesPaged($offset, $length = NULL) {
+    @trigger_error(__METHOD__ . '() is deprecated in drupal:9.1.0 and is removed from drupal:10.0.0. No direct replacement is provided. See https://www.drupal.org/node/3151009', E_USER_DEPRECATED);
     return $this->getRouteProvider()->getRoutesPaged($offset, $length);
   }
 
   /**
-   * {@inheritdoc}
+   * Gets the total count of routes provided by the router.
+   *
+   * @return int
+   *   Number of routes.
+   *
+   * @deprecated in drupal:9.1.0 and is removed from drupal:10.0.0. No direct
+   *   replacement is provided.
+   *
+   * @see https://www.drupal.org/node/3151009
    */
   public function getRoutesCount() {
+    @trigger_error(__METHOD__ . '() is deprecated in drupal:9.1.0 and is removed from drupal:10.0.0. No direct replacement is provided. See https://www.drupal.org/node/3151009', E_USER_DEPRECATED);
     return $this->getRouteProvider()->getRoutesCount();
   }
 
@@ -130,6 +166,30 @@ class RouteProviderLazyBuilder implements PreloadableRouteProviderInterface, Pag
    */
   public function hasRebuilt() {
     return $this->rebuilt;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function getSubscribedEvents() {
+    $events[RoutingEvents::DYNAMIC][] = ['routerRebuilding', 3000];
+    $events[RoutingEvents::FINISHED][] = ['routerRebuildFinished', -3000];
+    return $events;
+  }
+
+  /**
+   * Sets the router rebuilding flag to TRUE.
+   */
+  public function routerRebuilding() {
+    $this->rebuilding = TRUE;
+  }
+
+  /**
+   * Sets the router rebuilding flag to FALSE.
+   */
+  public function routerRebuildFinished() {
+    $this->rebuilding = FALSE;
+    $this->rebuilt = TRUE;
   }
 
 }

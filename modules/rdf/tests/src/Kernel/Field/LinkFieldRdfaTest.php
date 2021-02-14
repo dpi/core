@@ -19,12 +19,12 @@ class LinkFieldRdfaTest extends FieldRdfaTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['link', 'text'];
+  protected static $modules = ['link', 'text'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->createTestField();
@@ -42,7 +42,7 @@ class LinkFieldRdfaTest extends FieldRdfaTestBase {
    */
   public function testAllFormattersExternal() {
     // Set up test values.
-    $this->testValue = 'http://test.me/foo/bar/neque/porro/quisquam/est/qui-dolorem?foo/bar/neque/porro/quisquam/est/qui-dolorem';
+    $this->testValue = 'http://test.me/foo/bar/neque/porro/quisquam/est/qui-dolorem?path=foo/bar/neque/porro/quisquam/est/qui-dolorem';
     $this->entity = EntityTest::create([]);
     $this->entity->{$this->fieldName}->uri = $this->testValue;
 

@@ -42,13 +42,4 @@ interface EntityTypeRepositoryInterface {
    */
   public function getEntityTypeFromClass($class_name);
 
-  /**
-   * Clear the static cache.
-   *
-   * @deprecated in Drupal 8.0.0, will be removed before Drupal 9.0.0.
-   *
-   * @todo Remove in https://www.drupal.org/node/2549143.
-   */
-  public function clearCachedDefinitions();
-
 }

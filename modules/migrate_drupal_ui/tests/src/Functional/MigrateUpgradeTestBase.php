@@ -5,16 +5,22 @@ namespace Drupal\Tests\migrate_drupal_ui\Functional;
 use Drupal\Core\Database\Database;
 use Drupal\migrate\Plugin\MigrateIdMapInterface;
 use Drupal\migrate_drupal\MigrationConfigurationTrait;
+use Drupal\user\Entity\User;
 use Drupal\Tests\BrowserTestBase;
+use Drupal\Tests\migrate_drupal\Traits\CreateTestContentEntitiesTrait;
 
 /**
  * Provides a base class for testing migration upgrades in the UI.
  */
 abstract class MigrateUpgradeTestBase extends BrowserTestBase {
+
   use MigrationConfigurationTrait;
+  use CreateTestContentEntitiesTrait;
 
   /**
    * Use the Standard profile to test help implementations of many core modules.
+   *
+   * @var string
    */
   protected $profile = 'standard';
 
@@ -26,21 +32,11 @@ abstract class MigrateUpgradeTestBase extends BrowserTestBase {
   protected $sourceDatabase;
 
   /**
-   * Modules to enable.
+   * The destination site major version.
    *
-   * @var array
+   * @var string
    */
-  public static $modules = [
-    'language',
-    'content_translation',
-    'migrate_drupal_ui',
-    'telephone',
-    'aggregator',
-    'book',
-    'forum',
-    'statistics',
-    'migration_provider_test',
-  ];
+  protected $destinationSiteVersion;
 
   /**
    * {@inheritdoc}
@@ -49,6 +45,9 @@ abstract class MigrateUpgradeTestBase extends BrowserTestBase {
     parent::setUp();
     $this->createMigrationConnection();
     $this->sourceDatabase = Database::getConnection('default', 'migrate_drupal_ui');
+
+    // Get the current major version.
+    [$this->destinationSiteVersion] = explode('.', \Drupal::VERSION, 2);
 
     // Log in as user 1. Migrations in the UI can only be performed as user 1.
     $this->drupalLogin($this->rootUser);
@@ -109,86 +108,138 @@ abstract class MigrateUpgradeTestBase extends BrowserTestBase {
   }
 
   /**
-   * Executes all steps of migrations upgrade.
+   * Gets the source base path for the concrete test.
+   *
+   * @return string
+   *   The source base path.
    */
-  public function testMigrateUpgrade() {
-    $connection_options = $this->sourceDatabase->getConnectionOptions();
-    $this->drupalGet('/upgrade');
-    $this->assertSession()->responseContains('Upgrade a site by importing its database and files into a clean and empty new install of Drupal 8.');
+  abstract protected function getSourceBasePath();
 
-    $this->drupalPostForm(NULL, [], t('Continue'));
-    $this->assertText('Provide credentials for the database of the Drupal site you want to upgrade.');
-    $this->assertFieldByName('mysql[host]');
+  /**
+   * Gets the expected number of entities per entity type after migration.
+   *
+   * @return int[]
+   *   An array of expected counts keyed by entity type ID.
+   */
+  abstract protected function getEntityCounts();
 
-    $driver = $connection_options['driver'];
-    $connection_options['prefix'] = $connection_options['prefix']['default'];
+  /**
+   * Gets the available upgrade paths.
+   *
+   * @return string[]
+   *   An array of available upgrade paths.
+   */
+  abstract protected function getAvailablePaths();
 
-    // Use the driver connection form to get the correct options out of the
-    // database settings. This supports all of the databases we test against.
-    $drivers = drupal_get_database_types();
-    $form = $drivers[$driver]->getFormOptions($connection_options);
-    $connection_options = array_intersect_key($connection_options, $form + $form['advanced_options']);
-    $version = $this->getLegacyDrupalVersion($this->sourceDatabase);
-    $edit = [
-      $driver => $connection_options,
-      'source_base_path' => $this->getSourceBasePath(),
-      'source_private_file_path' => $this->getSourceBasePath(),
-      'version' => $version,
-    ];
-    if (count($drivers) !== 1) {
-      $edit['driver'] = $driver;
+  /**
+   * Gets the missing upgrade paths.
+   *
+   * @return string[]
+   *   An array of missing upgrade paths.
+   */
+  abstract protected function getMissingPaths();
+
+  /**
+   * Gets expected number of entities per entity after incremental migration.
+   *
+   * @return int[]
+   *   An array of expected counts keyed by entity type ID.
+   */
+  abstract protected function getEntityCountsIncremental();
+
+  /**
+   * Helper method that asserts text on the ID conflict form.
+   *
+   * @param array $entity_types
+   *   An array of entity types.
+   *
+   * @throws \Behat\Mink\Exception\ResponseTextException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   */
+  protected function assertIdConflictForm(array $entity_types) {
+    $session = $this->assertSession();
+    /** @var \Drupal\Core\Entity\EntityTypeManager $entity_type_manager */
+    $entity_type_manager = \Drupal::service('entity_type.manager');
+
+    $session->pageTextContains('WARNING: Content may be overwritten on your new site.');
+    $session->pageTextContains('There is conflicting content of these types:');
+    $this->assertNotEmpty($entity_types);
+    foreach ($entity_types as $entity_type) {
+      $label = $entity_type_manager->getDefinition($entity_type)->getPluralLabel();
+      $session->pageTextContains($label);
     }
-    $edits = $this->translatePostValues($edit);
+    $session->pageTextContainsOnce('content items');
+    $session->pageTextContains('There is translated content of these types:');
+  }
 
-    // Ensure submitting the form with invalid database credentials gives us a
-    // nice warning.
-    $this->drupalPostForm(NULL, [$driver . '[database]' => 'wrong'] + $edits, t('Review upgrade'));
-    $this->assertText('Resolve the issue below to continue the upgrade.');
+  /**
+   * Helper to assert content on the Review form.
+   *
+   * @param array|null $available_paths
+   *   An array of modules that will be upgraded. Defaults to
+   *   $this->getAvailablePaths().
+   * @param array|null $missing_paths
+   *   An array of modules that will not be upgraded. Defaults to
+   *   $this->getMissingPaths().
+   *
+   * @throws \Behat\Mink\Exception\ExpectationException
+   */
+  protected function assertReviewForm(array $available_paths = NULL, array $missing_paths = NULL) {
+    $session = $this->assertSession();
+    $session->pageTextContains('What will be upgraded?');
 
-    $this->drupalPostForm(NULL, $edits, t('Review upgrade'));
-    $this->assertResponse(200);
-    $this->assertText('Are you sure?');
-    // Ensure we get errors about missing modules.
-    $this->assertSession()->pageTextContains(t('Source module not found for migration_provider_no_annotation.'));
-    $this->assertSession()->pageTextContains(t('Source module not found for migration_provider_test.'));
-    $this->assertSession()->pageTextContains(t('Destination module not found for migration_provider_test'));
+    $available_paths = $available_paths ?? $this->getAvailablePaths();
+    $missing_paths = $missing_paths ?? $this->getMissingPaths();
+    // Test the available migration paths.
+    foreach ($available_paths as $available) {
+      $session->elementExists('xpath', "//td[contains(@class, 'checked') and text() = '$available']");
+      $session->elementNotExists('xpath', "//td[contains(@class, 'error') and text() = '$available']");
+    }
 
-    // Uninstall the module causing the missing module error messages.
-    $this->container->get('module_installer')->uninstall(['migration_provider_test'], TRUE);
+    // Test the missing migration paths.
+    foreach ($missing_paths as $missing) {
+      $session->elementExists('xpath', "//td[contains(@class, 'error') and text() = '$missing']");
+      $session->elementNotExists('xpath', "//td[contains(@class, 'checked') and text() = '$missing']");
+    }
 
-    // Restart the upgrade process.
-    $this->drupalGet('/upgrade');
-    $this->assertSession()->responseContains('Upgrade a site by importing its database and files into a clean and empty new install of Drupal 8.');
+    // Test the total count of missing and available paths.
+    $session->elementsCount('xpath', "//td[contains(@class, 'upgrade-analysis-report__status-icon--error')]", count($missing_paths));
+    $session->elementsCount('xpath', "//td[contains(@class, 'upgrade-analysis-report__status-icon--checked')]", count($available_paths));
+  }
 
-    $this->drupalPostForm(NULL, [], t('Continue'));
-    $this->assertSession()->pageTextContains('Provide credentials for the database of the Drupal site you want to upgrade.');
-    $this->assertSession()->fieldExists('mysql[host]');
+  /**
+   * Asserts the upgrade completed successfully.
+   *
+   * @param array $entity_counts
+   *   An array of entity count, where the key is the entity type and the value
+   *   is the number of the entities that should exist post migration.
+   *
+   * @throws \Behat\Mink\Exception\ExpectationException
+   */
+  protected function assertUpgrade(array $entity_counts) {
+    $session = $this->assertSession();
+    $session->pageTextContains(t('Congratulations, you upgraded Drupal!'));
 
-    $this->drupalPostForm(NULL, $edits, t('Review upgrade'));
-    $this->assertSession()->statusCodeEquals(200);
-    $this->assertSession()->pageTextContains('Are you sure?');
-    // Ensure there are no errors about the missing modules from the test module.
-    $this->assertSession()->pageTextNotContains(t('Source module not found for migration_provider_no_annotation.'));
-    $this->assertSession()->pageTextNotContains(t('Source module not found for migration_provider_test.'));
-    $this->assertSession()->pageTextNotContains(t('Destination module not found for migration_provider_test'));
-    // Ensure there are no errors about any other missing migration providers.
-    $this->assertSession()->pageTextNotContains(t('module not found'));
-    $this->drupalPostForm(NULL, [], t('Perform upgrade'));
-    $this->assertText(t('Congratulations, you upgraded Drupal!'));
-
-    // Have to reset all the statics after migration to ensure entities are
-    // loadable.
+    // Assert the count of entities after the upgrade. First, reset all the
+    // statics after migration to ensure entities are loadable.
     $this->resetAll();
+    // Check that the expected number of entities is the same as the actual
+    // number of entities.
+    $entity_definitions = array_keys(\Drupal::entityTypeManager()->getDefinitions());
+    $expected_count_keys = array_keys($entity_counts);
+    sort($entity_definitions);
+    sort($expected_count_keys);
+    $this->assertSame($expected_count_keys, $entity_definitions);
 
-    $expected_counts = $this->getEntityCounts();
-    foreach (array_keys(\Drupal::entityTypeManager()
-      ->getDefinitions()) as $entity_type) {
-      $real_count = \Drupal::entityQuery($entity_type)->count()->execute();
-      $expected_count = isset($expected_counts[$entity_type]) ? $expected_counts[$entity_type] : 0;
-      $this->assertEqual($expected_count, $real_count, "Found $real_count $entity_type entities, expected $expected_count.");
+    // Assert the correct number of entities exist.
+    foreach ($entity_definitions as $entity_type) {
+      $real_count = (int) \Drupal::entityQuery($entity_type)->count()->execute();
+      $expected_count = $entity_counts[$entity_type];
+      $this->assertSame($expected_count, $real_count, "Found $real_count $entity_type entities, expected $expected_count.");
     }
 
     $plugin_manager = \Drupal::service('plugin.manager.migration');
+    $version = $this->getLegacyDrupalVersion($this->sourceDatabase);
     /** @var \Drupal\migrate\Plugin\Migration[] $all_migrations */
     $all_migrations = $plugin_manager->createInstancesByTag('Drupal ' . $version);
     foreach ($all_migrations as $migration) {
@@ -204,54 +255,88 @@ abstract class MigrateUpgradeTestBase extends BrowserTestBase {
         // A completed migration should have maps with
         // MigrateIdMapInterface::STATUS_IGNORED or
         // MigrateIdMapInterface::STATUS_IMPORTED.
-        if ($row['source_row_status'] == MigrateIdMapInterface::STATUS_FAILED || $row['source_row_status'] == MigrateIdMapInterface::STATUS_NEEDS_UPDATE) {
-          $this->fail($message);
-        }
-        else {
-          $this->pass($message);
-        }
+        $this->assertNotSame(MigrateIdMapInterface::STATUS_FAILED, $row['source_row_status'], $message);
+        $this->assertNotSame(MigrateIdMapInterface::STATUS_NEEDS_UPDATE, $row['source_row_status'], $message);
       }
     }
-    \Drupal::service('module_installer')->install(['forum']);
-    \Drupal::service('module_installer')->install(['book']);
   }
 
   /**
-   * Transforms a nested array into a flat array suitable for BrowserTestBase::drupalPostForm().
+   * Creates an array of credentials for the Credential form.
    *
-   * @param array $values
-   *   A multi-dimensional form values array to convert.
+   * Before submitting to the Credential form the array must be processed by
+   * BrowserTestBase::translatePostValues() before submitting.
    *
    * @return array
-   *   The flattened $edit array suitable for BrowserTestBase::drupalPostForm().
+   *   An array of values suitable for BrowserTestBase::translatePostValues().
+   *
+   * @see \Drupal\migrate_drupal_ui\Form\CredentialForm
    */
-  protected function translatePostValues(array $values) {
-    $edit = [];
-    // The easiest and most straightforward way to translate values suitable for
-    // BrowserTestBase::drupalPostForm() is to actually build the POST data string
-    // and convert the resulting key/value pairs back into a flat array.
-    $query = http_build_query($values);
-    foreach (explode('&', $query) as $item) {
-      list($key, $value) = explode('=', $item);
-      $edit[urldecode($key)] = urldecode($value);
+  protected function getCredentials() {
+    $connection_options = $this->sourceDatabase->getConnectionOptions();
+    $version = $this->getLegacyDrupalVersion($this->sourceDatabase);
+    $driver = $connection_options['driver'];
+    $connection_options['prefix'] = $connection_options['prefix']['default'];
+
+    // Use the driver connection form to get the correct options out of the
+    // database settings. This supports all of the databases we test against.
+    $drivers = drupal_get_database_types();
+    $form = $drivers[$driver]->getFormOptions($connection_options);
+    $connection_options = array_intersect_key($connection_options, $form + $form['advanced_options']);
+    $edit = [
+      $driver => $connection_options,
+      'source_private_file_path' => $this->getSourceBasePath(),
+      'version' => $version,
+    ];
+    if ($version == 6) {
+      $edit['d6_source_base_path'] = $this->getSourceBasePath();
+    }
+    else {
+      $edit['source_base_path'] = $this->getSourceBasePath();
+      $edit['source_private_file_path'] = $this->getSourcePrivateBasePath();
+    }
+    if (count($drivers) !== 1) {
+      $edit['driver'] = $driver;
     }
     return $edit;
   }
 
   /**
-   * Gets the source base path for the concrete test.
-   *
-   * @return string
-   *   The source base path.
+   * Asserts that a migrated user can login.
    */
-  abstract protected function getSourceBasePath();
+  public function assertUserLogIn($uid, $pass) {
+    $user = User::load($uid);
+    $user->passRaw = $pass;
+    $this->drupalLogin($user);
+  }
 
   /**
-   * Gets the expected number of entities per entity type after migration.
+   * Provides the source base path for private files for the credential form.
    *
-   * @return int[]
-   *   An array of expected counts keyed by entity type ID.
+   * @return string|null
+   *   The source base path.
    */
-  abstract protected function getEntityCounts();
+  protected function getSourcePrivateBasePath() {
+    return NULL;
+  }
+
+  /**
+   * Checks public and private files are copied but not temporary files.
+   */
+  protected function assertFileMigrations() {
+    $fs = \Drupal::service('file_system');
+    $files = $this->getManagedFiles();
+    foreach ($files as $file) {
+      preg_match('/^(private|public|temporary):/', $file['uri'], $matches);
+      $scheme = $matches[1];
+      $filepath = $fs->realpath($file['uri']);
+      if ($scheme === 'temporary') {
+        $this->assertFileNotExists($filepath);
+      }
+      else {
+        $this->assertFileExists($filepath);
+      }
+    }
+  }
 
 }

@@ -6,7 +6,6 @@ use Drupal\Core\Language\LanguageInterface;
 use Drupal\language\Entity\ConfigurableLanguage;
 use Drupal\KernelTests\KernelTestBase;
 
-
 /**
  * Tests that the configurable language manager and locale operate correctly.
  *
@@ -19,7 +18,7 @@ class LocaleConfigurableLanguageManagerTest extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['language', 'locale'];
+  protected static $modules = ['language', 'locale'];
 
   public function testGetLanguages() {
     $this->installSchema('locale', ['locales_source', 'locales_target', 'locales_location']);

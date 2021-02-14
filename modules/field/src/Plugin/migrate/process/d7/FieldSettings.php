@@ -26,8 +26,23 @@ class FieldSettings extends ProcessPluginBase {
         }
         break;
 
+      case 'date':
+      case 'datetime':
+      case 'datestamp':
+        $collected_date_attributes = is_numeric(array_keys($value['granularity'])[0])
+          ? $value['granularity']
+          : array_keys(array_filter($value['granularity']));
+        if (empty(array_intersect($collected_date_attributes, ['hour', 'minute', 'second']))) {
+          $value['datetime_type'] = 'date';
+        }
+        break;
+
       case 'taxonomy_term_reference':
         $value['target_type'] = 'taxonomy_term';
+        break;
+
+      case 'user_reference':
+        $value['target_type'] = 'user';
         break;
 
       default:

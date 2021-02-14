@@ -2,7 +2,7 @@
 
 namespace Drupal\Tests\inline_form_errors\FunctionalJavascript;
 
-use Drupal\FunctionalJavascriptTests\JavascriptTestBase;
+use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
 use Drupal\node\Entity\NodeType;
 
 /**
@@ -10,18 +10,23 @@ use Drupal\node\Entity\NodeType;
  *
  * @group inline_form_errors
  */
-class FormErrorHandlerQuickEditTest extends JavascriptTestBase {
+class FormErrorHandlerQuickEditTest extends WebDriverTestBase {
 
   /**
    * Modules to enable.
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'quickedit',
     'node',
     'inline_form_errors',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * An editor user with permissions to access the in-place editor.
@@ -33,7 +38,7 @@ class FormErrorHandlerQuickEditTest extends JavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create a page node type for testing.

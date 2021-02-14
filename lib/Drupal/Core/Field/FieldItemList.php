@@ -7,6 +7,7 @@ use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\TypedData\DataDefinitionInterface;
 use Drupal\Core\TypedData\Plugin\DataType\ItemList;
 
 /**
@@ -96,18 +97,6 @@ class FieldItemList extends ItemList implements FieldItemListInterface {
 
   /**
    * {@inheritdoc}
-   * @todo Revisit the need when all entity types are converted to NG entities.
-   */
-  public function getValue($include_computed = FALSE) {
-    $values = [];
-    foreach ($this->list as $delta => $item) {
-      $values[$delta] = $item->getValue($include_computed);
-    }
-    return $values;
-  }
-
-  /**
-   * {@inheritdoc}
    */
   public function setValue($values, $notify = TRUE) {
     // Support passing in only the value of the first item, either as a literal
@@ -161,7 +150,7 @@ class FieldItemList extends ItemList implements FieldItemListInterface {
    * {@inheritdoc}
    */
   public function access($operation = 'view', AccountInterface $account = NULL, $return_as_object = FALSE) {
-    $access_control_handler = \Drupal::entityManager()->getAccessControlHandler($this->getEntity()->getEntityTypeId());
+    $access_control_handler = \Drupal::entityTypeManager()->getAccessControlHandler($this->getEntity()->getEntityTypeId());
     return $access_control_handler->fieldAccess($operation, $this->getFieldDefinition(), $account, $this, $return_as_object);
   }
 
@@ -250,7 +239,7 @@ class FieldItemList extends ItemList implements FieldItemListInterface {
    * {@inheritdoc}
    */
   public function view($display_options = []) {
-    $view_builder = \Drupal::entityManager()->getViewBuilder($this->getEntity()->getEntityTypeId());
+    $view_builder = \Drupal::entityTypeManager()->getViewBuilder($this->getEntity()->getEntityTypeId());
     return $view_builder->viewField($this, $display_options);
   }
 
@@ -333,6 +322,7 @@ class FieldItemList extends ItemList implements FieldItemListInterface {
       $widget->extractFormValues($this, $element, $form_state);
       return $this->getValue();
     }
+    return [];
   }
 
   /**
@@ -362,7 +352,8 @@ class FieldItemList extends ItemList implements FieldItemListInterface {
 
       // Use the widget currently configured for the 'default' form mode, or
       // fallback to the default widget for the field type.
-      $entity_form_display = entity_get_form_display($entity->getEntityTypeId(), $entity->bundle(), 'default');
+      $entity_form_display = \Drupal::service('entity_display.repository')
+        ->getFormDisplay($entity->getEntityTypeId(), $entity->bundle());
       $widget = $entity_form_display->getRenderer($this->getFieldDefinition()->getName());
       if (!$widget) {
         $widget = \Drupal::service('plugin.manager.field.widget')->getInstance(['field_definition' => $this->getFieldDefinition()]);
@@ -378,7 +369,6 @@ class FieldItemList extends ItemList implements FieldItemListInterface {
    * {@inheritdoc}
    */
   public function equals(FieldItemListInterface $list_to_compare) {
-    $columns = $this->getFieldDefinition()->getFieldStorageDefinition()->getColumns();
     $count1 = count($this);
     $count2 = count($list_to_compare);
     if ($count1 === 0 && $count2 === 0) {
@@ -396,9 +386,22 @@ class FieldItemList extends ItemList implements FieldItemListInterface {
     }
     // If the values are not equal ensure a consistent order of field item
     // properties and remove properties which will not be saved.
-    $callback = function (&$value) use ($columns) {
+    $property_definitions = $this->getFieldDefinition()->getFieldStorageDefinition()->getPropertyDefinitions();
+    $non_computed_properties = array_filter($property_definitions, function (DataDefinitionInterface $property) {
+      return !$property->isComputed();
+    });
+    $callback = function (&$value) use ($non_computed_properties) {
       if (is_array($value)) {
-        $value = array_intersect_key($value, $columns);
+        $value = array_intersect_key($value, $non_computed_properties);
+
+        // Also filter out properties with a NULL value as they might exist in
+        // one field item and not in the other, depending on how the values are
+        // set. Do not filter out empty strings or other false-y values as e.g.
+        // a NULL or FALSE in a boolean field is not the same.
+        $value = array_filter($value, function ($property) {
+          return $property !== NULL;
+        });
+
         ksort($value);
       }
     };
@@ -406,6 +409,13 @@ class FieldItemList extends ItemList implements FieldItemListInterface {
     array_walk($value2, $callback);
 
     return $value1 == $value2;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function hasAffectingChanges(FieldItemListInterface $original_items, $langcode) {
+    return !$this->equals($original_items);
   }
 
 }

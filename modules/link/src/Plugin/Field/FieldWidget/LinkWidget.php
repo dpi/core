@@ -2,6 +2,7 @@
 
 namespace Drupal\link\Plugin\Field\FieldWidget;
 
+use Drupal\Core\Url;
 use Drupal\Core\Entity\Element\EntityAutocomplete;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\WidgetBase;
@@ -78,6 +79,9 @@ class LinkWidget extends WidgetBase {
         $displayable_string = EntityAutocomplete::getEntityLabels([$entity]);
       }
     }
+    elseif ($scheme === 'route') {
+      $displayable_string = ltrim($displayable_string, 'route:');
+    }
 
     return $displayable_string;
   }
@@ -100,8 +104,8 @@ class LinkWidget extends WidgetBase {
    * @see static::getUriAsDisplayableString()
    */
   protected static function getUserEnteredStringAsUri($string) {
-    // By default, assume the entered string is an URI.
-    $uri = $string;
+    // By default, assume the entered string is a URI.
+    $uri = trim($string);
 
     // Detect entity autocomplete string, map to 'entity:' URI.
     $entity_id = EntityAutocomplete::extractEntityIdFromAutocompleteInput($string);
@@ -109,6 +113,10 @@ class LinkWidget extends WidgetBase {
       // @todo Support entity types other than 'node'. Will be fixed in
       //    https://www.drupal.org/node/2423093.
       $uri = 'entity:node/' . $entity_id;
+    }
+    // Support linking to nothing.
+    elseif (in_array($string, ['<nolink>', '<none>'], TRUE)) {
+      $uri = 'route:' . $string;
     }
     // Detect a schemeless string, map to 'internal:' URI.
     elseif (!empty($string) && parse_url($string, PHP_URL_SCHEME) === NULL) {
@@ -134,12 +142,12 @@ class LinkWidget extends WidgetBase {
     $uri = static::getUserEnteredStringAsUri($element['#value']);
     $form_state->setValueForElement($element, $uri);
 
-    // If getUserEnteredStringAsUri() mapped the entered value to a 'internal:'
+    // If getUserEnteredStringAsUri() mapped the entered value to an 'internal:'
     // URI , ensure the raw value begins with '/', '?' or '#'.
     // @todo '<front>' is valid input for BC reasons, may be removed by
     //   https://www.drupal.org/node/2421941
     if (parse_url($uri, PHP_URL_SCHEME) === 'internal' && !in_array($element['#value'][0], ['/', '?', '#'], TRUE) && substr($element['#value'], 0, 7) !== '<front>') {
-      $form_state->setError($element, t('Manually entered paths should start with /, ? or #.'));
+      $form_state->setError($element, t('Manually entered paths should start with one of the following characters: / ? #'));
       return;
     }
   }
@@ -151,10 +159,20 @@ class LinkWidget extends WidgetBase {
    */
   public static function validateTitleElement(&$element, FormStateInterface $form_state, $form) {
     if ($element['uri']['#value'] !== '' && $element['title']['#value'] === '') {
-      $element['title']['#required'] = TRUE;
       // We expect the field name placeholder value to be wrapped in t() here,
       // so it won't be escaped again as it's already marked safe.
-      $form_state->setError($element['title'], t('@name field is required.', ['@name' => $element['title']['#title']]));
+      $form_state->setError($element['title'], t('@title field is required if there is @uri input.', ['@title' => $element['title']['#title'], '@uri' => $element['uri']['#title']]));
+    }
+  }
+
+  /**
+   * Form element validation handler for the 'title' element.
+   *
+   * Requires the URL value if a link title was filled in.
+   */
+  public static function validateTitleNoLink(&$element, FormStateInterface $form_state, $form) {
+    if ($element['uri']['#value'] === '' && $element['title']['#value'] !== '') {
+      $form_state->setError($element['uri'], t('The @uri field is required when the @title field is specified.', ['@title' => $element['title']['#title'], '@uri' => $element['uri']['#title']]));
     }
   }
 
@@ -173,7 +191,7 @@ class LinkWidget extends WidgetBase {
       // However, if it is inaccessible to the current user, do not display it
       // to them.
       '#default_value' => (!$item->isEmpty() && (\Drupal::currentUser()->hasPermission('link to any page') || $item->getUrl()->access())) ? static::getUriAsDisplayableString($item->uri) : NULL,
-      '#element_validate' => [[get_called_class(), 'validateUriElement']],
+      '#element_validate' => [[static::class, 'validateUriElement']],
       '#maxlength' => 2048,
       '#required' => $element['#required'],
       '#link_type' => $this->getFieldSetting('link_type'),
@@ -197,13 +215,13 @@ class LinkWidget extends WidgetBase {
     // If the field is configured to allow only internal links, add a useful
     // element prefix and description.
     if (!$this->supportsExternalLinks()) {
-      $element['uri']['#field_prefix'] = rtrim(\Drupal::url('<front>', [], ['absolute' => TRUE]), '/');
-      $element['uri']['#description'] = $this->t('This must be an internal path such as %add-node. You can also start typing the title of a piece of content to select it. Enter %front to link to the front page.', ['%add-node' => '/node/add', '%front' => '<front>']);
+      $element['uri']['#field_prefix'] = rtrim(Url::fromRoute('<front>', [], ['absolute' => TRUE])->toString(), '/');
+      $element['uri']['#description'] = $this->t('This must be an internal path such as %add-node. You can also start typing the title of a piece of content to select it. Enter %front to link to the front page. Enter %nolink to display link text only. Enter %button to display keyboard-accessible link text only.', ['%add-node' => '/node/add', '%front' => '<front>', '%nolink' => '<nolink>', '%button' => 'route:<button>']);
     }
     // If the field is configured to allow both internal and external links,
     // show a useful description.
     elseif ($this->supportsExternalLinks() && $this->supportsInternalLinks()) {
-      $element['uri']['#description'] = $this->t('Start typing the title of a piece of content to select it. You can also enter an internal path such as %add-node or an external URL such as %url. Enter %front to link to the front page.', ['%front' => '<front>', '%add-node' => '/node/add', '%url' => 'http://example.com']);
+      $element['uri']['#description'] = $this->t('Start typing the title of a piece of content to select it. You can also enter an internal path such as %add-node or an external URL such as %url. Enter %front to link to the front page. Enter %nolink to display link text only. Enter %button to display keyboard-accessible link text only.', ['%front' => '<front>', '%add-node' => '/node/add', '%url' => 'http://example.com', '%nolink' => '<nolink>', '%button' => 'route:<button>']);
     }
     // If the field is configured to allow only external links, show a useful
     // description.
@@ -218,12 +236,39 @@ class LinkWidget extends WidgetBase {
       '#default_value' => isset($items[$delta]->title) ? $items[$delta]->title : NULL,
       '#maxlength' => 255,
       '#access' => $this->getFieldSetting('title') != DRUPAL_DISABLED,
+      '#required' => $this->getFieldSetting('title') === DRUPAL_REQUIRED && $element['#required'],
     ];
     // Post-process the title field to make it conditionally required if URL is
     // non-empty. Omit the validation on the field edit form, since the field
     // settings cannot be saved otherwise.
-    if (!$this->isDefaultValueWidget($form_state) && $this->getFieldSetting('title') == DRUPAL_REQUIRED) {
-      $element['#element_validate'][] = [get_called_class(), 'validateTitleElement'];
+    //
+    // Validate that title field is filled out (regardless of uri) when it is a
+    // required field.
+    if (!$this->isDefaultValueWidget($form_state) && $this->getFieldSetting('title') === DRUPAL_REQUIRED) {
+      $element['#element_validate'][] = [static::class, 'validateTitleElement'];
+      $element['#element_validate'][] = [static::class, 'validateTitleNoLink'];
+
+      if (!$element['title']['#required']) {
+        // Make title required on the front-end when URI filled-in.
+        $field_name = $this->fieldDefinition->getName();
+
+        $parents = $element['#field_parents'];
+        $parents[] = $field_name;
+        $selector = $root = array_shift($parents);
+        if ($parents) {
+          $selector = $root . '[' . implode('][', $parents) . ']';
+        }
+
+        $element['title']['#states']['required'] = [
+          ':input[name="' . $selector . '[' . $delta . '][uri]"]' => ['filled' => TRUE],
+        ];
+      }
+    }
+
+    // Ensure that a URI is always entered when an optional title field is
+    // submitted.
+    if (!$this->isDefaultValueWidget($form_state) && $this->getFieldSetting('title') == DRUPAL_OPTIONAL) {
+      $element['#element_validate'][] = [static::class, 'validateTitleNoLink'];
     }
 
     // Exposing the attributes array in the widget is left for alternate and more
@@ -241,6 +286,29 @@ class LinkWidget extends WidgetBase {
       // title of the 'uri' element.
       if ($this->getFieldSetting('title') == DRUPAL_DISABLED) {
         $element['uri']['#title'] = $element['#title'];
+        // By default the field description is added to the title field. Since
+        // the title field is disabled, we add the description, if given, to the
+        // uri element instead.
+        if (!empty($element['#description'])) {
+          if (empty($element['uri']['#description'])) {
+            $element['uri']['#description'] = $element['#description'];
+          }
+          else {
+            // If we have the description of the type of field together with
+            // the user provided description, we want to make a distinction
+            // between "core help text" and "user entered help text". To make
+            // this distinction more clear, we put them in an unordered list.
+            $element['uri']['#description'] = [
+              '#theme' => 'item_list',
+              '#items' => [
+                // Assume the user-specified description has the most relevance,
+                // so place it first.
+                $element['#description'],
+                $element['uri']['#description'],
+              ],
+            ];
+          }
+        }
       }
       // Otherwise wrap everything in a details element.
       else {
@@ -337,7 +405,6 @@ class LinkWidget extends WidgetBase {
     }
     return $values;
   }
-
 
   /**
    * {@inheritdoc}

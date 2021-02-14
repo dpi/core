@@ -10,6 +10,7 @@
     attach: function attach(context) {
       $(context).find('.menu-link-form').drupalSetSummary(function (context) {
         var $context = $(context);
+
         if ($context.find('.js-form-item-menu-enabled input').is(':checked')) {
           return Drupal.checkPlain($context.find('.js-form-item-menu-title input').val());
         }
@@ -18,46 +19,43 @@
       });
     }
   };
-
   Drupal.behaviors.menuUiLinkAutomaticTitle = {
     attach: function attach(context) {
       var $context = $(context);
       $context.find('.menu-link-form').each(function () {
         var $this = $(this);
-
         var $checkbox = $this.find('.js-form-item-menu-enabled input');
-        var $link_title = $context.find('.js-form-item-menu-title input');
+        var $linkTitle = $context.find('.js-form-item-menu-title input');
         var $title = $this.closest('form').find('.js-form-item-title-0-value input');
 
-        if (!($checkbox.length && $link_title.length && $title.length)) {
+        if (!($checkbox.length && $linkTitle.length && $title.length)) {
           return;
         }
 
-        if ($checkbox.is(':checked') && $link_title.val().length) {
-          $link_title.data('menuLinkAutomaticTitleOverridden', true);
+        if ($checkbox.is(':checked') && $linkTitle.val().length) {
+          $linkTitle.data('menuLinkAutomaticTitleOverridden', true);
         }
 
-        $link_title.on('keyup', function () {
-          $link_title.data('menuLinkAutomaticTitleOverridden', true);
+        $linkTitle.on('keyup', function () {
+          $linkTitle.data('menuLinkAutomaticTitleOverridden', true);
         });
-
         $checkbox.on('change', function () {
           if ($checkbox.is(':checked')) {
-            if (!$link_title.data('menuLinkAutomaticTitleOverridden')) {
-              $link_title.val($title.val());
+            if (!$linkTitle.data('menuLinkAutomaticTitleOverridden')) {
+              $linkTitle.val($title.val());
             }
           } else {
-            $link_title.val('');
-            $link_title.removeData('menuLinkAutomaticTitleOverridden');
+            $linkTitle.val('');
+            $linkTitle.removeData('menuLinkAutomaticTitleOverridden');
           }
+
           $checkbox.closest('.vertical-tabs-pane').trigger('summaryUpdated');
           $checkbox.trigger('formUpdated');
         });
-
         $title.on('keyup', function () {
-          if (!$link_title.data('menuLinkAutomaticTitleOverridden') && $checkbox.is(':checked')) {
-            $link_title.val($title.val());
-            $link_title.val($title.val()).trigger('formUpdated');
+          if (!$linkTitle.data('menuLinkAutomaticTitleOverridden') && $checkbox.is(':checked')) {
+            $linkTitle.val($title.val());
+            $linkTitle.val($title.val()).trigger('formUpdated');
           }
         });
       });

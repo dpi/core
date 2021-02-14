@@ -24,7 +24,7 @@ use Drupal\views\ViewsData;
 abstract class HandlerBase extends PluginBase implements ViewsHandlerInterface {
 
   /**
-   * Where the $query object will reside:
+   * Where the $query object will reside.
    *
    * @var \Drupal\views\Plugin\views\query\QueryPluginBase
    */
@@ -197,12 +197,15 @@ abstract class HandlerBase extends PluginBase implements ViewsHandlerInterface {
       case 'xss':
         $value = Xss::filter($value);
         break;
+
       case 'xss_admin':
         $value = Xss::filterAdmin($value);
         break;
+
       case 'url':
         $value = Html::escape(UrlHelper::stripDangerousProtocols($value));
         break;
+
       default:
         $value = Html::escape($value);
         break;
@@ -230,11 +233,14 @@ abstract class HandlerBase extends PluginBase implements ViewsHandlerInterface {
       default:
         return $string;
       case 'upper':
-        return Unicode::strtoupper($string);
+        return mb_strtoupper($string);
+
       case 'lower':
-        return Unicode::strtolower($string);
+        return mb_strtolower($string);
+
       case 'ucfirst':
         return Unicode::ucfirst($string);
+
       case 'ucwords':
         return Unicode::ucwords($string);
     }
@@ -248,7 +254,7 @@ abstract class HandlerBase extends PluginBase implements ViewsHandlerInterface {
     // be moved into one because of the $form_state->getValues() hierarchy. Those
     // elements can add a #fieldset => 'fieldset_name' property, and they'll
     // be moved to their fieldset during pre_render.
-    $form['#pre_render'][] = [get_class($this), 'preRenderAddFieldsetMarkup'];
+    $form['#pre_render'][] = [static::class, 'preRenderAddFieldsetMarkup'];
 
     parent::buildOptionsForm($form, $form_state);
 
@@ -313,6 +319,7 @@ abstract class HandlerBase extends PluginBase implements ViewsHandlerInterface {
   public function usesGroupBy() {
     return TRUE;
   }
+
   /**
    * Provide a form for aggregation settings.
    */
@@ -394,17 +401,17 @@ abstract class HandlerBase extends PluginBase implements ViewsHandlerInterface {
   public function exposedInfo() {}
 
   /**
-   * Render our chunk of the exposed handler form when selecting
+   * Render our chunk of the exposed handler form when selecting.
    */
   public function buildExposedForm(&$form, FormStateInterface $form_state) {}
 
   /**
-   * Validate the exposed handler form
+   * Validate the exposed handler form.
    */
   public function validateExposed(&$form, FormStateInterface $form_state) {}
 
   /**
-   * Submit the exposed handler form
+   * Submit the exposed handler form.
    */
   public function submitExposed(&$form, FormStateInterface $form_state) {}
 
@@ -831,7 +838,7 @@ abstract class HandlerBase extends PluginBase implements ViewsHandlerInterface {
   }
 
   /**
-   * Calculates options stored on the handler
+   * Calculates options stored on the handler.
    *
    * @param array $options
    *   The options stored in the handler
@@ -843,6 +850,21 @@ abstract class HandlerBase extends PluginBase implements ViewsHandlerInterface {
    */
   public function submitFormCalculateOptions(array $options, array $form_state_options) {
     return $form_state_options + $options;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies() {
+    $dependencies = parent::calculateDependencies();
+    if ($this->table) {
+      // Ensure that the view depends on the module that provides the table.
+      $data = $this->getViewsData()->get($this->table);
+      if (isset($data['table']['provider'])) {
+        $dependencies['module'][] = $data['table']['provider'];
+      }
+    }
+    return $dependencies;
   }
 
 }

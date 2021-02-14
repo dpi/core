@@ -2,8 +2,6 @@
 
 namespace Drupal\Component\Assertion;
 
-use Traversable;
-
 /**
  * Generic inspections for the assert() statement.
  *
@@ -13,7 +11,7 @@ use Traversable;
  *
  * Example call:
  * @code
- *   assert('Drupal\\Component\\Assertion\\Inspector::assertAllStrings($array)');
+ *   assert(Inspector::assertAllStrings($array));
  * @endcode
  *
  * @ingroup php_assert
@@ -30,7 +28,7 @@ class Inspector {
    *   TRUE if $traversable can be traversed with foreach.
    */
   public static function assertTraversable($traversable) {
-    return is_array($traversable) || $traversable instanceof Traversable;
+    return is_array($traversable) || $traversable instanceof \Traversable;
   }
 
   /**
@@ -187,8 +185,8 @@ class Inspector {
    * As an example, this assertion tests for the keys of a theme registry.
    *
    * @code
-   *   assert('Drupal\\Component\\Assertion\\Inspector::assertAllHaveKey(
-   *     $arrayToTest, "type", "theme path", "function", "template", "variables", "render element", "preprocess functions")');
+   *   assert(Inspector::assertAllHaveKey(
+   *     $arrayToTest, "type", "theme path", "function", "template", "variables", "render element", "preprocess functions"));
    * @endcode
    *
    * Note: If a method requires certain keys to be present it will usually be
@@ -333,7 +331,6 @@ class Inspector {
     return FALSE;
   }
 
-
   /**
    * Asserts that all members are strings matching a regular expression.
    *
@@ -375,16 +372,13 @@ class Inspector {
    * Here are some examples:
    * @code
    *   // Just test all are objects, like a cache.
-   *   assert('Drupal\\Component\\Assertion\\Inspector::assertAllObjects(
-   *     $collection');
+   *   assert(Inspector::assertAllObjects($collection));
    *
    *   // Test if traversable objects (arrays won't pass this)
-   *   assert('Drupal\\Component\\Assertion\\Inspector::assertAllObjects(
-   *     $collection', \'\\Traversable\');
+   *   assert(Inspector::assertAllObjects($collection, '\\Traversable'));
    *
    *   // Test for the Foo class or Bar\None interface
-   *   assert('Drupal\\Component\\Assertion\\Inspector::assertAllObjects(
-   *     $collection', \'\\Foo\', \'\\Bar\\None\'');
+   *   assert(Inspector::assertAllObjects($collection, '\\Foo', '\\Bar\\None'));
    * @endcode
    *
    * @param mixed $traversable

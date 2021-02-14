@@ -3,14 +3,14 @@
 namespace Drupal\language\Plugin\LanguageNegotiation;
 
 use Drupal\Core\Entity\ContentEntityInterface;
-use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\PathProcessor\OutboundPathProcessorInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Url;
 use Drupal\language\LanguageNegotiationMethodBase;
 use Drupal\language\LanguageSwitcherInterface;
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
+use Drupal\Core\Routing\RouteObjectInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Route;
@@ -62,20 +62,20 @@ class LanguageNegotiationContentEntity extends LanguageNegotiationMethodBase imp
   protected $paths;
 
   /**
-   * The entity manager.
+   * The entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityManager;
+  protected $entityTypeManager;
 
   /**
    * Constructs a new LanguageNegotiationContentEntity instance.
    *
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
-   *   The entity manager.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
    */
-  public function __construct(EntityManagerInterface $entity_manager) {
-    $this->entityManager = $entity_manager;
+  public function __construct(EntityTypeManagerInterface $entity_type_manager) {
+    $this->entityTypeManager = $entity_type_manager;
     $this->paths = new \SplObjectStorage();
   }
 
@@ -83,7 +83,7 @@ class LanguageNegotiationContentEntity extends LanguageNegotiationMethodBase imp
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-    return new static($container->get('entity.manager'));
+    return new static($container->get('entity_type.manager'));
   }
 
   /**
@@ -163,8 +163,8 @@ class LanguageNegotiationContentEntity extends LanguageNegotiationMethodBase imp
    * \Drupal\language\Plugin\LanguageNegotiation\LanguageNegotiationContentEntity::processOutbound().
    *
    * @return bool
-   *   TRUE if the the content entity language negotiator has higher priority
-   *   than the url language negotiator, FALSE otherwise.
+   *   TRUE if the content entity language negotiator has higher priority than
+   *   the url language negotiator, FALSE otherwise.
    */
   protected function hasLowerLanguageNegotiationWeight() {
     if (!isset($this->hasLowerLanguageNegotiationWeightResult)) {
@@ -201,7 +201,7 @@ class LanguageNegotiationContentEntity extends LanguageNegotiationMethodBase imp
   /**
    * Determines if content entity route condition is met.
    *
-   * Requirements: currently being on an content entity route and processing
+   * Requirements: currently being on a content entity route and processing
    * outbound url pointing to the same content entity.
    *
    * @param \Symfony\Component\Routing\Route $outbound_route
@@ -261,7 +261,7 @@ class LanguageNegotiationContentEntity extends LanguageNegotiationMethodBase imp
   protected function getContentEntityPaths() {
     if (!isset($this->contentEntityPaths)) {
       $this->contentEntityPaths = [];
-      $entity_types = $this->entityManager->getDefinitions();
+      $entity_types = $this->entityTypeManager->getDefinitions();
       foreach ($entity_types as $entity_type_id => $entity_type) {
         if ($entity_type->entityClassImplements(ContentEntityInterface::class)) {
           $entity_paths = array_fill_keys($entity_type->getLinkTemplates(), $entity_type_id);

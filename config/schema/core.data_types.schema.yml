@@ -28,6 +28,9 @@ email:
 integer:
   label: 'Integer'
   class: '\Drupal\Core\TypedData\Plugin\DataType\IntegerData'
+timestamp:
+  label: 'Timestamp'
+  class: '\Drupal\Core\TypedData\Plugin\DataType\Timestamp'
 float:
   label: 'Float'
   class: '\Drupal\Core\TypedData\Plugin\DataType\FloatData'
@@ -213,23 +216,6 @@ theme_settings:
       sequence:
         type: theme_settings.third_party.[%key]
 
-views_field_bulk_form:
-  type: views_field
-  label: 'Bulk operation'
-  mapping:
-    action_title:
-      type: label
-      label: 'Action title'
-    include_exclude:
-      type: string
-      label: 'Available actions'
-    selected_actions:
-      type: sequence
-      label: 'Available actions'
-      sequence:
-        type: string
-        label: 'Action'
-
 # Array of routes with route_name and route_params keys.
 route:
   type: mapping
@@ -301,6 +287,9 @@ config_entity:
     _core:
       type: _core_config_info
 
+block.settings.*:
+  type: block_settings
+
 block_settings:
   type: mapping
   label: 'Block settings'
@@ -369,6 +358,15 @@ display_variant.plugin:
 layout_plugin.settings:
   type: mapping
   label: 'Layout settings'
+  mapping:
+    label:
+      type: label
+      label: 'Label'
+    context_mapping:
+      type: sequence
+      label: 'Context assignments'
+      sequence:
+        type: string
 
 layout_plugin.settings.*:
   type: layout_plugin.settings
@@ -755,6 +753,16 @@ field.value.float:
   mapping:
     value:
       type: float
+      label: 'Value'
+
+# Schema for the configuration of the Timestamp field type.
+
+field.value.timestamp:
+  type: mapping
+  label: 'Timestamp value'
+  mapping:
+    value:
+      type: timestamp
       label: 'Value'
 
 # Text with a text format.

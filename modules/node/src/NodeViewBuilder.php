@@ -2,15 +2,15 @@
 
 namespace Drupal\node;
 
-use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityViewBuilder;
-use Drupal\node\Entity\Node;
+use Drupal\Core\Render\Element\Link;
+use Drupal\Core\Security\TrustedCallbackInterface;
 
 /**
  * View builder handler for nodes.
  */
-class NodeViewBuilder extends EntityViewBuilder {
+class NodeViewBuilder extends EntityViewBuilder implements TrustedCallbackInterface {
 
   /**
    * {@inheritdoc}
@@ -30,11 +30,12 @@ class NodeViewBuilder extends EntityViewBuilder {
       if ($display->getComponent('links')) {
         $build[$id]['links'] = [
           '#lazy_builder' => [
-            get_called_class() . '::renderLinks', [
+            static::class . '::renderLinks', [
               $entity->id(),
               $view_mode,
               $entity->language()->getId(),
               !empty($entity->in_preview),
+              $entity->isDefaultRevision() ? NULL : $entity->getLoadedRevisionId(),
             ],
           ],
         ];
@@ -47,7 +48,7 @@ class NodeViewBuilder extends EntityViewBuilder {
           '#title' => t('Language'),
           '#markup' => $entity->language()->getName(),
           '#prefix' => '<div id="field-language-display">',
-          '#suffix' => '</div>'
+          '#suffix' => '</div>',
         ];
       }
     }
@@ -78,19 +79,25 @@ class NodeViewBuilder extends EntityViewBuilder {
    *   The language in which the node entity is being viewed.
    * @param bool $is_in_preview
    *   Whether the node is currently being previewed.
+   * @param $revision_id
+   *   (optional) The identifier of the node revision to be loaded. If none
+   *   is provided, the default revision will be loaded.
    *
    * @return array
    *   A renderable array representing the node links.
    */
-  public static function renderLinks($node_entity_id, $view_mode, $langcode, $is_in_preview) {
+  public static function renderLinks($node_entity_id, $view_mode, $langcode, $is_in_preview, $revision_id = NULL) {
     $links = [
       '#theme' => 'links__node',
-      '#pre_render' => ['drupal_pre_render_links'],
+      '#pre_render' => [[Link::class, 'preRenderLinks']],
       '#attributes' => ['class' => ['links', 'inline']],
     ];
 
     if (!$is_in_preview) {
-      $entity = Node::load($node_entity_id)->getTranslation($langcode);
+      $storage = \Drupal::entityTypeManager()->getStorage('node');
+      /** @var \Drupal\node\NodeInterface $revision */
+      $revision = !isset($revision_id) ? $storage->load($node_entity_id) : $storage->loadRevision($revision_id);
+      $entity = $revision->getTranslation($langcode);
       $links['node'] = static::buildLinks($entity, $view_mode);
 
       // Allow other modules to alter the node links.
@@ -125,7 +132,7 @@ class NodeViewBuilder extends EntityViewBuilder {
         'title' => t('Read more<span class="visually-hidden"> about @title</span>', [
           '@title' => $node_title_stripped,
         ]),
-        'url' => $entity->urlInfo(),
+        'url' => $entity->toUrl(),
         'language' => $entity->language(),
         'attributes' => [
           'rel' => 'tag',
@@ -144,26 +151,10 @@ class NodeViewBuilder extends EntityViewBuilder {
   /**
    * {@inheritdoc}
    */
-  protected function alterBuild(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, $view_mode) {
-    /** @var \Drupal\node\NodeInterface $entity */
-    parent::alterBuild($build, $entity, $display, $view_mode);
-    if ($entity->id()) {
-      if ($entity->isDefaultRevision()) {
-        $build['#contextual_links']['node'] = [
-          'route_parameters' => ['node' => $entity->id()],
-          'metadata' => ['changed' => $entity->getChangedTime()],
-        ];
-      }
-      else {
-        $build['#contextual_links']['node_revision'] = [
-          'route_parameters' => [
-            'node' => $entity->id(),
-            'node_revision' => $entity->getRevisionId(),
-          ],
-          'metadata' => ['changed' => $entity->getChangedTime()],
-        ];
-      }
-    }
+  public static function trustedCallbacks() {
+    $callbacks = parent::trustedCallbacks();
+    $callbacks[] = 'renderLinks';
+    return $callbacks;
   }
 
 }

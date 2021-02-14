@@ -45,7 +45,7 @@ class ElementInfoManager extends DefaultPluginManager implements ElementInfoMana
   protected $cacheTagInvalidator;
 
   /**
-   * Constructs a ElementInfoManager object.
+   * Constructs an ElementInfoManager object.
    *
    * @param \Traversable $namespaces
    *   An object that implements \Traversable which contains the root paths
@@ -65,6 +65,7 @@ class ElementInfoManager extends DefaultPluginManager implements ElementInfoMana
     $this->cacheTagInvalidator = $cache_tag_invalidator;
 
     parent::__construct('Element', $namespaces, $module_handler, 'Drupal\Core\Render\Element\ElementInterface', 'Drupal\Core\Render\Annotation\RenderElement');
+    $this->alterInfo('element_plugin');
   }
 
   /**

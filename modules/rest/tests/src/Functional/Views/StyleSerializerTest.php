@@ -10,7 +10,7 @@ use Drupal\entity_test\Entity\EntityTest;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\language\Entity\ConfigurableLanguage;
-use Drupal\system\Tests\Cache\AssertPageCacheContextsAndTagsTrait;
+use Drupal\Tests\system\Functional\Cache\AssertPageCacheContextsAndTagsTrait;
 use Drupal\Tests\views\Functional\ViewTestBase;
 use Drupal\views\Entity\View;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
@@ -36,26 +36,53 @@ class StyleSerializerTest extends ViewTestBase {
    *
    * @var array
    */
-  public static $modules = ['views_ui', 'entity_test', 'hal', 'rest_test_views', 'node', 'text', 'field', 'language', 'basic_auth'];
+  protected static $modules = [
+    'views_ui',
+    'entity_test',
+    'hal',
+    'rest_test_views',
+    'node',
+    'text',
+    'field',
+    'language',
+    'basic_auth',
+  ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Views used by this test.
    *
    * @var array
    */
-  public static $testViews = ['test_serializer_display_field', 'test_serializer_display_entity', 'test_serializer_display_entity_translated', 'test_serializer_node_display_field', 'test_serializer_node_exposed_filter'];
+  public static $testViews = ['test_serializer_display_field', 'test_serializer_display_entity', 'test_serializer_display_entity_translated', 'test_serializer_node_display_field', 'test_serializer_node_exposed_filter', 'test_serializer_shared_path'];
 
   /**
    * A user with administrative privileges to look at test entity and configure views.
    */
   protected $adminUser;
 
-  protected function setUp($import_test_views = TRUE) {
+  /**
+   * The renderer.
+   *
+   * @var \Drupal\Core\Render\RendererInterface
+   */
+  protected $renderer;
+
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp($import_test_views);
 
-    ViewTestData::createTestViews(get_class($this), ['rest_test_views']);
+    ViewTestData::createTestViews(static::class, ['rest_test_views']);
 
-    $this->adminUser = $this->drupalCreateUser(['administer views', 'administer entity_test content', 'access user profiles', 'view test entity']);
+    $this->adminUser = $this->drupalCreateUser([
+      'administer views',
+      'administer entity_test content',
+      'access user profiles',
+      'view test entity',
+    ]);
 
     // Save some entity_test entities.
     for ($i = 1; $i <= 10; $i++) {
@@ -63,6 +90,7 @@ class StyleSerializerTest extends ViewTestBase {
     }
 
     $this->enableViewsTestModule();
+    $this->renderer = \Drupal::service('renderer');
   }
 
   /**
@@ -71,26 +99,29 @@ class StyleSerializerTest extends ViewTestBase {
   public function testRestViewsAuthentication() {
     // Assume the view is hidden behind a permission.
     $this->drupalGet('test/serialize/auth_with_perm', ['query' => ['_format' => 'json']]);
-    $this->assertResponse(401);
+    $this->assertSession()->statusCodeEquals(401);
 
     // Not even logging in would make it possible to see the view, because then
     // we are denied based on authentication method (cookie).
     $this->drupalLogin($this->adminUser);
     $this->drupalGet('test/serialize/auth_with_perm', ['query' => ['_format' => 'json']]);
-    $this->assertResponse(403);
+    $this->assertSession()->statusCodeEquals(403);
     $this->drupalLogout();
 
     // But if we use the basic auth authentication strategy, we should be able
     // to see the page.
     $url = $this->buildUrl('test/serialize/auth_with_perm');
     $response = \Drupal::httpClient()->get($url, [
-      'auth' => [$this->adminUser->getUsername(), $this->adminUser->pass_raw],
+      'auth' => [$this->adminUser->getAccountName(), $this->adminUser->pass_raw],
+      'query' => [
+        '_format' => 'json',
+      ],
     ]);
 
     // Ensure that any changes to variables in the other thread are picked up.
     $this->refreshVariables();
 
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
   }
 
   /**
@@ -103,14 +134,14 @@ class StyleSerializerTest extends ViewTestBase {
     $this->executeView($view);
 
     $actual_json = $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']]);
-    $this->assertResponse(200);
+    $this->assertSession()->statusCodeEquals(200);
     $this->assertCacheTags($view->getCacheTags());
     $this->assertCacheContexts(['languages:language_interface', 'theme', 'request_format']);
     // @todo Due to https://www.drupal.org/node/2352009 we can't yet test the
     // propagation of cache max-age.
 
     // Test the http Content-type.
-    $headers = $this->drupalGetHeaders();
+    $headers = $this->getSession()->getResponseHeaders();
     $this->assertSame(['application/json'], $headers['Content-Type']);
 
     $expected = [];
@@ -122,8 +153,7 @@ class StyleSerializerTest extends ViewTestBase {
       $expected[] = $expected_row;
     }
 
-    $this->assertIdentical($actual_json, json_encode($expected), 'The expected JSON output was found.');
-
+    $this->assertSame(json_encode($expected), $actual_json, 'The expected JSON output was found.');
 
     // Test that the rendered output and the preview output are the same.
     $view->destroy();
@@ -131,11 +161,11 @@ class StyleSerializerTest extends ViewTestBase {
     // Mock the request content type by setting it on the display handler.
     $view->display_handler->setContentType('json');
     $output = $view->preview();
-    $this->assertIdentical($actual_json, (string) drupal_render_root($output), 'The expected JSON preview output was found.');
+    $this->assertSame((string) $this->renderer->renderRoot($output), $actual_json, 'The expected JSON preview output was found.');
 
     // Test a 403 callback.
-    $this->drupalGet('test/serialize/denied');
-    $this->assertResponse(403);
+    $this->drupalGet('test/serialize/denied', ['query' => ['_format' => 'json']]);
+    $this->assertSession()->statusCodeEquals(403);
 
     // Test the entity rows.
     $view = Views::getView('test_serializer_display_entity');
@@ -153,8 +183,8 @@ class StyleSerializerTest extends ViewTestBase {
     $expected = $serializer->serialize($entities, 'json');
 
     $actual_json = $this->drupalGet('test/serialize/entity', ['query' => ['_format' => 'json']]);
-    $this->assertResponse(200);
-    $this->assertIdentical($actual_json, $expected, 'The expected JSON output was found.');
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSame($expected, $actual_json, 'The expected JSON output was found.');
     $expected_cache_tags = $view->getCacheTags();
     $expected_cache_tags[] = 'entity_test_list';
     /** @var \Drupal\Core\Entity\EntityInterface $entity */
@@ -166,10 +196,10 @@ class StyleSerializerTest extends ViewTestBase {
 
     $expected = $serializer->serialize($entities, 'hal_json');
     $actual_json = $this->drupalGet('test/serialize/entity', ['query' => ['_format' => 'hal_json']]);
-    $this->assertIdentical($actual_json, $expected, 'The expected HAL output was found.');
+    $this->assertSame($expected, $actual_json, 'The expected HAL output was found.');
     $this->assertCacheTags($expected_cache_tags);
 
-    // Change the default format to xml.
+    // Change the format to xml.
     $view->setDisplay('rest_export_1');
     $view->getDisplay()->setOption('style', [
       'type' => 'serializer',
@@ -201,10 +231,32 @@ class StyleSerializerTest extends ViewTestBase {
     $view->save();
     $expected = $serializer->serialize($entities, 'json');
     $actual_json = $this->drupalGet('test/serialize/entity', ['query' => ['_format' => 'json']]);
-    $this->assertIdentical($actual_json, $expected, 'The expected JSON output was found.');
+    $this->assertSame($expected, $actual_json, 'The expected JSON output was found.');
     $expected = $serializer->serialize($entities, 'xml');
     $actual_xml = $this->drupalGet('test/serialize/entity', ['query' => ['_format' => 'xml']]);
     $this->assertSame(trim($expected), $actual_xml);
+  }
+
+  /**
+   * Verifies REST export views work on the same path as a page display.
+   */
+  public function testSharedPagePath() {
+    // Test with no format as well as html explicitly.
+    $this->drupalGet('test/serialize/shared');
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/html; charset=UTF-8');
+
+    $this->drupalGet('test/serialize/shared', ['query' => ['_format' => 'html']]);
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/html; charset=UTF-8');
+
+    $this->drupalGet('test/serialize/shared', ['query' => ['_format' => 'json']]);
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->responseHeaderEquals('content-type', 'application/json');
+
+    $this->drupalGet('test/serialize/shared', ['query' => ['_format' => 'xml']]);
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/xml; charset=UTF-8');
   }
 
   /**
@@ -220,7 +272,7 @@ class StyleSerializerTest extends ViewTestBase {
 
     $this->drupalGet('test/serialize/entity', ['query' => ['_format' => 'json']]);
     // Verify that the endpoint is unavailable for anonymous users.
-    $this->assertResponse(503);
+    $this->assertSession()->statusCodeEquals(503);
   }
 
   /**
@@ -272,7 +324,7 @@ class StyleSerializerTest extends ViewTestBase {
       'entity_test:7',
       'entity_test:8',
       'entity_test:9',
-      'entity_test_list'
+      'entity_test_list',
     ];
     $cache_contexts = [
       'entity_test_view_grants',
@@ -287,36 +339,36 @@ class StyleSerializerTest extends ViewTestBase {
     // varies by it.
     $result1 = Json::decode($this->drupalGet('test/serialize/entity', ['query' => ['_format' => 'json']]));
     $this->addRequestWithFormat('json');
-    $this->assertHeader('content-type', 'application/json');
+    $this->assertSession()->responseHeaderEquals('content-type', 'application/json');
     $this->assertCacheContexts($cache_contexts);
     $this->assertCacheTags($cache_tags);
-    $this->assertTrue($render_cache->get($original));
+    $this->assertNotEmpty($render_cache->get($original));
 
     $result_xml = $this->drupalGet('test/serialize/entity', ['query' => ['_format' => 'xml']]);
     $this->addRequestWithFormat('xml');
-    $this->assertHeader('content-type', 'text/xml; charset=UTF-8');
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/xml; charset=UTF-8');
     $this->assertCacheContexts($cache_contexts);
     $this->assertCacheTags($cache_tags);
-    $this->assertTrue($render_cache->get($original));
+    $this->assertNotEmpty($render_cache->get($original));
 
     // Ensure that the XML output is different from the JSON one.
-    $this->assertNotEqual($result1, $result_xml);
+    $this->assertNotEquals($result1, $result_xml);
 
     // Ensure that the cached page works.
     $result2 = Json::decode($this->drupalGet('test/serialize/entity', ['query' => ['_format' => 'json']]));
     $this->addRequestWithFormat('json');
-    $this->assertHeader('content-type', 'application/json');
-    $this->assertEqual($result2, $result1);
+    $this->assertSession()->responseHeaderEquals('content-type', 'application/json');
+    $this->assertEqual($result1, $result2);
     $this->assertCacheContexts($cache_contexts);
     $this->assertCacheTags($cache_tags);
-    $this->assertTrue($render_cache->get($original));
+    $this->assertNotEmpty($render_cache->get($original));
 
     // Create a new entity and ensure that the cache tags are taken over.
     EntityTest::create(['name' => 'test_11', 'user_id' => $this->adminUser->id()])->save();
     $result3 = Json::decode($this->drupalGet('test/serialize/entity', ['query' => ['_format' => 'json']]));
     $this->addRequestWithFormat('json');
-    $this->assertHeader('content-type', 'application/json');
-    $this->assertNotEqual($result3, $result2);
+    $this->assertSession()->responseHeaderEquals('content-type', 'application/json');
+    $this->assertNotEquals($result2, $result3);
 
     // Add the new entity cache tag and remove the first one, because we just
     // show 10 items in total.
@@ -325,7 +377,7 @@ class StyleSerializerTest extends ViewTestBase {
 
     $this->assertCacheContexts($cache_contexts);
     $this->assertCacheTags($cache_tags);
-    $this->assertTrue($render_cache->get($original));
+    $this->assertNotEmpty($render_cache->get($original));
   }
 
   /**
@@ -336,70 +388,65 @@ class StyleSerializerTest extends ViewTestBase {
 
     $style_options = 'admin/structure/views/nojs/display/test_serializer_display_field/rest_export_1/style_options';
 
-    // Select only 'xml' as an accepted format.
-    $this->drupalPostForm($style_options, ['style_options[formats][xml]' => 'xml'], t('Apply'));
-    $this->drupalPostForm(NULL, [], t('Save'));
+    // Ensure a request with no format returns 406 Not Acceptable.
+    $this->drupalGet('test/serialize/field');
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/html; charset=UTF-8');
+    $this->assertSession()->statusCodeEquals(406);
 
-    // Should return a 406.
+    // Select only 'xml' as an accepted format.
+    $this->drupalPostForm($style_options, ['style_options[formats][xml]' => 'xml'], 'Apply');
+    $this->submitForm([], 'Save');
+
+    // Ensure a request for JSON returns 406 Not Acceptable.
     $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']]);
-    $this->assertHeader('content-type', 'application/json');
-    $this->assertResponse(406, 'A 406 response was returned when JSON was requested.');
-    // Should return a 200.
+    $this->assertSession()->responseHeaderEquals('content-type', 'application/json');
+    $this->assertSession()->statusCodeEquals(406);
+    // Ensure a request for XML returns 200 OK.
     $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'xml']]);
-    $this->assertHeader('content-type', 'text/xml; charset=UTF-8');
-    $this->assertResponse(200, 'A 200 response was returned when XML was requested.');
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/xml; charset=UTF-8');
+    $this->assertSession()->statusCodeEquals(200);
 
     // Add 'json' as an accepted format, so we have multiple.
-    $this->drupalPostForm($style_options, ['style_options[formats][json]' => 'json'], t('Apply'));
-    $this->drupalPostForm(NULL, [], t('Save'));
+    $this->drupalPostForm($style_options, ['style_options[formats][json]' => 'json'], 'Apply');
+    $this->submitForm([], 'Save');
 
-    // Should return a 200.
-    // @todo This should be fixed when we have better content negotiation.
-    $this->drupalGet('test/serialize/field');
-    $this->assertHeader('content-type', 'application/json');
-    $this->assertResponse(200, 'A 200 response was returned when any format was requested.');
-
-    // Should return a 200. Emulates a sample Firefox header.
+    // Should return a 406. Emulates a sample Firefox header.
     $this->drupalGet('test/serialize/field', [], ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8']);
-    $this->assertHeader('content-type', 'application/json');
-    $this->assertResponse(200, 'A 200 response was returned when a browser accept header was requested.');
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/html; charset=UTF-8');
+    $this->assertSession()->statusCodeEquals(406);
 
-    // Should return a 200.
-    $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']]);
-    $this->assertHeader('content-type', 'application/json');
-    $this->assertResponse(200, 'A 200 response was returned when JSON was requested.');
-    $headers = $this->drupalGetHeaders();
-    $this->assertEqual($headers['Content-Type'], ['application/json'], 'The header Content-type is correct.');
-    // Should return a 200.
-    $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'xml']]);
-    $this->assertHeader('content-type', 'text/xml; charset=UTF-8');
-    $this->assertResponse(200, 'A 200 response was returned when XML was requested');
-    $headers = $this->drupalGetHeaders();
-    $this->assertSame(['text/xml; charset=UTF-8'], $headers['Content-Type']);
-    // Should return a 406.
+    // Ensure a request for HTML returns 406 Not Acceptable.
     $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'html']]);
-    // We want to show the first format by default, see
-    // \Drupal\rest\Plugin\views\style\Serializer::render.
-    $this->assertHeader('content-type', 'application/json');
-    $this->assertResponse(200, 'A 200 response was returned when HTML was requested.');
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/html; charset=UTF-8');
+    $this->assertSession()->statusCodeEquals(406);
 
-    // Now configure now format, so all of them should be allowed.
-    $this->drupalPostForm($style_options, ['style_options[formats][json]' => '0', 'style_options[formats][xml]' => '0'], t('Apply'));
-
-    // Should return a 200.
+    // Ensure a request for JSON returns 200 OK.
     $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']]);
-    $this->assertHeader('content-type', 'application/json');
-    $this->assertResponse(200, 'A 200 response was returned when JSON was requested.');
-    // Should return a 200.
+    $this->assertSession()->responseHeaderEquals('content-type', 'application/json');
+    $this->assertSession()->statusCodeEquals(200);
+
+    // Ensure a request XML returns 200 OK.
     $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'xml']]);
-    $this->assertHeader('content-type', 'text/xml; charset=UTF-8');
-    $this->assertResponse(200, 'A 200 response was returned when XML was requested');
-    // Should return a 200.
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/xml; charset=UTF-8');
+    $this->assertSession()->statusCodeEquals(200);
+
+    // Now configure no format, so both serialization formats should be allowed.
+    $this->drupalPostForm($style_options, ['style_options[formats][json]' => '0', 'style_options[formats][xml]' => '0'], 'Apply');
+
+    // Ensure a request for JSON returns 200 OK.
+    $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']]);
+    $this->assertSession()->responseHeaderEquals('content-type', 'application/json');
+    $this->assertSession()->statusCodeEquals(200);
+
+    // Ensure a request for XML returns 200 OK.
+    $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'xml']]);
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/xml; charset=UTF-8');
+    $this->assertSession()->statusCodeEquals(200);
+
+    // Should return a 406 for HTML still.
     $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'html']]);
-    // We want to show the first format by default, see
-    // \Drupal\rest\Plugin\views\style\Serializer::render.
-    $this->assertHeader('content-type', 'application/json');
-    $this->assertResponse(200, 'A 200 response was returned when HTML was requested.');
+    $this->assertSession()->responseHeaderEquals('content-type', 'text/html; charset=UTF-8');
+    $this->assertSession()->statusCodeEquals(406);
   }
 
   /**
@@ -411,12 +458,12 @@ class StyleSerializerTest extends ViewTestBase {
     // Test the UI settings for adding field ID aliases.
     $this->drupalGet('admin/structure/views/view/test_serializer_display_field/edit/rest_export_1');
     $row_options = 'admin/structure/views/nojs/display/test_serializer_display_field/rest_export_1/row_options';
-    $this->assertLinkByHref($row_options);
+    $this->assertSession()->linkByHrefExists($row_options);
 
     // Test an empty string for an alias, this should not be used. This also
     // tests that the form can be submitted with no aliases.
-    $this->drupalPostForm($row_options, ['row_options[field_options][name][alias]' => ''], t('Apply'));
-    $this->drupalPostForm(NULL, [], t('Save'));
+    $this->drupalPostForm($row_options, ['row_options[field_options][name][alias]' => ''], 'Apply');
+    $this->submitForm([], 'Save');
 
     $view = Views::getView('test_serializer_display_field');
     $view->setDisplay('rest_export_1');
@@ -431,7 +478,7 @@ class StyleSerializerTest extends ViewTestBase {
       $expected[] = $expected_row;
     }
 
-    $this->assertIdentical(Json::decode($this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']])), $this->castSafeStrings($expected));
+    $this->assertEquals($expected, Json::decode($this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']])));
 
     // Test a random aliases for fields, they should be replaced.
     $alias_map = [
@@ -442,16 +489,16 @@ class StyleSerializerTest extends ViewTestBase {
     ];
 
     $edit = ['row_options[field_options][name][alias]' => $alias_map['name'], 'row_options[field_options][nothing][alias]' => $alias_map['nothing']];
-    $this->drupalPostForm($row_options, $edit, t('Apply'));
-    $this->assertText(t('The machine-readable name must contain only letters, numbers, dashes and underscores.'));
+    $this->drupalPostForm($row_options, $edit, 'Apply');
+    $this->assertText('The machine-readable name must contain only letters, numbers, dashes and underscores.');
 
     // Change the map alias value to a valid one.
     $alias_map['nothing'] = $this->randomMachineName();
 
     $edit = ['row_options[field_options][name][alias]' => $alias_map['name'], 'row_options[field_options][nothing][alias]' => $alias_map['nothing']];
-    $this->drupalPostForm($row_options, $edit, t('Apply'));
+    $this->drupalPostForm($row_options, $edit, 'Apply');
 
-    $this->drupalPostForm(NULL, [], t('Save'));
+    $this->submitForm([], 'Save');
 
     $view = Views::getView('test_serializer_display_field');
     $view->setDisplay('rest_export_1');
@@ -466,7 +513,7 @@ class StyleSerializerTest extends ViewTestBase {
       $expected[] = $expected_row;
     }
 
-    $this->assertIdentical(Json::decode($this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']])), $this->castSafeStrings($expected));
+    $this->assertEquals($expected, Json::decode($this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']])));
   }
 
   /**
@@ -478,7 +525,7 @@ class StyleSerializerTest extends ViewTestBase {
     // Test the UI settings for adding field ID aliases.
     $this->drupalGet('admin/structure/views/view/test_serializer_display_field/edit/rest_export_1');
     $row_options = 'admin/structure/views/nojs/display/test_serializer_display_field/rest_export_1/row_options';
-    $this->assertLinkByHref($row_options);
+    $this->assertSession()->linkByHrefExists($row_options);
 
     // Test an empty string for an alias, this should not be used. This also
     // tests that the form can be submitted with no aliases.
@@ -486,8 +533,8 @@ class StyleSerializerTest extends ViewTestBase {
       'row_options[field_options][created][raw_output]' => '1',
       'row_options[field_options][name][raw_output]' => '1',
     ];
-    $this->drupalPostForm($row_options, $values, t('Apply'));
-    $this->drupalPostForm(NULL, [], t('Save'));
+    $this->drupalPostForm($row_options, $values, 'Apply');
+    $this->submitForm([], 'Save');
 
     $view = Views::getView('test_serializer_display_field');
     $view->setDisplay('rest_export_1');
@@ -504,8 +551,8 @@ class StyleSerializerTest extends ViewTestBase {
 
     // Just test the raw 'created' value against each row.
     foreach (Json::decode($this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']])) as $index => $values) {
-      $this->assertIdentical($values['created'], $view->result[$index]->views_test_data_created, 'Expected raw created value found.');
-      $this->assertIdentical($values['name'], $view->result[$index]->views_test_data_name, 'Expected raw name value found.');
+      $this->assertSame($view->result[$index]->views_test_data_created, $values['created'], 'Expected raw created value found.');
+      $this->assertSame($view->result[$index]->views_test_data_name, $values['name'], 'Expected raw name value found.');
     }
 
     // Test result with an excluded field.
@@ -539,7 +586,7 @@ class StyleSerializerTest extends ViewTestBase {
    * Tests the live preview output for json output.
    */
   public function testLivePreview() {
-    // We set up a request so it looks like an request in the live preview.
+    // We set up a request so it looks like a request in the live preview.
     $request = new Request();
     $request->query->add([MainContentViewSubscriber::WRAPPER_FORMAT => 'drupal_ajax']);
     /** @var \Symfony\Component\HttpFoundation\RequestStack $request_stack */
@@ -564,7 +611,8 @@ class StyleSerializerTest extends ViewTestBase {
 
     $build = $view->preview();
     $rendered_json = $build['#plain_text'];
-    $this->assertTrue(!isset($build['#markup']) && $rendered_json == $expected, 'Ensure the previewed json is escaped.');
+    $this->assertArrayNotHasKey('#markup', $build);
+    $this->assertSame($expected, $rendered_json, 'Ensure the previewed json is escaped.');
     $view->destroy();
 
     $expected = $serializer->serialize($entities, 'xml');
@@ -584,7 +632,7 @@ class StyleSerializerTest extends ViewTestBase {
     $this->executeView($view);
     $build = $view->preview();
     $rendered_xml = $build['#plain_text'];
-    $this->assertEqual($rendered_xml, $expected, 'Ensure we preview xml when we change the request format.');
+    $this->assertEqual($expected, $rendered_xml, 'Ensure we preview xml when we change the request format.');
   }
 
   /**
@@ -593,12 +641,12 @@ class StyleSerializerTest extends ViewTestBase {
   public function testSerializerViewsUI() {
     $this->drupalLogin($this->adminUser);
     // Click the "Update preview button".
-    $this->drupalPostForm('admin/structure/views/view/test_serializer_display_field/edit/rest_export_1', $edit = [], t('Update preview'));
-    $this->assertResponse(200);
+    $this->drupalPostForm('admin/structure/views/view/test_serializer_display_field/edit/rest_export_1', $edit = [], 'Update preview');
+    $this->assertSession()->statusCodeEquals(200);
     // Check if we receive the expected result.
     $result = $this->xpath('//div[@id="views-live-preview"]/pre');
     $json_preview = $result[0]->getText();
-    $this->assertSame($json_preview, $this->drupalGet('test/serialize/field'), 'The expected JSON preview output was found.');
+    $this->assertSame($json_preview, $this->drupalGet('test/serialize/field', ['query' => ['_format' => 'json']]), 'The expected JSON preview output was found.');
   }
 
   /**
@@ -609,8 +657,8 @@ class StyleSerializerTest extends ViewTestBase {
     $node = $this->drupalCreateNode();
 
     $result = Json::decode($this->drupalGet('test/serialize/node-field', ['query' => ['_format' => 'json']]));
-    $this->assertEqual($result[0]['nid'], $node->id());
-    $this->assertEqual($result[0]['body'], $node->body->processed);
+    $this->assertEqual($node->id(), $result[0]['nid']);
+    $this->assertEqual($node->body->processed, $result[0]['body']);
 
     // Make sure that serialized fields are not exposed to XSS.
     $node = $this->drupalCreateNode();
@@ -620,8 +668,8 @@ class StyleSerializerTest extends ViewTestBase {
     ];
     $node->save();
     $result = Json::decode($this->drupalGet('test/serialize/node-field', ['query' => ['_format' => 'json']]));
-    $this->assertEqual($result[1]['nid'], $node->id());
-    $this->assertTrue(strpos($this->getRawContent(), "<script") === FALSE, "No script tag is present in the raw page contents.");
+    $this->assertEqual($node->id(), $result[1]['nid']);
+    $this->assertStringNotContainsString("<script", $this->getSession()->getPage()->getContent(), "No script tag is present in the raw page contents.");
 
     $this->drupalLogin($this->adminUser);
 
@@ -630,8 +678,8 @@ class StyleSerializerTest extends ViewTestBase {
 
     // Test an empty string for an alias, this should not be used. This also
     // tests that the form can be submitted with no aliases.
-    $this->drupalPostForm($row_options, ['row_options[field_options][title][raw_output]' => '1'], t('Apply'));
-    $this->drupalPostForm(NULL, [], t('Save'));
+    $this->drupalPostForm($row_options, ['row_options[field_options][title][raw_output]' => '1'], 'Apply');
+    $this->submitForm([], 'Save');
 
     $view = Views::getView('test_serializer_node_display_field');
     $view->setDisplay('rest_export_1');
@@ -639,17 +687,17 @@ class StyleSerializerTest extends ViewTestBase {
 
     // Test the raw 'created' value against each row.
     foreach (Json::decode($this->drupalGet('test/serialize/node-field', ['query' => ['_format' => 'json']])) as $index => $values) {
-      $this->assertIdentical($values['title'], $view->result[$index]->_entity->title->value, 'Expected raw title value found.');
+      $this->assertSame($view->result[$index]->_entity->title->value, $values['title'], 'Expected raw title value found.');
     }
 
     // Test that multiple raw body fields are shown.
-    // Make the body field unlimited cardinatlity.
+    // Set the body field to unlimited cardinality.
     $storage_definition = $node->getFieldDefinition('body')->getFieldStorageDefinition();
     $storage_definition->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED);
     $storage_definition->save();
 
-    $this->drupalPostForm($row_options, ['row_options[field_options][body][raw_output]' => '1'], t('Apply'));
-    $this->drupalPostForm(NULL, [], t('Save'));
+    $this->drupalPostForm($row_options, ['row_options[field_options][body][raw_output]' => '1'], 'Apply');
+    $this->submitForm([], 'Save');
 
     $node = $this->drupalCreateNode();
 
@@ -666,8 +714,8 @@ class StyleSerializerTest extends ViewTestBase {
     $this->executeView($view);
 
     $result = Json::decode($this->drupalGet('test/serialize/node-field', ['query' => ['_format' => 'json']]));
-    $this->assertEqual(count($result[2]['body']), $node->body->count(), 'Expected count of values');
-    $this->assertEqual($result[2]['body'], array_map(function($item) {
+    $this->assertSame($node->body->count(), count($result[2]['body']), 'Expected count of values');
+    $this->assertEqual($result[2]['body'], array_map(function ($item) {
       return $item['value'];
     }, $node->body->getValue()), 'Expected raw body values found.');
   }
@@ -676,8 +724,6 @@ class StyleSerializerTest extends ViewTestBase {
    * Tests the "Grouped rows" functionality.
    */
   public function testGroupRows() {
-    /** @var \Drupal\Core\Render\RendererInterface $renderer */
-    $renderer = $this->container->get('renderer');
     $this->drupalCreateContentType(['type' => 'page']);
     // Create a text field with cardinality set to unlimited.
     $field_name = 'field_group_rows';
@@ -720,7 +766,7 @@ class StyleSerializerTest extends ViewTestBase {
     // Check if the field_group_rows field is grouped.
     $expected = [];
     $expected[] = [$field_name => implode(', ', $grouped_field_values)];
-    $this->assertEqual($serializer->serialize($expected, 'json'), (string) $renderer->renderRoot($build));
+    $this->assertEqual($serializer->serialize($expected, 'json'), (string) $this->renderer->renderRoot($build));
     // Set the group rows setting to false.
     $view = Views::getView('test_serializer_node_display_field');
     $view->setDisplay('rest_export_1');
@@ -732,7 +778,7 @@ class StyleSerializerTest extends ViewTestBase {
     foreach ($grouped_field_values as $grouped_field_value) {
       $expected[] = [$field_name => $grouped_field_value];
     }
-    $this->assertEqual($serializer->serialize($expected, 'json'), (string) $renderer->renderRoot($build));
+    $this->assertEqual($serializer->serialize($expected, 'json'), (string) $this->renderer->renderRoot($build));
   }
 
   /**
@@ -766,7 +812,7 @@ class StyleSerializerTest extends ViewTestBase {
       ],
     ];
 
-    $this->assertEqual($result, $expected, 'Querying a view with no exposed filter returns all nodes.');
+    $this->assertEqual($expected, $result, 'Querying a view with no exposed filter returns all nodes.');
 
     // Test that title starts with 'Node 11' query finds 2 of the 3 nodes.
     $result = Json::decode($this->drupalGet('test/serialize/node-exposed-filter', ['query' => ['_format' => 'json', 'title' => 'Node 11']]));
@@ -791,7 +837,7 @@ class StyleSerializerTest extends ViewTestBase {
       'url',
     ];
 
-    $this->assertEqual($result, $expected, 'Querying a view with a starts with exposed filter on the title returns nodes whose title starts with value provided.');
+    $this->assertEqual($expected, $result, 'Querying a view with a starts with exposed filter on the title returns nodes whose title starts with value provided.');
     $this->assertCacheContexts($cache_contexts);
   }
 
@@ -826,7 +872,7 @@ class StyleSerializerTest extends ViewTestBase {
 
     // Check that the names are correct.
     $expected = ['mul-l1-l2', 'mul-l1-orig', 'mul-l2-l1', 'mul-l2-orig', 'mul-none'];
-    $this->assertIdentical($names, $expected, 'The translated content was found in the JSON.');
+    $this->assertSame($expected, $names, 'The translated content was found in the JSON.');
   }
 
 }

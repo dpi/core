@@ -8,6 +8,8 @@ use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Form builder for \Drupal\Core\Form\FormState::cleanValues() test.
+ *
+ * @internal
  */
 class FormTestFormStateValuesCleanForm extends FormBase {
 
@@ -34,7 +36,7 @@ class FormTestFormStateValuesCleanForm extends FormBase {
 
     // Add an arbitrary element and manually set it to be cleaned.
     // Using $form_state->addCleanValueKey('wine'); didn't work here.
-    $class = get_class($this);
+    $class = static::class;
     $form['wine'] = [
       '#type' => 'value',
       '#value' => 3000,

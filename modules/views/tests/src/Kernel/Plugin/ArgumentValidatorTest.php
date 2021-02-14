@@ -41,8 +41,8 @@ class ArgumentValidatorTest extends ViewsKernelTestBase {
     $options = [
       'specify_validation' => TRUE,
       'validate' => [
-        'type' => 'argument_validator_test'
-      ]
+        'type' => 'argument_validator_test',
+      ],
     ];
     $id = $view->addHandler('default', 'argument', 'views_test_data', 'name', $options);
     $view->initHandlers();
@@ -57,7 +57,7 @@ class ArgumentValidatorTest extends ViewsKernelTestBase {
     $this->assertTrue($argument->validateArgument($test_value), 'The right argument validates.');
 
     $plugin = $argument->getPlugin('argument_validator');
-    $this->assertTrue($plugin instanceof ArgumentValidatorTestPlugin, 'The correct argument validator plugin is used.');
+    $this->assertInstanceOf(ArgumentValidatorTestPlugin::class, $plugin);
     $this->assertFalse($plugin->validateArgument($this->randomMachineName()), 'A random value does not validate.');
     $this->assertTrue($plugin->validateArgument($test_value), 'The right argument validates.');
   }

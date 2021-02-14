@@ -2,13 +2,14 @@
 
 namespace Drupal\views\Plugin\views\display;
 
-use Drupal\Core\Database\Query\Condition;
+use Drupal\Core\Database\Connection;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * The plugin that handles an EntityReference display.
  *
  * "entity_reference_display" is a custom property, used with
- * \Drupal\views\Views::getApplicableViews() to retrieve all views with a
+ * \Drupal\views\Views::getApplicableViews() to retrieve all views with an
  * 'Entity Reference' display.
  *
  * @ingroup views_display_plugins
@@ -42,6 +43,42 @@ class EntityReference extends DisplayPluginBase {
   protected $usesAttachments = FALSE;
 
   /**
+   * The database connection.
+   *
+   * @var \Drupal\Core\Database\Connection
+   */
+  protected $connection;
+
+  /**
+   * Constructs a new EntityReference object.
+   *
+   * @param array $configuration
+   *   A configuration array containing information about the plugin instance.
+   * @param string $plugin_id
+   *   The plugin_id for the plugin instance.
+   * @param mixed $plugin_definition
+   *   The plugin implementation definition.
+   * @param \Drupal\Core\Database\Connection $connection
+   *   The database connection.
+   */
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, Connection $connection) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+    $this->connection = $connection;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $configuration,
+      $plugin_id,
+      $plugin_definition,
+      $container->get('database')
+    );
+  }
+
+  /**
    * {@inheritdoc}
    */
   protected function defineOptions() {
@@ -54,9 +91,6 @@ class EntityReference extends DisplayPluginBase {
     $options['row']['contains']['type'] = ['default' => 'entity_reference'];
     $options['defaults']['default']['row'] = FALSE;
 
-    // Make sure the query is not cached.
-    $options['defaults']['default']['cache'] = FALSE;
-
     // Set the display title to an empty string (not used in this display type).
     $options['title']['default'] = '';
     $options['defaults']['default']['title'] = FALSE;
@@ -65,13 +99,12 @@ class EntityReference extends DisplayPluginBase {
   }
 
   /**
-   * Overrides \Drupal\views\Plugin\views\display\DisplayPluginBase::optionsSummary().
-   *
-   * Disable 'cache' and 'title' so it won't be changed.
+   * {@inheritdoc}
    */
   public function optionsSummary(&$categories, &$options) {
     parent::optionsSummary($categories, $options);
-    unset($options['query']);
+    // Disable 'title' so it won't be changed from the default set in
+    // \Drupal\views\Plugin\views\display\EntityReference::defineOptions.
     unset($options['title']);
   }
 
@@ -127,7 +160,7 @@ class EntityReference extends DisplayPluginBase {
     // Restrict the autocomplete options based on what's been typed already.
     if (isset($options['match'])) {
       $style_options = $this->getOption('style');
-      $value = db_like($options['match']);
+      $value = $this->connection->escapeLike($options['match']);
       if ($options['match_operator'] !== '=') {
         $value = $value . '%';
         if ($options['match_operator'] != 'STARTS_WITH') {
@@ -135,8 +168,8 @@ class EntityReference extends DisplayPluginBase {
         }
       }
 
-      // Multiple search fields are OR'd together.
-      $conditions = new Condition('OR');
+      // Multiple search fields are ORed together.
+      $conditions = $this->view->query->getConnection()->condition('OR');
 
       // Build the condition using the selected search fields.
       foreach ($style_options['options']['search_fields'] as $field_id) {

@@ -2,15 +2,64 @@
 
 namespace Drupal\migrate\Plugin\migrate\destination;
 
+use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\migrate\Plugin\MigrationInterface;
 use Drupal\migrate\Row;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Defines the base abstract class for component entity display.
+ * Provides a destination plugin for migrating entity display components.
+ *
+ * Display modes provide different presentations for viewing ('view modes') or
+ * editing ('form modes') content. This destination plugin is an abstract base
+ * class for migrating fields and other components into view and form modes.
+ *
+ * @see \Drupal\migrate\Plugin\migrate\destination\PerComponentEntityDisplay
+ * @see \Drupal\migrate\Plugin\migrate\destination\PerComponentEntityFormDisplay
  */
-abstract class ComponentEntityDisplayBase extends DestinationBase {
+abstract class ComponentEntityDisplayBase extends DestinationBase implements ContainerFactoryPluginInterface {
 
   const MODE_NAME = '';
+
+  /**
+   * The entity display repository.
+   *
+   * @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface
+   */
+  protected $entityDisplayRepository;
+
+  /**
+   * PerComponentEntityDisplay constructor.
+   *
+   * @param array $configuration
+   *   A configuration array containing information about the plugin instance.
+   * @param string $plugin_id
+   *   The plugin_id for the plugin instance.
+   * @param mixed $plugin_definition
+   *   The plugin implementation definition.
+   * @param \Drupal\migrate\Plugin\MigrationInterface $migration
+   *   The migration.
+   * @param \Drupal\Core\Entity\EntityDisplayRepositoryInterface $entity_display_repository
+   *   The entity display repository service.
+   */
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, MigrationInterface $migration, EntityDisplayRepositoryInterface $entity_display_repository) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition, $migration);
+    $this->entityDisplayRepository = $entity_display_repository;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition, MigrationInterface $migration = NULL) {
+    return new static(
+      $configuration,
+      $plugin_id,
+      $plugin_definition,
+      $migration,
+      $container->get('entity_display.repository')
+    );
+  }
 
   /**
    * {@inheritdoc}
@@ -47,7 +96,7 @@ abstract class ComponentEntityDisplayBase extends DestinationBase {
   /**
    * {@inheritdoc}
    */
-  public function fields(MigrationInterface $migration = NULL) {
+  public function fields() {
     // This is intentionally left empty.
   }
 

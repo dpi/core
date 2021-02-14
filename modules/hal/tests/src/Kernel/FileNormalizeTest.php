@@ -16,16 +16,15 @@ class FileNormalizeTest extends NormalizerTestBase {
    *
    * @var array
    */
-  public static $modules = ['file'];
+  protected static $modules = ['file'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installEntitySchema('file');
   }
-
 
   /**
    * Tests the normalize function.
@@ -44,12 +43,15 @@ class FileNormalizeTest extends NormalizerTestBase {
 
     $expected_array = [
       'uri' => [
-        ['value' => file_create_url($file->getFileUri())],
+        [
+          'value' => $file->getFileUri(),
+          'url' => $file->createFileUrl(),
+        ],
       ],
     ];
 
     $normalized = $this->serializer->normalize($file, $this->format);
-    $this->assertEqual($normalized['uri'], $expected_array['uri'], 'URI is normalized.');
+    $this->assertEqual($expected_array['uri'], $normalized['uri'], 'URI is normalized.');
 
   }
 

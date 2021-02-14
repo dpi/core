@@ -23,7 +23,7 @@ class Date extends NumericFilter {
   }
 
   /**
-   * Add a type selector to the value form
+   * Add a type selector to the value form.
    */
   protected function valueForm(&$form, FormStateInterface $form_state) {
     if (!$form_state->get('exposed')) {
@@ -148,11 +148,15 @@ class Date extends NumericFilter {
     }
 
     if ($operators[$operator]['values'] == 1) {
+      // When the operator is either <, <=, =, !=, >=, > or regular_expression
+      // the input contains only one value.
       if ($this->value['value'] == '') {
         return FALSE;
       }
     }
-    else {
+    elseif ($operators[$operator]['values'] == 2) {
+      // When the operator is either between or not between the input contains
+      // two values.
       if ($this->value['min'] == '' || $this->value['max'] == '') {
         return FALSE;
       }
@@ -166,8 +170,10 @@ class Date extends NumericFilter {
     $b = intval(strtotime($this->value['max'], 0));
 
     if ($this->value['type'] == 'offset') {
-      $a = '***CURRENT_TIME***' . sprintf('%+d', $a); // keep sign
-      $b = '***CURRENT_TIME***' . sprintf('%+d', $b); // keep sign
+      // Keep sign.
+      $a = '***CURRENT_TIME***' . sprintf('%+d', $a);
+      // Keep sign.
+      $b = '***CURRENT_TIME***' . sprintf('%+d', $b);
     }
     // This is safe because we are manually scrubbing the values.
     // It is necessary to do it this way because $a and $b are formulas when using an offset.
@@ -178,7 +184,8 @@ class Date extends NumericFilter {
   protected function opSimple($field) {
     $value = intval(strtotime($this->value['value'], 0));
     if (!empty($this->value['type']) && $this->value['type'] == 'offset') {
-      $value = '***CURRENT_TIME***' . sprintf('%+d', $value); // keep sign
+      // Keep sign.
+      $value = '***CURRENT_TIME***' . sprintf('%+d', $value);
     }
     // This is safe because we are manually scrubbing the value.
     // It is necessary to do it this way because $value is a formula when using an offset.

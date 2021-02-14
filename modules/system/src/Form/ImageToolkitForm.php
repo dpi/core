@@ -10,6 +10,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Configures image toolkit settings for this site.
+ *
+ * @internal
  */
 class ImageToolkitForm extends ConfigFormBase {
 
@@ -21,7 +23,7 @@ class ImageToolkitForm extends ConfigFormBase {
   protected $availableToolkits = [];
 
   /**
-   * Constructs a ImageToolkitForm object.
+   * Constructs an ImageToolkitForm object.
    *
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The factory for configuration objects.

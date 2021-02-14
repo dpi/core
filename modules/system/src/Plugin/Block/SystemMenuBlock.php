@@ -5,7 +5,9 @@ namespace Drupal\system\Plugin\Block;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Menu\MenuActiveTrailInterface;
 use Drupal\Core\Menu\MenuLinkTreeInterface;
+use Drupal\Core\Menu\MenuTreeParameters;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -16,7 +18,10 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   id = "system_menu_block",
  *   admin_label = @Translation("Menu"),
  *   category = @Translation("Menus"),
- *   deriver = "Drupal\system\Plugin\Derivative\SystemMenuBlock"
+ *   deriver = "Drupal\system\Plugin\Derivative\SystemMenuBlock",
+ *   forms = {
+ *     "settings_tray" = "\Drupal\system\Form\SystemMenuOffCanvasForm",
+ *   },
  * )
  */
 class SystemMenuBlock extends BlockBase implements ContainerFactoryPluginInterface {
@@ -29,6 +34,13 @@ class SystemMenuBlock extends BlockBase implements ContainerFactoryPluginInterfa
   protected $menuTree;
 
   /**
+   * The active menu trail service.
+   *
+   * @var \Drupal\Core\Menu\MenuActiveTrailInterface
+   */
+  protected $menuActiveTrail;
+
+  /**
    * Constructs a new SystemMenuBlock.
    *
    * @param array $configuration
@@ -39,10 +51,13 @@ class SystemMenuBlock extends BlockBase implements ContainerFactoryPluginInterfa
    *   The plugin implementation definition.
    * @param \Drupal\Core\Menu\MenuLinkTreeInterface $menu_tree
    *   The menu tree service.
+   * @param \Drupal\Core\Menu\MenuActiveTrailInterface $menu_active_trail
+   *   The active menu trail service.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, MenuLinkTreeInterface $menu_tree) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, MenuLinkTreeInterface $menu_tree, MenuActiveTrailInterface $menu_active_trail) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->menuTree = $menu_tree;
+    $this->menuActiveTrail = $menu_active_trail;
   }
 
   /**
@@ -53,7 +68,8 @@ class SystemMenuBlock extends BlockBase implements ContainerFactoryPluginInterfa
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('menu.link_tree')
+      $container->get('menu.link_tree'),
+      $container->get('menu.active_trail')
     );
   }
 
@@ -80,7 +96,7 @@ class SystemMenuBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#title' => $this->t('Initial visibility level'),
       '#default_value' => $config['level'],
       '#options' => $options,
-      '#description' => $this->t('The menu is only visible if the menu item for the current page is at this level or below it. Use level 1 to always display this menu.'),
+      '#description' => $this->t('The menu is only visible if the menu link for the current page is at this level or below it. Use level 1 to always display this menu.'),
       '#required' => TRUE,
     ];
 
@@ -93,6 +109,13 @@ class SystemMenuBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#options' => $options,
       '#description' => $this->t('This maximum number includes the initial level.'),
       '#required' => TRUE,
+    ];
+
+    $form['menu_levels']['expand_all_items'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Expand all menu links'),
+      '#default_value' => !empty($config['expand_all_items']),
+      '#description' => $this->t('Override the option found on each menu link used for expanding children and instead display the whole menu tree as expanded.'),
     ];
 
     return $form;
@@ -114,6 +137,7 @@ class SystemMenuBlock extends BlockBase implements ContainerFactoryPluginInterfa
   public function blockSubmit($form, FormStateInterface $form_state) {
     $this->configuration['level'] = $form_state->getValue('level');
     $this->configuration['depth'] = $form_state->getValue('depth');
+    $this->configuration['expand_all_items'] = $form_state->getValue('expand_all_items');
   }
 
   /**
@@ -121,7 +145,14 @@ class SystemMenuBlock extends BlockBase implements ContainerFactoryPluginInterfa
    */
   public function build() {
     $menu_name = $this->getDerivativeId();
-    $parameters = $this->menuTree->getCurrentRouteMenuTreeParameters($menu_name);
+    if ($this->configuration['expand_all_items']) {
+      $parameters = new MenuTreeParameters();
+      $active_trail = $this->menuActiveTrail->getActiveTrailIds($menu_name);
+      $parameters->setActiveTrail($active_trail);
+    }
+    else {
+      $parameters = $this->menuTree->getCurrentRouteMenuTreeParameters($menu_name);
+    }
 
     // Adjust the menu tree parameters based on the block's configuration.
     $level = $this->configuration['level'];
@@ -170,6 +201,7 @@ class SystemMenuBlock extends BlockBase implements ContainerFactoryPluginInterfa
     return [
       'level' => 1,
       'depth' => 0,
+      'expand_all_items' => FALSE,
     ];
   }
 

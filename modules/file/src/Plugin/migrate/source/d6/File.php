@@ -42,7 +42,8 @@ class File extends DrupalSqlBase {
   public function query() {
     return $this->select('files', 'f')
       ->fields('f')
-      ->orderBy('timestamp')
+      ->condition('f.filepath', '/tmp%', 'NOT LIKE')
+      ->orderBy('f.timestamp')
       // If two or more files have the same timestamp, they'll end up in a
       // non-deterministic order. Ordering by fid (or any other unique field)
       // will prevent this.
@@ -88,11 +89,13 @@ class File extends DrupalSqlBase {
       'is_public' => $this->t('TRUE if the files directory is public otherwise FALSE.'),
     ];
   }
+
   /**
    * {@inheritdoc}
    */
   public function getIds() {
     $ids['fid']['type'] = 'integer';
+    $ids['fid']['alias'] = 'f';
     return $ids;
   }
 

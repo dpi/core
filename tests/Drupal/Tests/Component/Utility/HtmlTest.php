@@ -20,7 +20,7 @@ class HtmlTest extends TestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $property = new \ReflectionProperty('Drupal\Component\Utility\Html', 'seenIdsInit');
@@ -67,9 +67,10 @@ class HtmlTest extends TestCase {
       [$id1, $id1, []],
       // Verify that valid UTF-8 characters are not stripped from the identifier.
       [$id2, $id2, []],
-      // Verify that invalid characters (including non-breaking space) are stripped from the identifier.
-      [$id3, $id3],
       // Verify that double underscores are not stripped from the identifier.
+      [$id3, $id3],
+      // Verify that invalid characters (including non-breaking space) are
+      // stripped from the identifier.
       ['invalididentifier', 'invalid !"#$%&\'()*+,./:;<=>?@[\\]^`{|}~ identifier', []],
       // Verify that an identifier starting with a digit is replaced.
       ['_cssidentifier', '1cssidentifier', []],
@@ -126,6 +127,7 @@ class HtmlTest extends TestCase {
    *   Test data.
    */
   public function providerTestHtmlGetUniqueId() {
+    // cSpell:disable
     $id = 'abcdefghijklmnopqrstuvwxyz-0123456789';
     return [
       // Verify that letters, digits, and hyphens are not stripped from the ID.
@@ -139,6 +141,7 @@ class HtmlTest extends TestCase {
       ['test-unique-id--2', 'test-unique-id'],
       ['test-unique-id--3', 'test-unique-id'],
     ];
+    // cSpell:enable
   }
 
   /**
@@ -209,6 +212,7 @@ class HtmlTest extends TestCase {
    *   Test data.
    */
   public function providerTestHtmlGetId() {
+    // cSpell:disable
     $id = 'abcdefghijklmnopqrstuvwxyz-0123456789';
     return [
       // Verify that letters, digits, and hyphens are not stripped from the ID.
@@ -221,6 +225,7 @@ class HtmlTest extends TestCase {
       ['test-unique-id', 'test-unique-id'],
       ['test-unique-id', 'test-unique-id'],
     ];
+    // cSpell:enable
   }
 
   /**
@@ -342,7 +347,7 @@ class HtmlTest extends TestCase {
    * @dataProvider providerTestTransformRootRelativeUrlsToAbsoluteAssertion
    */
   public function testTransformRootRelativeUrlsToAbsoluteAssertion($scheme_and_host) {
-    $this->setExpectedException(\AssertionError::class);
+    $this->expectException(\AssertionError::class);
     Html::transformRootRelativeUrlsToAbsolute('', $scheme_and_host);
   }
 

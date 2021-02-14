@@ -17,7 +17,12 @@ class CommentActionsTest extends CommentTestBase {
    *
    * @var array
    */
-  public static $modules = ['dblog', 'action'];
+  protected static $modules = ['dblog', 'action'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * Tests comment publish and unpublish actions.
@@ -31,12 +36,12 @@ class CommentActionsTest extends CommentTestBase {
     // Unpublish a comment.
     $action = Action::load('comment_unpublish_action');
     $action->execute([$comment]);
-    $this->assertTrue($comment->isPublished() === FALSE, 'Comment was unpublished');
-
+    $this->assertFalse($comment->isPublished(), 'Comment was unpublished');
+    $this->assertSame(['module' => ['comment']], $action->getDependencies());
     // Publish a comment.
     $action = Action::load('comment_publish_action');
     $action->execute([$comment]);
-    $this->assertTrue($comment->isPublished() === TRUE, 'Comment was published');
+    $this->assertTrue($comment->isPublished(), 'Comment was published');
   }
 
   /**
@@ -62,10 +67,10 @@ class CommentActionsTest extends CommentTestBase {
     // Load the full comment so that status is available.
     $comment = Comment::load($comment->id());
 
-    $this->assertTrue($comment->isPublished() === TRUE, 'The comment status was set to published.');
+    $this->assertTrue($comment->isPublished(), 'The comment status was set to published.');
 
     $action->execute([$comment]);
-    $this->assertTrue($comment->isPublished() === FALSE, 'The comment status was set to not published.');
+    $this->assertFalse($comment->isPublished(), 'The comment status was set to not published.');
   }
 
 }

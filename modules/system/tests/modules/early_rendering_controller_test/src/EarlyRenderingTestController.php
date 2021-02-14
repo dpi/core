@@ -29,7 +29,7 @@ class EarlyRenderingTestController extends ControllerBase {
   protected $renderer;
 
   /**
-   * Constructs a EarlyRenderingTestController.
+   * Constructs an EarlyRenderingTestController.
    *
    * @param \Drupal\Core\Render\RendererInterface $renderer
    */
@@ -62,7 +62,7 @@ class EarlyRenderingTestController extends ControllerBase {
       '#pre_render' => [function () {
         $elements = $this->earlyRenderContent();
         return $elements;
-      }
+      },
       ],
     ];
   }

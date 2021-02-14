@@ -4,6 +4,7 @@ namespace Drupal\Tests\locale\Functional;
 
 use Drupal\language\Entity\ConfigurableLanguage;
 use Drupal\Tests\BrowserTestBase;
+use Drupal\Tests\RequirementsPageTrait;
 
 /**
  * Adds and configures languages to check field schema definition.
@@ -12,24 +13,30 @@ use Drupal\Tests\BrowserTestBase;
  */
 class LocaleTranslatedSchemaDefinitionTest extends BrowserTestBase {
 
+  use RequirementsPageTrait;
+
   /**
    * Modules to enable.
    *
    * @var array
    */
-  public static $modules = ['language', 'locale', 'node'];
+  protected static $modules = ['language', 'locale', 'node'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
     ConfigurableLanguage::createFromLangcode('fr')->save();
     $this->config('system.site')->set('default_langcode', 'fr')->save();
-    // Make sure new entity type definitions are processed.
-    \Drupal::service('entity.definition_update_manager')->applyUpdates();
+
     // Clear all caches so that the base field definition, its cache in the
-    // entity manager, the t() cache, etc. are all cleared.
+    // entity field manager, the t() cache, etc. are all cleared.
     drupal_flush_all_caches();
   }
 
@@ -51,7 +58,7 @@ class LocaleTranslatedSchemaDefinitionTest extends BrowserTestBase {
     ])->save();
 
     // Ensure that the field is translated when access through the API.
-    $this->assertEqual('Translated Revision ID', \Drupal::entityManager()->getBaseFieldDefinitions('node')['vid']->getLabel());
+    $this->assertEqual('Translated Revision ID', \Drupal::service('entity_field.manager')->getBaseFieldDefinitions('node')['vid']->getLabel());
 
     // Assert there are no updates.
     $this->assertFalse(\Drupal::service('entity.definition_update_manager')->needsUpdates());
@@ -84,8 +91,10 @@ class LocaleTranslatedSchemaDefinitionTest extends BrowserTestBase {
     // markup and a link instead of specific text because text may be
     // translated.
     $this->drupalGet($update_url . '/selection', ['external' => TRUE]);
-    $this->assertRaw('messages--status', 'No pending updates.');
-    $this->assertNoLinkByHref('fr/update.php/run', 'No link to run updates.');
+    $this->updateRequirementsProblem();
+    $this->drupalGet($update_url . '/selection', ['external' => TRUE]);
+    $this->assertRaw('messages--status');
+    $this->assertSession()->linkByHrefNotExists('fr/update.php/run', 'No link to run updates.');
   }
 
 }

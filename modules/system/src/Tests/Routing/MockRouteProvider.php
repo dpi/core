@@ -15,7 +15,7 @@ class MockRouteProvider implements RouteProviderInterface {
   /**
    * A collection of routes for this route provider.
    *
-   * @var RouteCollection
+   * @var \Symfony\Component\Routing\RouteCollection
    */
   protected $routes;
 
@@ -30,7 +30,7 @@ class MockRouteProvider implements RouteProviderInterface {
   }
 
   /**
-   * Implements \Symfony\Cmf\Component\Routing\RouteProviderInterface::getRouteCollectionForRequest().
+   * Implements \Drupal\Core\Routing\RouteProviderInterface::getRouteCollectionForRequest().
    *
    * Simply return all routes to prevent
    * \Symfony\Component\Routing\Exception\ResourceNotFoundException.

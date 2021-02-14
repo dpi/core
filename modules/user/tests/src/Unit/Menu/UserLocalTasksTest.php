@@ -11,7 +11,7 @@ use Drupal\Tests\Core\Menu\LocalTaskIntegrationTestBase;
  */
 class UserLocalTasksTest extends LocalTaskIntegrationTestBase {
 
-  protected function setUp() {
+  protected function setUp(): void {
     $this->directoryList = ['user' => 'core/modules/user'];
     parent::setUp();
   }
@@ -69,7 +69,9 @@ class UserLocalTasksTest extends LocalTaskIntegrationTestBase {
     $tasks = [
       0 => ['entity.user.canonical', 'entity.user.edit_form'],
     ];
-    if ($subtask) $tasks[] = $subtask;
+    if ($subtask) {
+      $tasks[] = $subtask;
+    }
     $this->assertLocalTasks($route, $tasks);
   }
 

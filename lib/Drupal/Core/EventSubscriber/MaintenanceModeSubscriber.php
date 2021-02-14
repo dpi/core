@@ -2,7 +2,7 @@
 
 namespace Drupal\Core\EventSubscriber;
 
-use Drupal\Component\Utility\SafeMarkup;
+use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Render\BareHtmlPageRendererInterface;
 use Drupal\Core\Messenger\MessengerInterface;
@@ -14,7 +14,7 @@ use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\StringTranslation\TranslationInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
@@ -97,10 +97,10 @@ class MaintenanceModeSubscriber implements EventSubscriberInterface {
   /**
    * Returns the site maintenance page if the site is offline.
    *
-   * @param \Symfony\Component\HttpKernel\Event\GetResponseEvent $event
+   * @param \Symfony\Component\HttpKernel\Event\RequestEvent $event
    *   The event to process.
    */
-  public function onKernelRequestMaintenance(GetResponseEvent $event) {
+  public function onKernelRequestMaintenance(RequestEvent $event) {
     $request = $event->getRequest();
     $route_match = RouteMatch::createFromRequest($request);
     if ($this->maintenanceMode->applies($route_match)) {
@@ -146,7 +146,7 @@ class MaintenanceModeSubscriber implements EventSubscriberInterface {
    *   The formatted site maintenance message.
    */
   protected function getSiteMaintenanceMessage() {
-    return SafeMarkup::format($this->config->get('system.maintenance')->get('message'), [
+    return new FormattableMarkup($this->config->get('system.maintenance')->get('message'), [
       '@site' => $this->config->get('system.site')->get('name'),
     ]);
   }

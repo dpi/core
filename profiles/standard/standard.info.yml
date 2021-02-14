@@ -2,8 +2,7 @@ name: Standard
 type: profile
 description: 'Install with commonly used features pre-configured.'
 version: VERSION
-core: 8.x
-dependencies:
+install:
   - node
   - history
   - block
@@ -26,6 +25,7 @@ dependencies:
   - path
   - page_cache
   - dynamic_page_cache
+  - big_pipe
   - taxonomy
   - dblog
   - search

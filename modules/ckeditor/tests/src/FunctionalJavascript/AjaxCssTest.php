@@ -4,24 +4,29 @@ namespace Drupal\Tests\ckeditor\FunctionalJavascript;
 
 use Drupal\editor\Entity\Editor;
 use Drupal\filter\Entity\FilterFormat;
-use Drupal\FunctionalJavascriptTests\JavascriptTestBase;
+use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
 
 /**
  * Tests delivery of CSS to CKEditor via AJAX.
  *
  * @group ckeditor
  */
-class AjaxCssTest extends JavascriptTestBase {
+class AjaxCssTest extends WebDriverTestBase {
 
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['ckeditor', 'ckeditor_test'];
+  protected static $modules = ['ckeditor', 'ckeditor_test'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     FilterFormat::create([
@@ -55,7 +60,7 @@ class AjaxCssTest extends JavascriptTestBase {
     // but not the iframe.
     $page->pressButton('Add CSS to inline CKEditor instance');
 
-    $result = $page->waitFor(10, function() use ($style_color) {
+    $result = $page->waitFor(10, function () use ($style_color) {
       return ($this->getEditorStyle('edit-inline', 'color') == $style_color)
         && ($this->getEditorStyle('edit-iframe-value', 'color') != $style_color);
     });
@@ -70,7 +75,7 @@ class AjaxCssTest extends JavascriptTestBase {
     // but not the main body.
     $page->pressButton('Add CSS to iframe CKEditor instance');
 
-    $result = $page->waitFor(10, function() use ($style_color) {
+    $result = $page->waitFor(10, function () use ($style_color) {
       return ($this->getEditorStyle('edit-inline', 'color') != $style_color)
         && ($this->getEditorStyle('edit-iframe-value', 'color') == $style_color);
     });

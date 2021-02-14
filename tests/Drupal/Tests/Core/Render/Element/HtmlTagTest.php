@@ -75,7 +75,7 @@ class HtmlTagTest extends RendererTestBase {
     $element['#noscript'] = TRUE;
     $tags['noscript'] = [$element, '<noscript><div class="test" id="id">value</div>' . "\n" . '</noscript>'];
 
-    // Ensure that #tag is sanitised.
+    // Ensure that #tag is sanitized.
     $element = [
       '#tag' => 'p><script>alert()</script><p',
       '#value' => 'value',
@@ -202,10 +202,17 @@ class HtmlTagTest extends RendererTestBase {
     ];
     $tags['linearGradient'] = [$element, '<linearGradient><stop offset="5%" stop-color="#F60" />' . "\n" . '<stop offset="95%" stop-color="#FF6" />' . "\n" . '</linearGradient>' . "\n"];
 
+    // Simple link.
+    $element = [
+      '#tag' => 'link',
+    ];
+    $tags['link'] = [$element, '<link />' . "\n"];
+
     return $tags;
   }
 
   /**
+   * @group legacy
    * @covers ::preRenderConditionalComments
    * @dataProvider providerPreRenderConditionalComments
    */

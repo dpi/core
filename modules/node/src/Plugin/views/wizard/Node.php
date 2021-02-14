@@ -2,8 +2,13 @@
 
 namespace Drupal\node\Plugin\views\wizard;
 
+use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
+use Drupal\Core\Entity\EntityFieldManagerInterface;
+use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
+use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\views\Plugin\views\wizard\WizardPluginBase;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * @todo: replace numbers with constants.
@@ -22,8 +27,61 @@ class Node extends WizardPluginBase {
 
   /**
    * Set the created column.
+   *
+   * @var string
    */
   protected $createdColumn = 'node_field_data-created';
+
+  /**
+   * The entity display repository.
+   *
+   * @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface
+   */
+  protected $entityDisplayRepository;
+
+  /**
+   * The entity field manager.
+   *
+   * @var \Drupal\Core\Entity\EntityFieldManagerInterface
+   */
+  protected $entityFieldManager;
+
+  /**
+   * Node constructor.
+   *
+   * @param array $configuration
+   *   The plugin configuration.
+   * @param string $plugin_id
+   *   The plugin ID.
+   * @param mixed $plugin_definition
+   *   The plugin definition.
+   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $bundle_info_service
+   *   The entity bundle info service.
+   * @param \Drupal\Core\Entity\EntityDisplayRepositoryInterface $entity_display_repository
+   *   The entity display repository service.
+   * @param \Drupal\Core\Entity\EntityFieldManagerInterface $entity_field_manager
+   *   The entity field manager.
+   */
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeBundleInfoInterface $bundle_info_service, EntityDisplayRepositoryInterface $entity_display_repository, EntityFieldManagerInterface $entity_field_manager) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition, $bundle_info_service);
+
+    $this->entityDisplayRepository = $entity_display_repository;
+    $this->entityFieldManager = $entity_field_manager;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $configuration,
+      $plugin_id,
+      $plugin_definition,
+      $container->get('entity_type.bundle.info'),
+      $container->get('entity_display.repository'),
+      $container->get('entity_field.manager')
+    );
+  }
 
   /**
    * Overrides Drupal\views\Plugin\views\wizard\WizardPluginBase::getAvailableSorts().
@@ -35,7 +93,7 @@ class Node extends WizardPluginBase {
   public function getAvailableSorts() {
     // You can't execute functions in properties, so override the method
     return [
-      'node_field_data-title:ASC' => $this->t('Title')
+      'node_field_data-title:ASC' => $this->t('Title'),
     ];
   }
 
@@ -156,10 +214,12 @@ class Node extends WizardPluginBase {
         $display_options['row']['type'] = 'entity:node';
         $display_options['row']['options']['view_mode'] = 'full';
         break;
+
       case 'teasers':
         $display_options['row']['type'] = 'entity:node';
         $display_options['row']['options']['view_mode'] = 'teaser';
         break;
+
       case 'titles_linked':
       case 'titles':
         $display_options['row']['type'] = 'fields';
@@ -211,15 +271,15 @@ class Node extends WizardPluginBase {
     }
     $tag_fields = [];
     foreach ($bundles as $bundle) {
-      $display = entity_get_form_display($this->entityTypeId, $bundle, 'default');
-      $taxonomy_fields = array_filter(\Drupal::entityManager()->getFieldDefinitions($this->entityTypeId, $bundle), function ($field_definition) {
+      $display = $this->entityDisplayRepository->getFormDisplay($this->entityTypeId, $bundle);
+      $taxonomy_fields = array_filter($this->entityFieldManager->getFieldDefinitions($this->entityTypeId, $bundle), function (FieldDefinitionInterface $field_definition) {
         return $field_definition->getType() == 'entity_reference' && $field_definition->getSetting('target_type') == 'taxonomy_term';
       });
       foreach ($taxonomy_fields as $field_name => $field) {
         $widget = $display->getComponent($field_name);
         // We define "tag-like" taxonomy fields as ones that use the
         // "Autocomplete (Tags style)" widget.
-        if ($widget['type'] == 'entity_reference_autocomplete_tags') {
+        if (!empty($widget) && $widget['type'] == 'entity_reference_autocomplete_tags') {
           $tag_fields[$field_name] = $field;
         }
       }
@@ -238,16 +298,19 @@ class Node extends WizardPluginBase {
         $tag_field_name = key($tag_fields);
       }
       // Add the autocomplete textfield to the wizard.
-      $target_bundles = $tag_fields[$tag_field_name]->getSetting('handler_settings')['target_bundles'];
       $form['displays']['show']['tagged_with'] = [
         '#type' => 'entity_autocomplete',
         '#title' => $this->t('tagged with'),
         '#target_type' => 'taxonomy_term',
-        '#selection_settings' => ['target_bundles' => $target_bundles],
         '#tags' => TRUE,
         '#size' => 30,
         '#maxlength' => 1024,
       ];
+      $target_bundles = $tag_fields[$tag_field_name]->getSetting('handler_settings')['target_bundles'] ?? FALSE;
+      if (!$target_bundles) {
+        $target_bundles = array_keys($this->bundleInfoService->getBundleInfo('taxonomy_term'));
+      }
+      $form['displays']['show']['tagged_with']['#selection_settings']['target_bundles'] = $target_bundles;
     }
   }
 

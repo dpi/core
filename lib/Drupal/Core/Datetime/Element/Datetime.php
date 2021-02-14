@@ -37,7 +37,10 @@ class Datetime extends DateElementBase {
       }
     }
 
-    $class = get_class($this);
+    $class = static::class;
+
+    // Note that since this information is cached, the #date_timezone property
+    // is not set here, as this needs to vary potentially by-user.
     return [
       '#input' => TRUE,
       '#element_validate' => [
@@ -61,7 +64,6 @@ class Datetime extends DateElementBase {
       '#date_time_callbacks' => [],
       '#date_year_range' => '1900:2050',
       '#date_increment' => 1,
-      '#date_timezone' => '',
     ];
   }
 
@@ -69,12 +71,13 @@ class Datetime extends DateElementBase {
    * {@inheritdoc}
    */
   public static function valueCallback(&$element, $input, FormStateInterface $form_state) {
+    $element += ['#date_timezone' => date_default_timezone_get()];
+
     if ($input !== FALSE) {
-      $date_input  = $element['#date_date_element'] != 'none' && !empty($input['date']) ? $input['date'] : '';
-      $time_input  = $element['#date_time_element'] != 'none' && !empty($input['time']) ? $input['time'] : '';
+      $date_input = $element['#date_date_element'] != 'none' && !empty($input['date']) ? $input['date'] : '';
+      $time_input = $element['#date_time_element'] != 'none' && !empty($input['time']) ? $input['time'] : '';
       $date_format = $element['#date_date_element'] != 'none' ? static::getHtml5DateFormat($element) : '';
       $time_format = $element['#date_time_element'] != 'none' ? static::getHtml5TimeFormat($element) : '';
-      $timezone = !empty($element['#date_timezone']) ? $element['#date_timezone'] : NULL;
 
       // Seconds will be omitted in a post in case there's no entry.
       if (!empty($time_input) && strlen($time_input) == 5) {
@@ -84,7 +87,7 @@ class Datetime extends DateElementBase {
       try {
         $date_time_format = trim($date_format . ' ' . $time_format);
         $date_time_input = trim($date_input . ' ' . $time_input);
-        $date = DrupalDateTime::createFromFormat($date_time_format, $date_time_input, $timezone);
+        $date = DrupalDateTime::createFromFormat($date_time_format, $date_time_input, $element['#date_timezone']);
       }
       catch (\Exception $e) {
         $date = NULL;
@@ -96,8 +99,9 @@ class Datetime extends DateElementBase {
       ];
     }
     else {
-      $date = $element['#default_value'];
+      $date = isset($element['#default_value']) ? $element['#default_value'] : NULL;
       if ($date instanceof DrupalDateTime && !$date->hasErrors()) {
+        $date->setTimezone(new \DateTimeZone($element['#date_timezone']));
         $input = [
           'date'   => $date->format($element['#date_date_format']),
           'time'   => $date->format($element['#date_time_format']),
@@ -147,11 +151,11 @@ class Datetime extends DateElementBase {
    *   - #date_date_format: A date format string that describes the format that
    *     should be displayed to the end user for the date. When using HTML5
    *     elements the format MUST use the appropriate HTML5 format for that
-   *     element, no other format will work. See the format_date() function for a
-   *     list of the possible formats and HTML5 standards for the HTML5
-   *     requirements. Defaults to the right HTML5 format for the chosen element
-   *     if a HTML5 element is used, otherwise defaults to
-   *     DateFormat::load('html_date')->getPattern().
+   *     element, no other format will work. See the
+   *     DateFormatterInterface::format() function for a list of the possible
+   *     formats and HTML5 standards for the HTML5 requirements. Defaults to the
+   *     right HTML5 format for the chosen element if an HTML5 element is used,
+   *     otherwise defaults to DateFormat::load('html_date')->getPattern().
    *   - #date_date_element: The date element. Options are:
    *     - datetime: Use the HTML5 datetime element type.
    *     - datetime-local: Use the HTML5 datetime-local element type.
@@ -159,19 +163,18 @@ class Datetime extends DateElementBase {
    *     - text: No HTML5 element, use a normal text field.
    *     - none: Do not display a date element.
    *   - #date_date_callbacks: Array of optional callbacks for the date element.
-   *     Can be used to add a jQuery datepicker.
    *   - #date_time_element: The time element. Options are:
-   *     - time: Use a HTML5 time element type.
+   *     - time: Use an HTML5 time element type.
    *     - text: No HTML5 element, use a normal text field.
    *     - none: Do not display a time element.
    *   - #date_time_format: A date format string that describes the format that
    *     should be displayed to the end user for the time. When using HTML5
    *     elements the format MUST use the appropriate HTML5 format for that
-   *     element, no other format will work. See the format_date() function for
-   *     a list of the possible formats and HTML5 standards for the HTML5
-   *     requirements. Defaults to the right HTML5 format for the chosen element
-   *     if a HTML5 element is used, otherwise defaults to
-   *     DateFormat::load('html_time')->getPattern().
+   *     element, no other format will work. See the
+   *     DateFormatterInterface::format() function for a list of the possible
+   *     formats and HTML5 standards for the HTML5 requirements. Defaults to the
+   *     right HTML5 format for the chosen element if an HTML5 element is used,
+   *     otherwise defaults to DateFormat::load('html_time')->getPattern().
    *   - #date_time_callbacks: An array of optional callbacks for the time
    *     element. Can be used to add a jQuery timepicker or an 'All day' checkbox.
    *   - #date_year_range: A description of the range of years to allow, like
@@ -179,18 +182,17 @@ class Datetime extends DateElementBase {
    *     earliest year and the second the latest year in the range. A year
    *     in either position means that specific year. A +/- value describes a
    *     dynamic value that is that many years earlier or later than the current
-   *     year at the time the form is displayed. Used in jQueryUI datepicker year
-   *     range and HTML5 min/max date settings. Defaults to '1900:2050'.
-   *   - #date_increment: The increment to use for minutes and seconds, i.e.
-   *    '15' would show only :00, :15, :30 and :45. Used for HTML5 step values and
-   *     jQueryUI datepicker settings. Defaults to 1 to show every minute.
-   *   - #date_timezone: The local timezone to use when creating dates. Generally
-   *     this should be left empty and it will be set correctly for the user using
-   *     the form. Useful if the default value is empty to designate a desired
-   *     timezone for dates created in form processing. If a default date is
-   *     provided, this value will be ignored, the timezone in the default date
-   *     takes precedence. Defaults to the value returned by
-   *     drupal_get_user_timezone().
+   *     year at the time the form is displayed. Used in HTML5 min/max date
+   *     settings. Defaults to '1900:2050'.
+   *   - #date_increment: The interval (step) to use when incrementing or
+   *     decrementing time, in seconds. For example, if this value is set to 30,
+   *     time increases (or decreases) in steps of 30 seconds (00:00:00,
+   *     00:00:30, 00:01:00, and so on.) If this value is a multiple of 60, the
+   *     "seconds"-component will not be shown in the input. Used for HTML5 step
+   *     values. Defaults to 1 to show every second.
+   *   - #date_timezone: The Time Zone Identifier (TZID) to use when displaying
+   *     or interpreting dates, i.e: 'Asia/Kolkata'. Defaults to the value
+   *     returned by date_default_timezone_get().
    *
    * Example usage:
    * @code
@@ -200,6 +202,7 @@ class Datetime extends DateElementBase {
    *     '#date_date_element' => 'date',
    *     '#date_time_element' => 'none',
    *     '#date_year_range' => '2010:+3',
+   *     '#date_timezone' => 'Asia/Kolkata',
    *   );
    * @endcode
    *
@@ -212,19 +215,13 @@ class Datetime extends DateElementBase {
    *
    * @return array
    *   The form element whose value has been processed.
+   *
+   * @see \Drupal\Core\Datetime\DateFormatterInterface::format()
    */
   public static function processDatetime(&$element, FormStateInterface $form_state, &$complete_form) {
     $format_settings = [];
     // The value callback has populated the #value array.
     $date = !empty($element['#value']['object']) ? $element['#value']['object'] : NULL;
-
-    // Set a fallback timezone.
-    if ($date instanceof DrupalDateTime) {
-      $element['#date_timezone'] = $date->getTimezone()->getName();
-    }
-    elseif (empty($element['#timezone'])) {
-      $element['#date_timezone'] = drupal_get_user_timezone();
-    }
 
     $element['#tree'] = TRUE;
 
@@ -270,7 +267,7 @@ class Datetime extends DateElementBase {
       // Allows custom callbacks to alter the element.
       if (!empty($element['#date_date_callbacks'])) {
         foreach ($element['#date_date_callbacks'] as $callback) {
-          if (function_exists($callback)) {
+          if (is_callable($callback)) {
             $callback($element, $form_state, $date);
           }
         }
@@ -397,17 +394,17 @@ class Datetime extends DateElementBase {
   }
 
   /**
-   * Retrieves the right format for a HTML5 date element.
+   * Retrieves the right format for an HTML5 date element.
    *
    * The format is important because these elements will not work with any other
    * format.
    *
-   * @param string $element
+   * @param array $element
    *   The $element to assess.
    *
    * @return string
    *   Returns the right format for the date element, or the original format
-   *   if this is not a HTML5 element.
+   *   if this is not an HTML5 element.
    */
   protected static function getHtml5DateFormat($element) {
     switch ($element['#date_date_element']) {
@@ -424,17 +421,17 @@ class Datetime extends DateElementBase {
   }
 
   /**
-   * Retrieves the right format for a HTML5 time element.
+   * Retrieves the right format for an HTML5 time element.
    *
    * The format is important because these elements will not work with any other
    * format.
    *
-   * @param string $element
+   * @param array $element
    *   The $element to assess.
    *
    * @return string
    *   Returns the right format for the time element, or the original format
-   *   if this is not a HTML5 element.
+   *   if this is not an HTML5 element.
    */
   protected static function getHtml5TimeFormat($element) {
     switch ($element['#date_time_element']) {

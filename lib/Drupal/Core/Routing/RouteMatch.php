@@ -2,7 +2,6 @@
 
 namespace Drupal\Core\Routing;
 
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Route;
@@ -67,7 +66,7 @@ class RouteMatch implements RouteMatchInterface {
   /**
    * Creates a RouteMatch from a request.
    *
-   * @param Request $request
+   * @param \Symfony\Component\HttpFoundation\Request $request
    *   A request object.
    *
    * @return \Drupal\Core\Routing\RouteMatchInterface

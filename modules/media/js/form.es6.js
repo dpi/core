@@ -1,6 +1,6 @@
 /**
  * @file
- * Defines Javascript behaviors for the media form.
+ * Defines JavaScript behaviors for the media form.
  */
 
 (function ($, Drupal) {
@@ -22,15 +22,18 @@
         const date = $authorContext.find('.field--name-created input').val();
 
         if (name && date) {
-          return Drupal.t('By @name on @date', { '@name': name, '@date': date });
+          return Drupal.t('By @name on @date', {
+            '@name': name,
+            '@date': date,
+          });
         }
-        else if (name) {
+        if (name) {
           return Drupal.t('By @name', { '@name': name });
         }
-        else if (date) {
+        if (date) {
           return Drupal.t('Authored on @date', { '@date': date });
         }
       });
     },
   };
-}(jQuery, Drupal));
+})(jQuery, Drupal);

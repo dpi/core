@@ -36,7 +36,7 @@ class Checkboxes extends FormElement {
    * {@inheritdoc}
    */
   public function getInfo() {
-    $class = get_class($this);
+    $class = static::class;
     return [
       '#input' => TRUE,
       '#process' => [
@@ -139,7 +139,7 @@ class Checkboxes extends FormElement {
     //
     // @see \Drupal\Core\Render\Element\Checkboxes::valueCallback()
     // @see https://www.w3.org/TR/html401/interact/forms.html#checkbox
-    $checked = array_filter($input, function($value) {
+    $checked = array_filter($input, function ($value) {
       return $value !== 0;
     });
     return array_keys($checked);

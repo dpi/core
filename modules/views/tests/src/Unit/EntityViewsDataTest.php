@@ -9,7 +9,9 @@ namespace Drupal\Tests\views\Unit;
 
 use Drupal\Core\Config\Entity\ConfigEntityType;
 use Drupal\Core\Entity\ContentEntityType;
+use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\Sql\DefaultTableMapping;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\Plugin\Field\FieldType\EntityReferenceItem;
@@ -18,6 +20,7 @@ use Drupal\Core\Field\Plugin\Field\FieldType\LanguageItem;
 use Drupal\Core\Field\Plugin\Field\FieldType\StringItem;
 use Drupal\Core\Field\Plugin\Field\FieldType\UriItem;
 use Drupal\Core\Field\Plugin\Field\FieldType\UuidItem;
+use Drupal\Core\State\StateInterface;
 use Drupal\Core\TypedData\TypedDataManagerInterface;
 use Drupal\text\Plugin\Field\FieldType\TextLongItem;
 use Drupal\entity_test\Entity\EntityTest;
@@ -25,6 +28,7 @@ use Drupal\entity_test\Entity\EntityTestMul;
 use Drupal\entity_test\Entity\EntityTestMulRev;
 use Drupal\Tests\UnitTestCase;
 use Drupal\views\EntityViewsData;
+use Prophecy\Argument;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
@@ -43,28 +47,36 @@ class EntityViewsDataTest extends UnitTestCase {
   /**
    * The mocked entity storage.
    *
-   * @var \Drupal\Core\Entity\Sql\SqlContentEntityStorage|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\Sql\SqlContentEntityStorage|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $entityStorage;
 
   /**
-   * The mocked entity manager.
+   * The mocked entity field manager.
    *
-   * @var \Drupal\Core\Entity\EntityManagerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Entity\EntityFieldManagerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
-  protected $entityManager;
+  protected $entityFieldManager;
+
+
+  /**
+   * The mocked entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface|\PHPUnit\Framework\MockObject\MockObject
+   */
+  protected $entityTypeManager;
 
   /**
    * The mocked module handler.
    *
-   * @var \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $moduleHandler;
 
   /**
    * The mocked translation manager.
    *
-   * @var \Drupal\Core\StringTranslation\TranslationInterface|\PHPUnit_Framework_MockObject_MockObject
+   * @var \Drupal\Core\StringTranslation\TranslationInterface|\PHPUnit\Framework\MockObject\MockObject
    */
   protected $translationManager;
 
@@ -78,21 +90,24 @@ class EntityViewsDataTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     $this->entityStorage = $this->getMockBuilder('Drupal\Core\Entity\Sql\SqlContentEntityStorage')
       ->disableOriginalConstructor()
       ->getMock();
-    $this->entityManager = $this->getMock('Drupal\Core\Entity\EntityManagerInterface');
+    $this->entityTypeManager = $this->createMock(EntityTypeManagerInterface::class);
+    $this->entityFieldManager = $this->createMock(EntityFieldManagerInterface::class);
 
-    $typed_data_manager = $this->getMock(TypedDataManagerInterface::class);
+    $typed_data_manager = $this->createMock(TypedDataManagerInterface::class);
     $typed_data_manager->expects($this->any())
       ->method('createDataDefinition')
-      ->willReturn($this->getMock('Drupal\Core\TypedData\DataDefinitionInterface'));
+      ->willReturn($this->createMock('Drupal\Core\TypedData\DataDefinitionInterface'));
 
     $typed_data_manager->expects($this->any())
       ->method('getDefinition')
-      ->with($this->equalTo('field_item:string_long'))
-      ->willReturn(['class' => '\Drupal\Core\Field\Plugin\Field\FieldType\StringLongItem']);
+      ->will($this->returnValueMap([
+        'entity:user' => ['class' => '\Drupal\Core\TypedData\DataDefinitionInterface'],
+        'field_item:string_long' => ['class' => '\Drupal\Core\Field\Plugin\Field\FieldType\StringLongItem'],
+      ]));
 
     $this->baseEntityType = new TestEntityType([
       'base_table' => 'entity_test',
@@ -110,9 +125,10 @@ class EntityViewsDataTest extends UnitTestCase {
     ]);
 
     $this->translationManager = $this->getStringTranslationStub();
-    $this->moduleHandler = $this->getMock('Drupal\Core\Extension\ModuleHandlerInterface');
+    $this->baseEntityType->setStringTranslation($this->translationManager);
+    $this->moduleHandler = $this->createMock('Drupal\Core\Extension\ModuleHandlerInterface');
 
-    $this->viewsData = new TestEntityViewsData($this->baseEntityType, $this->entityStorage, $this->entityManager, $this->moduleHandler, $this->translationManager);
+    $this->viewsData = new TestEntityViewsData($this->baseEntityType, $this->entityStorage, $this->entityTypeManager, $this->moduleHandler, $this->translationManager, $this->entityFieldManager);
 
     $field_type_manager = $this->getMockBuilder('Drupal\Core\Field\FieldTypePluginManager')
       ->disableOriginalConstructor()
@@ -124,10 +140,15 @@ class EntityViewsDataTest extends UnitTestCase {
       ->method('getDefaultFieldSettings')
       ->willReturn([]);
 
+    $state = $this->prophesize(StateInterface::class);
+    $state->get(Argument::any(), [])->willReturn([]);
+
     $container = new ContainerBuilder();
     $container->set('plugin.manager.field.field_type', $field_type_manager);
-    $container->set('entity.manager', $this->entityManager);
+    $container->set('entity_type.manager', $this->entityTypeManager);
+    $container->set('entity_field.manager', $this->entityFieldManager);
     $container->set('typed_data_manager', $typed_data_manager);
+    $container->set('state', $state->reveal());
     \Drupal::setContainer($container);
   }
 
@@ -167,7 +188,7 @@ class EntityViewsDataTest extends UnitTestCase {
       ->setSetting('max_length', 255);
 
     // A base field with cardinality > 1
-    $base_fields['string']  = BaseFieldDefinition::create('string')
+    $base_fields['string'] = BaseFieldDefinition::create('string')
       ->setLabel('Strong')
       ->setTranslatable(TRUE)
       ->setCardinality(2);
@@ -242,8 +263,7 @@ class EntityViewsDataTest extends UnitTestCase {
       ->set('revision_table', 'entity_test_mulrev_revision')
       ->set('revision_data_table', NULL)
       ->set('id', 'entity_test_mulrev')
-      ->setKey('revision', 'revision_id')
-    ;
+      ->setKey('revision', 'revision_id');
     $this->viewsData->setEntityType($entity_type);
 
     $data = $this->viewsData->getViewsData();
@@ -278,8 +298,7 @@ class EntityViewsDataTest extends UnitTestCase {
       ->set('revision_data_table', 'entity_test_mulrev_property_revision')
       ->set('id', 'entity_test_mulrev')
       ->set('translatable', TRUE)
-      ->setKey('revision', 'revision_id')
-    ;
+      ->setKey('revision', 'revision_id');
     $this->viewsData->setEntityType($entity_type);
 
     $data = $this->viewsData->getViewsData();
@@ -326,8 +345,7 @@ class EntityViewsDataTest extends UnitTestCase {
       ->set('revision_data_table', 'entity_test_mulrev_property_revision')
       ->set('id', 'entity_test_mulrev')
       ->set('translatable', TRUE)
-      ->setKey('revision', 'revision_id')
-    ;
+      ->setKey('revision', 'revision_id');
     $this->viewsData->setEntityType($entity_type);
 
     $data = $this->viewsData->getViewsData();
@@ -368,47 +386,53 @@ class EntityViewsDataTest extends UnitTestCase {
    * Helper method to mock all store definitions.
    */
   protected function setupFieldStorageDefinition() {
-    $id_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $id_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $id_field_storage_definition->expects($this->any())
       ->method('getSchema')
       ->willReturn(IntegerItem::schema($id_field_storage_definition));
-    $uuid_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $uuid_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $uuid_field_storage_definition->expects($this->any())
       ->method('getSchema')
       ->willReturn(UuidItem::schema($uuid_field_storage_definition));
-    $type_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $type_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $type_field_storage_definition->expects($this->any())
       ->method('getSchema')
       ->willReturn(StringItem::schema($type_field_storage_definition));
-    $langcode_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $langcode_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $langcode_field_storage_definition->expects($this->any())
       ->method('getSchema')
       ->willReturn(LanguageItem::schema($langcode_field_storage_definition));
-    $name_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $name_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $name_field_storage_definition->expects($this->any())
       ->method('getSchema')
       ->willReturn(StringItem::schema($name_field_storage_definition));
-    $description_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $description_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $description_field_storage_definition->expects($this->any())
       ->method('getSchema')
       ->willReturn(TextLongItem::schema($description_field_storage_definition));
-    $homepage_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $homepage_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $homepage_field_storage_definition->expects($this->any())
       ->method('getSchema')
       ->willReturn(UriItem::schema($homepage_field_storage_definition));
-    $string_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $string_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $string_field_storage_definition->expects($this->any())
       ->method('getSchema')
       ->willReturn(StringItem::schema($string_field_storage_definition));
 
     // Setup the user_id entity reference field.
-    $this->entityManager->expects($this->any())
+    $this->entityTypeManager->expects($this->any())
       ->method('getDefinition')
       ->willReturnMap([
           ['user', TRUE, static::userEntityInfo()],
         ]
       );
-    $user_id_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $this->entityTypeManager->expects($this->any())
+      ->method('getDefinition')
+      ->willReturnMap([
+          ['user', TRUE, static::userEntityInfo()],
+        ]
+      );
+    $user_id_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $user_id_field_storage_definition->expects($this->any())
       ->method('getSetting')
       ->with('target_type')
@@ -420,12 +444,12 @@ class EntityViewsDataTest extends UnitTestCase {
       ->method('getSchema')
       ->willReturn(EntityReferenceItem::schema($user_id_field_storage_definition));
 
-    $revision_id_field_storage_definition = $this->getMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
+    $revision_id_field_storage_definition = $this->createMock('Drupal\Core\Field\FieldStorageDefinitionInterface');
     $revision_id_field_storage_definition->expects($this->any())
       ->method('getSchema')
       ->willReturn(IntegerItem::schema($revision_id_field_storage_definition));
 
-    $this->entityManager->expects($this->any())
+    $this->entityFieldManager->expects($this->any())
       ->method('getFieldStorageDefinitions')
       ->willReturn([
         'id' => $id_field_storage_definition,
@@ -451,9 +475,15 @@ class EntityViewsDataTest extends UnitTestCase {
         ->setLabel('ID')
         ->setDescription('The ID of the user entity.')
         ->setReadOnly(TRUE)
-        ->setSetting('unsigned', TRUE)
+        ->setSetting('unsigned', TRUE),
     ];
-    $this->entityManager->expects($this->any())
+    $this->entityFieldManager->expects($this->any())
+      ->method('getBaseFieldDefinitions')
+      ->will($this->returnValueMap([
+        ['user', $user_base_field_definitions],
+        ['entity_test', $base_field_definitions],
+      ]));
+    $this->entityFieldManager->expects($this->any())
       ->method('getBaseFieldDefinitions')
       ->will($this->returnValueMap([
         ['user', $user_base_field_definitions],
@@ -477,7 +507,7 @@ class EntityViewsDataTest extends UnitTestCase {
         ['description', ['value' => 'description__value', 'format' => 'description__format']],
         ['homepage', ['value' => 'homepage']],
         ['user_id', ['target_id' => 'user_id']],
-        ['string', ['value' => 'value']],
+        ['string', ['value' => 'string_value']],
       ]);
     $table_mapping->expects($this->any())
       ->method('getFieldNames')
@@ -534,8 +564,12 @@ class EntityViewsDataTest extends UnitTestCase {
     $this->assertEquals('users_field_data', $relationship['base']);
     $this->assertEquals('uid', $relationship['base field']);
 
-    $this->assertStringField($data['entity_test__string']['string']);
-    $this->assertField($data['entity_test__string']['string'], 'string');
+    // The string field name should be used as the 'entity field' but the actual
+    // field should reflect what the column mapping is using for multi-value
+    // base fields NOT just the field name. The actual column name returned from
+    // mappings in the test mocks is 'value'.
+    $this->assertStringField($data['entity_test__string']['string_value']);
+    $this->assertField($data['entity_test__string']['string_value'], 'string');
     $this->assertEquals([
       'left_field' => 'id',
       'field' => 'entity_id',
@@ -556,8 +590,7 @@ class EntityViewsDataTest extends UnitTestCase {
       ->set('data_table', 'entity_test_mul_property_data')
       ->set('base_table', 'entity_test_mul')
       ->set('id', 'entity_test_mul')
-      ->setKey('bundle', 'type')
-    ;
+      ->setKey('bundle', 'type');
     $base_field_definitions = $this->setupBaseFields(EntityTestMul::baseFieldDefinitions($this->baseEntityType));
     $base_field_definitions['type'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel('entity test type')
@@ -569,11 +602,17 @@ class EntityViewsDataTest extends UnitTestCase {
         ->setLabel('ID')
         ->setDescription('The ID of the user entity.')
         ->setReadOnly(TRUE)
-        ->setSetting('unsigned', TRUE)
+        ->setSetting('unsigned', TRUE),
     ];
     $entity_test_type = new ConfigEntityType(['id' => 'entity_test_bundle']);
 
-    $this->entityManager->expects($this->any())
+    $this->entityFieldManager->expects($this->any())
+      ->method('getBaseFieldDefinitions')
+      ->will($this->returnValueMap([
+        ['user', $user_base_field_definitions],
+        ['entity_test_mul', $base_field_definitions],
+      ]));
+    $this->entityFieldManager->expects($this->any())
       ->method('getBaseFieldDefinitions')
       ->will($this->returnValueMap([
         ['user', $user_base_field_definitions],
@@ -600,7 +639,7 @@ class EntityViewsDataTest extends UnitTestCase {
         ['description', ['value' => 'description__value', 'format' => 'description__format']],
         ['homepage', ['value' => 'homepage']],
         ['user_id', ['target_id' => 'user_id']],
-        ['string', ['value' => 'value']],
+        ['string', ['value' => 'string_value']],
       ]);
     $table_mapping->expects($this->any())
       ->method('getFieldNames')
@@ -612,7 +651,7 @@ class EntityViewsDataTest extends UnitTestCase {
 
     $table_mapping->expects($this->any())
       ->method('getFieldTableName')
-      ->willReturnCallback(function($field) {
+      ->willReturnCallback(function ($field) {
         if ($field == 'uuid') {
           return 'entity_test_mul';
         }
@@ -638,7 +677,7 @@ class EntityViewsDataTest extends UnitTestCase {
     $this->setupFieldStorageDefinition();
 
     $user_entity_type = static::userEntityInfo();
-    $this->entityManager->expects($this->any())
+    $this->entityTypeManager->expects($this->any())
       ->method('getDefinition')
       ->will($this->returnValueMap([
         ['user', TRUE, $user_entity_type],
@@ -690,8 +729,8 @@ class EntityViewsDataTest extends UnitTestCase {
     $this->assertEquals('users_field_data', $relationship['base']);
     $this->assertEquals('uid', $relationship['base field']);
 
-    $this->assertStringField($data['entity_test_mul__string']['string']);
-    $this->assertField($data['entity_test_mul__string']['string'], 'string');
+    $this->assertStringField($data['entity_test_mul__string']['string_value']);
+    $this->assertField($data['entity_test_mul__string']['string_value'], 'string');
     $this->assertEquals([
       'left_field' => 'id',
       'field' => 'entity_id',
@@ -721,9 +760,15 @@ class EntityViewsDataTest extends UnitTestCase {
         ->setLabel('ID')
         ->setDescription('The ID of the user entity.')
         ->setReadOnly(TRUE)
-        ->setSetting('unsigned', TRUE)
+        ->setSetting('unsigned', TRUE),
     ];
-    $this->entityManager->expects($this->any())
+    $this->entityFieldManager->expects($this->any())
+      ->method('getBaseFieldDefinitions')
+      ->will($this->returnValueMap([
+        ['user', $user_base_field_definitions],
+        ['entity_test_mulrev', $base_field_definitions],
+      ]));
+    $this->entityFieldManager->expects($this->any())
       ->method('getBaseFieldDefinitions')
       ->will($this->returnValueMap([
         ['user', $user_base_field_definitions],
@@ -750,8 +795,8 @@ class EntityViewsDataTest extends UnitTestCase {
         ['description', ['value' => 'description__value', 'format' => 'description__format']],
         ['homepage', ['value' => 'homepage']],
         ['user_id', ['target_id' => 'user_id']],
-        ['revision_id', ['value' => 'id']],
-        ['string', ['value' => 'value']],
+        ['revision_id', ['value' => 'revision_id']],
+        ['string', ['value' => 'string_value']],
       ]);
     $table_mapping->expects($this->any())
       ->method('getFieldNames')
@@ -786,7 +831,7 @@ class EntityViewsDataTest extends UnitTestCase {
 
     $table_mapping->expects($this->any())
       ->method('getFieldTableName')
-      ->willReturnCallback(function($field) {
+      ->willReturnCallback(function ($field) {
         if ($field == 'uuid') {
           return 'entity_test_mulrev';
         }
@@ -876,8 +921,8 @@ class EntityViewsDataTest extends UnitTestCase {
     $this->assertEquals('users_field_data', $relationship['base']);
     $this->assertEquals('uid', $relationship['base field']);
 
-    $this->assertStringField($data['entity_test_mulrev__string']['string']);
-    $this->assertField($data['entity_test_mulrev__string']['string'], 'string');
+    $this->assertStringField($data['entity_test_mulrev__string']['string_value']);
+    $this->assertField($data['entity_test_mulrev__string']['string_value'], 'string');
     $this->assertEquals([
       'left_field' => 'id',
       'field' => 'entity_id',
@@ -889,8 +934,8 @@ class EntityViewsDataTest extends UnitTestCase {
       ],
     ], $data['entity_test_mulrev__string']['table']['join']['entity_test_mulrev_property_data']);
 
-    $this->assertStringField($data['entity_test_mulrev_revision__string']['string']);
-    $this->assertField($data['entity_test_mulrev_revision__string']['string'], 'string');
+    $this->assertStringField($data['entity_test_mulrev_revision__string']['string_value']);
+    $this->assertField($data['entity_test_mulrev_revision__string']['string_value'], 'string');
     $this->assertEquals([
       'left_field' => 'revision_id',
       'field' => 'entity_id',
@@ -924,9 +969,11 @@ class EntityViewsDataTest extends UnitTestCase {
     $this->baseEntityType->setLinkTemplate('delete-form', '/entity_test/{entity_test}/delete');
 
     $data = $this->viewsData->getViewsData();
-    $this->assertEquals('entity_link', $data['entity_test']['view_entity_test']['field']['id']);
-    $this->assertEquals('entity_link_edit', $data['entity_test']['edit_entity_test']['field']['id']);
-    $this->assertEquals('entity_link_delete', $data['entity_test']['delete_entity_test']['field']['id']);
+    foreach (['entity_test', 'entity_test_revision'] as $table_name) {
+      $this->assertEquals('entity_link', $data[$table_name]['view_entity_test']['field']['id']);
+      $this->assertEquals('entity_link_edit', $data[$table_name]['edit_entity_test']['field']['id']);
+      $this->assertEquals('entity_link_delete', $data[$table_name]['delete_entity_test']['field']['id']);
+    }
   }
 
   /**
@@ -936,10 +983,13 @@ class EntityViewsDataTest extends UnitTestCase {
     $this->baseEntityType->setLinkTemplate('edit-form', '/entity_test/{entity_test}/edit');
 
     $data = $this->viewsData->getViewsData();
-    $this->assertFalse(isset($data['entity_test']['view_entity_test']));
-    $this->assertFalse(isset($data['entity_test']['delete_entity_test']));
 
-    $this->assertEquals('entity_link_edit', $data['entity_test']['edit_entity_test']['field']['id']);
+    foreach (['entity_test', 'entity_test_revision'] as $table_name) {
+      $this->assertFalse(isset($data[$table_name]['view_entity_test']));
+      $this->assertFalse(isset($data[$table_name]['delete_entity_test']));
+
+      $this->assertEquals('entity_link_edit', $data[$table_name]['edit_entity_test']['field']['id']);
+    }
   }
 
   /**
@@ -959,7 +1009,36 @@ class EntityViewsDataTest extends UnitTestCase {
   public function testGetViewsDataWithEntityOperations() {
     $this->baseEntityType->setListBuilderClass('\Drupal\Core\Entity\EntityListBuilder');
     $data = $this->viewsData->getViewsData();
-    $this->assertSame('entity_operations', $data[$this->baseEntityType->getBaseTable()]['operations']['field']['id']);
+
+    $tables = ['entity_test', 'entity_test_revision'];
+    $this->assertSame($tables, array_keys($data));
+    foreach ($tables as $table_name) {
+      $this->assertSame('entity_operations', $data[$table_name]['operations']['field']['id']);
+    }
+  }
+
+  /**
+   * @covers ::getViewsData
+   */
+  public function testGetViewsDataWithNonRevisionableEntityOperations() {
+    $this->baseEntityType->setListBuilderClass('\Drupal\Core\Entity\EntityListBuilder');
+
+    $entity_type_without_revisions = $this->baseEntityType;
+    $views_data = $this->viewsData;
+
+    $entity_type_keys = $entity_type_without_revisions->getKeys();
+    unset($entity_type_keys['revision']);
+
+    $entity_type_without_revisions->set('entity_keys', $entity_type_keys);
+    $views_data->setEntityType($entity_type_without_revisions);
+
+    $data = $views_data->getViewsData();
+
+    $tables = ['entity_test'];
+    $this->assertSame($tables, array_keys($data));
+    foreach ($tables as $table_name) {
+      $this->assertSame('entity_operations', $data[$table_name]['operations']['field']['id']);
+    }
   }
 
   /**
@@ -1050,7 +1129,7 @@ class EntityViewsDataTest extends UnitTestCase {
   }
 
   /**
-   * Tests views data for a entity reference field.
+   * Tests views data for an entity reference field.
    */
   protected function assertEntityReferenceField($data) {
     $this->assertEquals('field', $data['field']['id']);
@@ -1115,21 +1194,4 @@ class TestEntityType extends ContentEntityType {
     return $this;
   }
 
-}
-
-namespace Drupal\entity_test\Entity;
-
-if (!function_exists('t')) {
-  function t($string, array $args = []) {
-    return strtr($string, $args);
-  }
-}
-
-
-namespace Drupal\Core\Entity;
-
-if (!function_exists('t')) {
-  function t($string, array $args = []) {
-    return strtr($string, $args);
-  }
 }

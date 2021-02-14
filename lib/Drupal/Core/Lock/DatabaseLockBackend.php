@@ -4,8 +4,8 @@ namespace Drupal\Core\Lock;
 
 use Drupal\Component\Utility\Crypt;
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\DatabaseException;
 use Drupal\Core\Database\IntegrityConstraintViolationException;
-use Drupal\Core\Database\SchemaObjectExistsException;
 
 /**
  * Defines the database lock backend. This is the default backend in Drupal.
@@ -112,7 +112,7 @@ class DatabaseLockBackend extends LockBackendAbstract {
     $name = $this->normalizeName($name);
 
     try {
-      $lock = $this->database->query('SELECT expire, value FROM {semaphore} WHERE name = :name', [':name' => $name])->fetchAssoc();
+      $lock = $this->database->query('SELECT [expire], [value] FROM {semaphore} WHERE [name] = :name', [':name' => $name])->fetchAssoc();
     }
     catch (\Exception $e) {
       $this->catchException($e);
@@ -186,7 +186,7 @@ class DatabaseLockBackend extends LockBackendAbstract {
     // If another process has already created the semaphore table, attempting to
     // recreate it will throw an exception. In this case just catch the
     // exception and do nothing.
-    catch (SchemaObjectExistsException $e) {
+    catch (DatabaseException $e) {
       return TRUE;
     }
     return FALSE;
@@ -239,6 +239,8 @@ class DatabaseLockBackend extends LockBackendAbstract {
 
   /**
    * Defines the schema for the semaphore table.
+   *
+   * @internal
    */
   public function schemaDefinition() {
     return [
@@ -249,20 +251,20 @@ class DatabaseLockBackend extends LockBackendAbstract {
           'type' => 'varchar_ascii',
           'length' => 255,
           'not null' => TRUE,
-          'default' => ''
+          'default' => '',
         ],
         'value' => [
           'description' => 'A value for the semaphore.',
           'type' => 'varchar_ascii',
           'length' => 255,
           'not null' => TRUE,
-          'default' => ''
+          'default' => '',
         ],
         'expire' => [
           'description' => 'A Unix timestamp with microseconds indicating when the semaphore should expire.',
           'type' => 'float',
           'size' => 'big',
-          'not null' => TRUE
+          'not null' => TRUE,
         ],
       ],
       'indexes' => [

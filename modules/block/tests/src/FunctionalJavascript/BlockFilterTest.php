@@ -3,24 +3,29 @@
 namespace Drupal\Tests\block\FunctionalJavascript;
 
 use Behat\Mink\Element\NodeElement;
-use Drupal\FunctionalJavascriptTests\JavascriptTestBase;
+use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
 
 /**
  * Tests the JavaScript functionality of the block add filter.
  *
  * @group block
  */
-class BlockFilterTest extends JavascriptTestBase {
+class BlockFilterTest extends WebDriverTestBase {
 
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['user', 'block'];
+  protected static $modules = ['user', 'block'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function setUp(): void {
     parent::setUp();
 
     $admin_user = $this->drupalCreateUser([
@@ -62,7 +67,7 @@ class BlockFilterTest extends JavascriptTestBase {
     $filter->setValue('Powered by');
     $session->wait(10000, 'jQuery("#drupal-live-announce").html().indexOf("block is available") > -1');
     $visible_rows = $this->filterVisibleElements($block_rows);
-    $this->assertEquals(1, count($visible_rows));
+    $this->assertCount(1, $visible_rows);
     $expected_message = '1 block is available in the modified list.';
     $assertSession->elementTextContains('css', '#drupal-live-announce', $expected_message);
 
@@ -70,7 +75,7 @@ class BlockFilterTest extends JavascriptTestBase {
     $filter->setValue('Pan-Galactic Gargle Blaster');
     $session->wait(10000, 'jQuery("#drupal-live-announce").html().indexOf("0 blocks are available") > -1');
     $visible_rows = $this->filterVisibleElements($block_rows);
-    $this->assertEquals(0, count($visible_rows));
+    $this->assertCount(0, $visible_rows);
     $expected_message = '0 blocks are available in the modified list.';
     $assertSession->elementTextContains('css', '#drupal-live-announce', $expected_message);
   }
@@ -78,13 +83,13 @@ class BlockFilterTest extends JavascriptTestBase {
   /**
    * Removes any non-visible elements from the passed array.
    *
-   * @param NodeElement[] $elements
+   * @param \Behat\Mink\Element\NodeElement[] $elements
    *   An array of node elements.
    *
-   * @return NodeElement[]
+   * @return \Behat\Mink\Element\NodeElement[]
    */
   protected function filterVisibleElements(array $elements) {
-    $elements = array_filter($elements, function(NodeElement $element) {
+    $elements = array_filter($elements, function (NodeElement $element) {
       return $element->isVisible();
     });
     return $elements;

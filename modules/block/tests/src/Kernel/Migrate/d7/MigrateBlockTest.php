@@ -16,7 +16,7 @@ class MigrateBlockTest extends MigrateDrupal7TestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'block',
     'views',
     'comment',
@@ -25,20 +25,21 @@ class MigrateBlockTest extends MigrateDrupal7TestBase {
     'node',
     'text',
     'filter',
+    'path_alias',
     'user',
   ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Install the themes used for this test.
     $this->container->get('theme_installer')->install(['bartik', 'seven']);
 
-    $this->installConfig(static::$modules);
     $this->installEntitySchema('block_content');
+    $this->installConfig(static::$modules);
 
     // Set Bartik and Seven as the default public and admin theme.
     $config = $this->config('system.theme');
@@ -83,7 +84,7 @@ class MigrateBlockTest extends MigrateDrupal7TestBase {
    */
   public function assertEntity($id, $plugin_id, array $roles, $pages, $region, $theme, $weight, $label, $label_display, $status = TRUE) {
     $block = Block::load($id);
-    $this->assertTrue($block instanceof Block);
+    $this->assertInstanceOf(Block::class, $block);
     /** @var \Drupal\block\BlockInterface $block */
     $this->assertSame($plugin_id, $block->getPluginId());
 
@@ -112,10 +113,10 @@ class MigrateBlockTest extends MigrateDrupal7TestBase {
   public function testBlockMigration() {
     $this->assertEntity('bartik_system_main', 'system_main_block', [], '', 'content', 'bartik', 0, '', '0');
     $this->assertEntity('bartik_search_form', 'search_form_block', [], '', 'sidebar_first', 'bartik', -1, '', '0');
-    $this->assertEntity('bartik_user_login', 'user_login_block', [], '', 'sidebar_first', 'bartik', 0, '', '0');
+    $this->assertEntity('bartik_user_login', 'user_login_block', [], '', 'sidebar_first', 'bartik', 0, 'User login title', 'visible');
     $this->assertEntity('bartik_system_powered_by', 'system_powered_by_block', [], '', 'footer_fifth', 'bartik', 10, '', '0');
     $this->assertEntity('seven_system_main', 'system_main_block', [], '', 'content', 'seven', 0, '', '0');
-    $this->assertEntity('seven_user_login', 'user_login_block', [], '', 'content', 'seven', 10, '', '0');
+    $this->assertEntity('seven_user_login', 'user_login_block', [], '', 'content', 'seven', 10, 'User login title', 'visible');
 
     // The d7_custom_block migration should have migrated a block containing a
     // mildly amusing limerick. We'll need its UUID to determine

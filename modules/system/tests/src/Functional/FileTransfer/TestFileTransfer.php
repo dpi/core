@@ -16,6 +16,8 @@ class TestFileTransfer extends FileTransfer {
 
   /**
    * This is for testing the CopyRecursive logic.
+   *
+   * @var bool
    */
   public $shouldIsDirectoryReturnTrue = FALSE;
 
@@ -58,8 +60,6 @@ class TestFileTransfer extends FileTransfer {
     return FALSE;
   }
 
-  public function chmodJailed($path, $mode, $recursive) {
-    return;
-  }
+  public function chmodJailed($path, $mode, $recursive) {}
 
 }

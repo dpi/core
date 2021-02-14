@@ -49,8 +49,9 @@ class Module extends Updater implements UpdaterInterface {
   public function isInstalled() {
     // Check if the module exists in the file system, regardless of whether it
     // is enabled or not.
-    $modules = \Drupal::state()->get('system.module.files', []);
-    return isset($modules[$this->name]);
+    /** @var \Drupal\Core\Extension\ExtensionList $module_extension_list */
+    $module_extension_list = \Drupal::service('extension.list.module');
+    return $module_extension_list->exists($this->name);
   }
 
   /**
@@ -104,7 +105,7 @@ class Module extends Updater implements UpdaterInterface {
    * {@inheritdoc}
    */
   public function postInstallTasks() {
-    // Since this is being called outsite of the primary front controller,
+    // Since this is being called outside of the primary front controller,
     // the base_url needs to be set explicitly to ensure that links are
     // relative to the site root.
     // @todo Simplify with https://www.drupal.org/node/2548095
@@ -118,7 +119,7 @@ class Module extends Updater implements UpdaterInterface {
     return [
       $default_options + [
         '#url' => Url::fromRoute('update.module_install'),
-        '#title' => t('Install another module'),
+        '#title' => t('Add another module'),
       ],
       $default_options + [
         '#url' => Url::fromRoute('system.modules_list'),

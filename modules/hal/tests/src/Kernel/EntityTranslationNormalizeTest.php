@@ -19,12 +19,12 @@ class EntityTranslationNormalizeTest extends NormalizerTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'content_translation'];
+  protected static $modules = ['node', 'content_translation'];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->installSchema('system', ['sequences']);
     $this->installConfig(['node', 'content_translation']);
@@ -51,7 +51,7 @@ class EntityTranslationNormalizeTest extends NormalizerTestBase {
       'sticky' => 0,
       'body' => [
         'value' => $this->randomMachineName(),
-        'format' => $this->randomMachineName()
+        'format' => $this->randomMachineName(),
       ],
       'revision_log' => $this->randomString(),
     ]);
@@ -59,7 +59,7 @@ class EntityTranslationNormalizeTest extends NormalizerTestBase {
       'title' => 'German title',
       'body' => [
         'value' => $this->randomMachineName(),
-        'format' => $this->randomMachineName()
+        'format' => $this->randomMachineName(),
       ],
     ]);
     $node->save();
@@ -70,8 +70,8 @@ class EntityTranslationNormalizeTest extends NormalizerTestBase {
 
     $normalized = $this->serializer->normalize($node, $this->format);
 
-    $this->assertContains(['lang' => 'en', 'value' => $node->getTitle()], $normalized['title'], 'Original language title has been normalized.');
-    $this->assertContains(['lang' => 'de', 'value' => $translation->getTitle()], $normalized['title'], 'Translation language title has been normalized.');
+    $this->assertContainsEquals(['lang' => 'en', 'value' => $node->getTitle()], $normalized['title'], 'Original language title has been normalized.');
+    $this->assertContainsEquals(['lang' => 'de', 'value' => $translation->getTitle()], $normalized['title'], 'Translation language title has been normalized.');
 
     /** @var \Drupal\node\NodeInterface $denormalized_node */
     $denormalized_node = $this->serializer->denormalize($normalized, 'Drupal\node\Entity\Node', $this->format);
@@ -83,6 +83,8 @@ class EntityTranslationNormalizeTest extends NormalizerTestBase {
     $this->assertSame($node->getTitle(), $denormalized_node->getTitle());
     $this->assertSame($translation->getTitle(), $denormalized_node->getTranslation('de')->getTitle());
 
+    $original_values['revision_default'] = [];
+    $original_translation_values['revision_default'] = [];
     $this->assertEquals($original_values, $denormalized_node->toArray(), 'Node values are restored after normalizing and denormalizing.');
     $this->assertEquals($original_translation_values, $denormalized_node->getTranslation('en')->toArray(), 'Node values are restored after normalizing and denormalizing.');
   }

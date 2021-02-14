@@ -23,24 +23,29 @@
     attach(context) {
       // List of fields IDs on which to bind the event listener.
       // Create an array of IDs to use with jQuery.
-      for (const sourceId in drupalSettings.copyFieldValue) {
-        if (drupalSettings.copyFieldValue.hasOwnProperty(sourceId)) {
-          ids.push(sourceId);
-        }
-      }
+      Object.keys(drupalSettings.copyFieldValue || {}).forEach((element) => {
+        ids.push(element);
+      });
+
       if (ids.length) {
         // Listen to value:copy events on all dependent fields.
         // We have to use body and not document because of the way jQuery events
         // bubble up the DOM tree.
-        $('body').once('copy-field-values').on('value:copy', this.valueTargetCopyHandler);
+        $('body')
+          .once('copy-field-values')
+          .on('value:copy', this.valueTargetCopyHandler);
         // Listen on all source elements.
-        $(`#${ids.join(', #')}`).once('copy-field-values').on('blur', this.valueSourceBlurHandler);
+        $(`#${ids.join(', #')}`)
+          .once('copy-field-values')
+          .on('blur', this.valueSourceBlurHandler);
       }
     },
     detach(context, settings, trigger) {
       if (trigger === 'unload' && ids.length) {
         $('body').removeOnce('copy-field-values').off('value:copy');
-        $(`#${ids.join(', #')}`).removeOnce('copy-field-values').off('blur');
+        $(`#${ids.join(', #')}`)
+          .removeOnce('copy-field-values')
+          .off('blur');
       }
     },
 
@@ -74,4 +79,4 @@
       $(`#${targetIds.join(', #')}`).trigger('value:copy', value);
     },
   };
-}(jQuery, Drupal, drupalSettings));
+})(jQuery, Drupal, drupalSettings);

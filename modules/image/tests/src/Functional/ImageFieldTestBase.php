@@ -8,11 +8,12 @@ use Drupal\Tests\BrowserTestBase;
 /**
  * TODO: Test the following functions.
  *
- * image.effects.inc:
+ * In file:
+ * - image.effects.inc:
  *   image_style_generate()
  *   \Drupal\image\ImageStyleInterface::createDerivative()
  *
- * image.module:
+ * - image.module:
  *   image_style_options()
  *   \Drupal\image\ImageStyleInterface::flush()
  *   image_filter_keyword()
@@ -30,10 +31,15 @@ abstract class ImageFieldTestBase extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = ['node', 'image', 'field_ui', 'image_module_test'];
+  protected static $modules = [
+    'node',
+    'image',
+    'field_ui',
+    'image_module_test',
+  ];
 
   /**
-   * An user with permissions to administer content types and image styles.
+   * A user with permissions to administer content types and image styles.
    *
    * @var \Drupal\user\UserInterface
    */
@@ -48,7 +54,19 @@ abstract class ImageFieldTestBase extends BrowserTestBase {
       $this->drupalCreateContentType(['type' => 'article', 'name' => 'Article']);
     }
 
-    $this->adminUser = $this->drupalCreateUser(['access content', 'access administration pages', 'administer site configuration', 'administer content types', 'administer node fields', 'administer nodes', 'create article content', 'edit any article content', 'delete any article content', 'administer image styles', 'administer node display']);
+    $this->adminUser = $this->drupalCreateUser([
+      'access content',
+      'access administration pages',
+      'administer site configuration',
+      'administer content types',
+      'administer node fields',
+      'administer nodes',
+      'create article content',
+      'edit any article content',
+      'delete any article content',
+      'administer image styles',
+      'administer node display',
+    ]);
     $this->drupalLogin($this->adminUser);
   }
 
@@ -66,8 +84,8 @@ abstract class ImageFieldTestBase extends BrowserTestBase {
     $edit = [
       'title[0][value]' => $this->randomMachineName(),
     ];
-    $edit['files[' . $field_name . '_0]'] = drupal_realpath($image->uri);
-    $this->drupalPostForm('node/add/' . $type, $edit, t('Preview'));
+    $edit['files[' . $field_name . '_0]'] = \Drupal::service('file_system')->realpath($image->uri);
+    $this->drupalPostForm('node/add/' . $type, $edit, 'Preview');
   }
 
   /**
@@ -86,11 +104,11 @@ abstract class ImageFieldTestBase extends BrowserTestBase {
     $edit = [
       'title[0][value]' => $this->randomMachineName(),
     ];
-    $edit['files[' . $field_name . '_0]'] = drupal_realpath($image->uri);
-    $this->drupalPostForm('node/add/' . $type, $edit, t('Save and publish'));
+    $edit['files[' . $field_name . '_0]'] = \Drupal::service('file_system')->realpath($image->uri);
+    $this->drupalPostForm('node/add/' . $type, $edit, 'Save');
     if ($alt) {
       // Add alt text.
-      $this->drupalPostForm(NULL, [$field_name . '[0][alt]' => $alt], t('Save and publish'));
+      $this->submitForm([$field_name . '[0][alt]' => $alt], 'Save');
     }
 
     // Retrieve ID of the newly created node from the current URL.
@@ -103,7 +121,7 @@ abstract class ImageFieldTestBase extends BrowserTestBase {
    * Retrieves the fid of the last inserted file.
    */
   protected function getLastFileId() {
-    return (int) db_query('SELECT MAX(fid) FROM {file_managed}')->fetchField();
+    return (int) \Drupal::entityQueryAggregate('file')->aggregate('fid', 'max')->execute()[0]['fid_max'];
   }
 
 }

@@ -19,7 +19,12 @@ class NodeTitleTest extends NodeTestBase {
    *
    * @var array
    */
-  public static $modules = ['comment', 'views', 'block'];
+  protected static $modules = ['comment', 'views', 'block'];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'classy';
 
   /**
    * A user with permission to bypass access content.
@@ -31,11 +36,17 @@ class NodeTitleTest extends NodeTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->drupalPlaceBlock('system_breadcrumb_block');
+    $this->drupalPlaceBlock('page_title_block');
 
-    $this->adminUser = $this->drupalCreateUser(['administer nodes', 'create article content', 'create page content', 'post comments']);
+    $this->adminUser = $this->drupalCreateUser([
+      'administer nodes',
+      'create article content',
+      'create page content',
+      'post comments',
+    ]);
     $this->drupalLogin($this->adminUser);
     $this->addDefaultCommentField('node', 'page');
   }
@@ -77,10 +88,10 @@ class NodeTitleTest extends NodeTestBase {
     $node = $this->drupalCreateNode($settings);
     // Test that 0 appears as <title>.
     $this->drupalGet('node/' . $node->id());
-    $this->assertTitle(0 . ' | Drupal', 'Page title is equal to 0.', 'Node');
+    $this->assertSession()->titleEquals('0 | Drupal');
     // Test that 0 appears in the template <h1>.
     $xpath = '//h1';
-    $this->assertEqual(current($this->xpath($xpath)), 0, 'Node title is displayed as 0.', 'Node');
+    $this->assertSame('0', $this->xpath($xpath)[0]->getText(), 'Node title is displayed as 0.');
 
     // Test edge case where node title contains special characters.
     $edge_case_title = 'article\'s "title".';
@@ -92,11 +103,11 @@ class NodeTitleTest extends NodeTestBase {
     // the page.
     $edge_case_title_escaped = Html::escape($edge_case_title);
     $this->drupalGet('node/' . $node->id());
-    $this->assertRaw('<title>' . $edge_case_title_escaped . ' | Drupal</title>', 'Page title is equal to article\'s "title".', 'Node');
+    $this->assertRaw('<title>' . $edge_case_title_escaped . ' | Drupal</title>');
 
     // Test that the title appears as <title> when reloading the node page.
     $this->drupalGet('node/' . $node->id());
-    $this->assertRaw('<title>' . $edge_case_title_escaped . ' | Drupal</title>', 'Page title is equal to article\'s "title".', 'Node');
+    $this->assertRaw('<title>' . $edge_case_title_escaped . ' | Drupal</title>');
 
   }
 
