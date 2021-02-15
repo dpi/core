@@ -38,10 +38,11 @@ class MemoryBackend implements FloodInterface {
     if (!isset($identifier)) {
       $identifier = $this->requestStack->getCurrentRequest()->getClientIp();
     }
-    // We can't use REQUEST_TIME here, because that would not guarantee
-    // uniqueness.
-    $time = microtime(TRUE);
-    $this->events[$name][$identifier][strval($time + $window)] = $time;
+    $time = $this->getCurrentMicroTime();
+    $this->events[$name][$identifier][] = [
+      'time' => $time,
+      'expire' => $time + $window,
+    ];
   }
 
   /**
@@ -64,10 +65,13 @@ class MemoryBackend implements FloodInterface {
     if (!isset($this->events[$name][$identifier])) {
       return $threshold > 0;
     }
-    $limit = microtime(TRUE) - $window;
-    $number = count(array_filter($this->events[$name][$identifier], function ($timestamp) use ($limit) {
-      return $timestamp > $limit;
-    }));
+    $limit = $this->getCurrentMicroTime() - $window;
+    $number = count(array_filter(
+      $this->events[$name][$identifier],
+      function ($timestamp) use ($limit) {
+        return $timestamp['time'] > $limit;
+      }
+    ));
     return ($number < $threshold);
   }
 
@@ -75,16 +79,28 @@ class MemoryBackend implements FloodInterface {
    * {@inheritdoc}
    */
   public function garbageCollection() {
+    $time = $this->getCurrentMicroTime();
     foreach ($this->events as $name => $identifiers) {
-      foreach ($this->events[$name] as $identifier => $timestamps) {
-        // Filter by key (expiration) but preserve key => value  associations.
-        $this->events[$name][$identifier] = array_filter($timestamps, function () use (&$timestamps) {
-          $expiration = key($timestamps);
-          next($timestamps);
-          return $expiration > microtime(TRUE);
-        });
+      foreach (array_keys($identifiers) as $identifier) {
+        $this->events[$name][$identifier] = array_filter(
+          $this->events[$name][$identifier],
+          function (array $event) use ($time): bool {
+            // Keep events where expiration is after current time.
+            return $event['expire'] > $time;
+          }
+        );
       }
     }
+  }
+
+  /**
+   * Return current Unix timestamp with microseconds
+   *
+   * @return float
+   *   The current time in seconds with microseconds.
+   */
+  protected function getCurrentMicroTime(): float {
+    return microtime(TRUE);
   }
 
 }
