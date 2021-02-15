@@ -168,7 +168,7 @@ class MemoryBackendTest extends UnitTestCase {
   }
 
   /**
-   * Tests event registration, and no more events allowed after threshold.
+   * Tests clearing events.
    *
    * @covers ::clear
    */
