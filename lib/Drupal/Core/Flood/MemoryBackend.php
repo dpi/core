@@ -94,7 +94,7 @@ class MemoryBackend implements FloodInterface {
   }
 
   /**
-   * Return current Unix timestamp with microseconds
+   * Return current Unix timestamp with microseconds.
    *
    * @return float
    *   The current time in seconds with microseconds.

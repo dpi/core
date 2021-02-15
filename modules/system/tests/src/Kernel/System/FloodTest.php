@@ -3,7 +3,6 @@
 namespace Drupal\Tests\system\Kernel\System;
 
 use Drupal\Core\Flood\DatabaseBackend;
-use Drupal\Core\Flood\MemoryBackend;
 use Drupal\KernelTests\KernelTestBase;
 
 /**
