@@ -50,7 +50,7 @@ class FloodTest extends KernelTestBase {
    * Test flood control memory backend.
    */
   public function testMemoryBackend() {
-    $threshold = 2;
+    $threshold = 1;
     $window_expired = -1;
     $name = 'flood_test_cleanup';
 
@@ -78,7 +78,7 @@ class FloodTest extends KernelTestBase {
    * Test flood control database backend.
    */
   public function testDatabaseBackend() {
-    $threshold = 1;
+    $threshold = 2;
     $window_expired = -1;
     $name = 'flood_test_cleanup';
 
