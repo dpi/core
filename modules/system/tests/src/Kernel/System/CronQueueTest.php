@@ -7,7 +7,6 @@ use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Logger\RfcLogLevel;
 use Drupal\Core\Queue\DatabaseQueue;
 use Drupal\Core\Queue\Memory;
-use Drupal\Core\Queue\SuspendQueueException;
 use Drupal\cron_queue_test\Plugin\QueueWorker\CronQueueTestException;
 use Drupal\cron_queue_test\Plugin\QueueWorker\CronQueueTestRequeueException;
 use Drupal\cron_queue_test\Plugin\QueueWorker\CronQueueTestSuspendQueue;
@@ -15,8 +14,6 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\cron_queue_test\Plugin\QueueWorker\CronQueueTestDatabaseDelayException;
 use Prophecy\Argument;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\ErrorHandler\BufferingLogger;
 
 /**
  * Tests the Cron Queue runner.
@@ -155,7 +152,7 @@ class CronQueueTest extends KernelTestBase {
           $this->callback(function ($args) {
             return $args['@message'] === 'That is not supposed to happen.' &&
               $args['exception'] instanceof \Exception;
-          })
+          }),
         ],
       );
 
@@ -203,7 +200,7 @@ class CronQueueTest extends KernelTestBase {
           $this->equalTo('A worker for @queue queue suspended further processing of the queue.'),
           $this->callback(function ($args) {
             return $args['@queue'] === CronQueueTestSuspendQueue::PLUGIN_ID;
-          })
+          }),
         ],
       );
 
@@ -274,6 +271,5 @@ class CronQueueTest extends KernelTestBase {
       ->addTag('logger');
     $container->set('test_logger', $this->logger);
   }
-
 
 }
