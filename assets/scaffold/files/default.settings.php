@@ -458,6 +458,16 @@ $settings['update_free_access'] = FALSE;
 # $settings['form_cache_expiration'] = 21600;
 
 /**
+ * The maximum number of seconds to wait if a queue is temporarily suspended.
+ *
+ * This is not applicable when a queue is suspended but does not specify
+ * how long to wait before attempting to resume.
+ *
+ * @see \Drupal\Core\Cron
+ */
+$settings['queue_suspend_maximum_wait'] = 30.0;
+
+/**
  * Class Loader.
  *
  * If the APCu extension is detected, the classloader will be optimized to use
