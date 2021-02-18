@@ -338,10 +338,10 @@ class Cron implements CronInterface {
   }
 
   /**
-   * Delay execution in microseconds
+   * Delay execution in microseconds.
    *
    * @param int $microseconds
-   *    Halt time in microseconds.
+   *   Halt time in microseconds.
    */
   protected function usleep(int $microseconds): void {
     usleep($microseconds);
