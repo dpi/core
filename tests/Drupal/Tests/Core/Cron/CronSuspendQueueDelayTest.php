@@ -68,8 +68,8 @@ final class CronSuspendQueueDelayTest extends UnitTestCase {
    * Tests a queue is reprocessed again after other queues.
    *
    * Two queues are created:
-   *  - test_worker_a
-   *  - test_worker_b
+   *  - test_worker_a.
+   *  - test_worker_b.
    *
    * Queues and items are processed:
    *  - test_worker_a:
@@ -259,6 +259,151 @@ final class CronSuspendQueueDelayTest extends UnitTestCase {
       FALSE,
     ];
     return $scenarios;
+  }
+
+  /**
+   * Tests queues are executed in order.
+   *
+   * If multiple queues are delayed, they must execute in order of time.
+   */
+  public function testSuspendQueueOrder(): void {
+    [
+      'queue_factory' => $queueFactory,
+      'queue_manager' => $queueManager,
+      'time' => $time,
+    ] = $this->cronConstructorArguments;
+
+    $cron = $this->getMockBuilder(Cron::class)
+      ->onlyMethods(['usleep'])
+      ->setConstructorArgs($this->cronConstructorArguments)
+      ->getMock();
+
+    $cron->expects($this->any())
+      ->method('usleep');
+
+    $queueManager->expects($this->once())
+      ->method('getDefinitions')
+      ->willReturn([
+        'test_worker_a' => [
+          'id' => 'test_worker_a',
+          'cron' => 300,
+        ],
+        'test_worker_b' => [
+          'id' => 'test_worker_b',
+          'cron' => 300,
+        ],
+        'test_worker_c' => [
+          'id' => 'test_worker_c',
+          'cron' => 300,
+        ],
+        'test_worker_d' => [
+          'id' => 'test_worker_d',
+          'cron' => 300,
+        ],
+      ]);
+
+    $queueA = $this->createMock(QueueInterface::class);
+    $queueB = $this->createMock(QueueInterface::class);
+    $queueC = $this->createMock(QueueInterface::class);
+    $queueD = $this->createMock(QueueInterface::class);
+    $queueFactory->expects($this->exactly(4))
+      ->method('get')
+      ->willReturnMap([
+        ['test_worker_a', FALSE, $queueA],
+        ['test_worker_b', FALSE, $queueB],
+        ['test_worker_c', FALSE, $queueC],
+        ['test_worker_d', FALSE, $queueD],
+      ]);
+
+    $queueA->expects($this->any())
+      ->method('claimItem')
+      ->willReturnOnConsecutiveCalls(
+        (object) ['data' => 'test_data_from_queue_a'],
+        FALSE,
+      );
+    $queueB->expects($this->any())
+      ->method('claimItem')
+      ->willReturnOnConsecutiveCalls(
+        (object) ['data' => 'test_data_from_queue_b'],
+        (object) ['data' => 'test_data_from_queue_b'],
+        FALSE,
+      );
+    $queueC->expects($this->any())
+      ->method('claimItem')
+      ->willReturnOnConsecutiveCalls(
+        (object) ['data' => 'test_data_from_queue_c'],
+        (object) ['data' => 'test_data_from_queue_c'],
+        FALSE,
+      );
+    $queueD->expects($this->any())
+      ->method('claimItem')
+      ->willReturnOnConsecutiveCalls(
+        (object) ['data' => 'test_data_from_queue_d'],
+        FALSE,
+      );
+
+    // Recycle the same worker for all queues to test order sanely:
+    $worker = $this->createMock(QueueWorkerInterface::class);
+    $queueManager->expects($this->any())
+      ->method('createInstance')
+      ->willReturnMap([
+        ['test_worker_a', [], $worker],
+        ['test_worker_b', [], $worker],
+        ['test_worker_c', [], $worker],
+        ['test_worker_d', [], $worker],
+      ]);
+
+    $worker->expects($this->exactly(6))
+      ->method('processItem')
+      ->withConsecutive(
+        // All queues are executed in sequence of definition:
+        [$this->equalTo('test_data_from_queue_a')],
+        [$this->equalTo('test_data_from_queue_b')],
+        [$this->equalTo('test_data_from_queue_c')],
+        [$this->equalTo('test_data_from_queue_d')],
+        // Queue C is executed again, and before queue B.
+        [$this->equalTo('test_data_from_queue_c')],
+        // Queue B is executed again, after queue C since its delay was longer.
+        [$this->equalTo('test_data_from_queue_b')],
+      )
+      ->willReturnOnConsecutiveCalls(
+        NULL,
+        $this->throwException(new SuspendQueueException('', 0, NULL, 16.0)),
+        $this->throwException(new SuspendQueueException('', 0, NULL, 8.0)),
+        NULL,
+        NULL,
+        NULL,
+      );
+
+    $currentTime = 60;
+    $time->expects($this->any())
+      ->method('getCurrentTime')
+      ->willReturnCallback(function () use (&$currentTime): int {
+        return (int) $currentTime;
+      });
+    $time->expects($this->any())
+      ->method('getCurrentMicroTime')
+      ->willReturnCallback(function () use (&$currentTime): float {
+        return (float) $currentTime;
+      });
+
+    $cron->expects($this->exactly(2))
+      ->method('usleep')
+      ->withConsecutive(
+        // Expect to wait for 8 seconds.
+        [
+          $this->callback(function (int $microseconds) use (&$currentTime) {
+            // Accelerate time by 4 seconds.
+            $currentTime += 4;
+            return $microseconds === 8000000;
+          }),
+        ],
+        // SuspendQueueException requests to delay by 16 seconds, but 4 seconds
+        // have passed above, so there are just 12 seconds remaining:
+        [$this->equalTo(12000000)],
+      );
+
+    $cron->run();
   }
 
 }

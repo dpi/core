@@ -179,13 +179,15 @@ class Cron implements CronInterface {
    * Processes cron queues.
    */
   protected function processQueues() {
-    $maxWait = $this->settings->get('queue_suspend_maximum_wait', 30.0);
-    assert(is_float($maxWait));
+    $max_wait = $this->settings->get('queue_suspend_maximum_wait', 30.0);
+    assert(is_float($max_wait));
 
-    $queues = array_values($this->queueManager->getDefinitions());
-    $queues = array_filter($queues, function (array $queueInfo) {
-      return isset($queueInfo['cron']);
-    });
+    $queues = array_filter(
+      array_values($this->queueManager->getDefinitions()),
+      function (array $queueInfo) {
+        return isset($queueInfo['cron']);
+      }
+    );
 
     // Build a stack of queues to work on.
     $queues = array_map(function (array $queue_info) {
@@ -224,7 +226,7 @@ class Cron implements CronInterface {
       catch (SuspendQueueException $e) {
         // Return to this queue after processing other queues if the delay is
         // within the threshold.
-        if ($e->isDelayable() && ($e->getDelay() < $maxWait)) {
+        if ($e->isDelayable() && ($e->getDelay() < $max_wait)) {
           $item['process_from'] = $this->time->getCurrentMicroTime() + $e->getDelay();
           // Place this queue back in the stack for processing later.
           array_push($queues, $item);
