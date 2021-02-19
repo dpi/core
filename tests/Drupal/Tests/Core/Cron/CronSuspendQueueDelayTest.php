@@ -33,7 +33,7 @@ final class CronSuspendQueueDelayTest extends UnitTestCase {
    *
    * @var object[]|\PHPUnit\Framework\MockObject\MockObject[]
    */
-  protected array $cronConstructorArguments;
+  protected $cronConstructorArguments;
 
   /**
    * {@inheritdoc}
@@ -155,8 +155,8 @@ final class CronSuspendQueueDelayTest extends UnitTestCase {
       ->method('processItem')
       ->with($this->anything())
       ->willReturnOnConsecutiveCalls(
-        $this->throwException(new SuspendQueueException(2.0)),
-        $this->throwException(new SuspendQueueException(3.0))
+        $this->throwException(new SuspendQueueException('', 0, NULL, 2.0)),
+        $this->throwException(new SuspendQueueException('', 0, NULL, 3.0))
       );
     $workerB->expects($this->once())
       ->method('processItem')
@@ -234,7 +234,7 @@ final class CronSuspendQueueDelayTest extends UnitTestCase {
       ->method('processItem')
       ->with($this->anything())
       ->willReturnOnConsecutiveCalls(
-        $this->throwException(new SuspendQueueException($suspendQueueDelay)),
+        $this->throwException(new SuspendQueueException('', 0, NULL, $suspendQueueDelay)),
       );
 
     $cron->run();
