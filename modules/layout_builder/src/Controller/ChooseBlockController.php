@@ -173,8 +173,13 @@ class ChooseBlockController implements ContainerInjectionInterface {
    *   A render array.
    */
   public function inlineBlockList(SectionStorageInterface $section_storage, int $delta, $region) {
+    // @todo Explicitly cast delta to an integer, remove this in
+    //   https://www.drupal.org/project/drupal/issues/2984509.
+    $delta = (int) $delta;
+
     $definitions = $this->blockManager->getFilteredDefinitions('layout_builder', $this->getAvailableContexts($section_storage), [
       'section_storage' => $section_storage,
+      'delta' => $delta,
       'region' => $region,
       'list' => 'inline_blocks',
     ]);
