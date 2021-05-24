@@ -1,0 +1,7 @@
+services:
+  http_history.state:
+    class: Drupal\http_history\HttpHistoryState
+    arguments:
+      - '@state'
+    tags:
+      - { name: http_client_middleware }

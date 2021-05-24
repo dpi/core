@@ -1,0 +1,5 @@
+name: 'HTTP test'
+type: module
+description: 'Support module for HTTP/Guzzle tests.'
+package: Testing
+version: VERSION

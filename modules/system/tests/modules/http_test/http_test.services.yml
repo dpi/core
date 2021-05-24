@@ -1,0 +1,14 @@
+services:
+  http_test.priority_test_second:
+    class: Drupal\http_test\HttpTestMiddleware
+    arguments:
+      - 'defined first, executes second'
+    tags:
+      - { name: http_client_middleware, priority: -100 }
+
+  http_test.priority_test_first:
+    class: Drupal\http_test\HttpTestMiddleware
+    arguments:
+      - 'defined second, executes first'
+    tags:
+      - { name: http_client_middleware, priority: 100 }
