@@ -166,7 +166,11 @@ class EntityAutocomplete extends Textfield {
         $value = $element['#value'];
       }
       else {
-        $input_values = $element['#tags'] ? Tags::explode($element['#value']) : [$element['#value']];
+        $errors = [];
+        $input_values = $element['#tags'] ? Tags::safeExplode($element['#value'], $errors) : [$element['#value']];
+        foreach ($errors as $error) {
+          $form_state->setError($element, t($error['message'], $error['arguments']));
+        }
 
         foreach ($input_values as $input) {
           $match = static::extractEntityIdFromAutocompleteInput($input);
