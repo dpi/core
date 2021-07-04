@@ -31,13 +31,6 @@ class MediaRevisionAccessCheck implements AccessInterface {
   protected $mediaAccess;
 
   /**
-   * A static cache of access checks.
-   *
-   * @var array
-   */
-  protected $access = [];
-
-  /**
    * Constructs a new MediaRevisionAccessCheck.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
@@ -68,6 +61,8 @@ class MediaRevisionAccessCheck implements AccessInterface {
    *   The access result.
    */
   public function access(Route $route, AccountInterface $account, $media_revision = NULL, MediaInterface $media = NULL) {
+    @trigger_error('MediaRevisionAccessCheck is deprecated in Drupal 9.1.x and will be removed before Drupal 10.0.x. Use "_entity_access" requirement with relevant operation instead. See https://www.drupal.org/node/3043321', E_USER_DEPRECATED);
+
     if ($media_revision) {
       $media = $this->mediaStorage->loadRevision($media_revision);
     }
@@ -90,42 +85,14 @@ class MediaRevisionAccessCheck implements AccessInterface {
    *   TRUE if the operation may be performed, FALSE otherwise.
    */
   public function checkAccess(MediaInterface $media, AccountInterface $account, $op = 'view') {
+    @trigger_error('MediaRevisionAccessCheck is deprecated in Drupal 9.1.x and will be removed before Drupal 10.0.x. Use "_entity_access" requirement with relevant operation instead. See https://www.drupal.org/node/3043321', E_USER_DEPRECATED);
+
     if (!$media || $op !== 'view') {
       // If there was no media to check against, or the $op was not one of the
       // supported ones, we return access denied.
       return FALSE;
     }
-
-    // Statically cache access by revision ID, language code, user account ID,
-    // and operation.
-    $langcode = $media->language()->getId();
-    $cid = $media->getRevisionId() . ':' . $langcode . ':' . $account->id() . ':' . $op;
-
-    if (!isset($this->access[$cid])) {
-      // Perform basic permission checks first.
-      if (!$account->hasPermission('view all media revisions') && !$account->hasPermission('administer media')) {
-        $this->access[$cid] = FALSE;
-        return FALSE;
-      }
-
-      // There should be at least two revisions. If the revision ID of the
-      // given media item and the revision ID of the default revision differ,
-      // then we already have two different revisions so there is no need for a
-      // separate database check.
-      if ($media->isDefaultRevision() && ($this->countDefaultLanguageRevisions($media) == 1)) {
-        $this->access[$cid] = FALSE;
-      }
-      elseif ($account->hasPermission('administer media')) {
-        $this->access[$cid] = TRUE;
-      }
-      else {
-        // First check the access to the default revision and finally, if the
-        // media passed in is not the default revision then access to that, too.
-        $this->access[$cid] = $this->mediaAccess->access($this->mediaStorage->load($media->id()), $op, $account) && ($media->isDefaultRevision() || $this->mediaAccess->access($media, $op, $account));
-      }
-    }
-
-    return $this->access[$cid];
+    return $this->mediaAccess->access($media, 'view all revisions', $account);
   }
 
   /**

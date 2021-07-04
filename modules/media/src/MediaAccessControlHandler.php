@@ -4,19 +4,61 @@ namespace Drupal\media;
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Entity\EntityAccessControlHandler;
+use Drupal\Core\Entity\EntityHandlerInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Session\AccountInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Defines an access control handler for media items.
  */
-class MediaAccessControlHandler extends EntityAccessControlHandler {
+class MediaAccessControlHandler extends EntityAccessControlHandler implements EntityHandlerInterface {
+
+  /**
+   * Media entity storage.
+   *
+   * @var \Drupal\Core\Entity\EntityStorageInterface
+   */
+  protected $mediaStorage;
+
+  /**
+   * Constructs a MediaAccessControlHandler object.
+   *
+   * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
+   *   The entity type definition.
+   * @param \Drupal\Core\Entity\EntityStorageInterface|null $mediaStorage
+   *   Media entity storage.
+   */
+  public function __construct(EntityTypeInterface $entity_type, EntityStorageInterface $mediaStorage = NULL) {
+    parent::__construct($entity_type);
+    if (!isset($mediaStorage)) {
+      @trigger_error('The $mediaStorage parameter is deprecated in Drupal 9.1.0 and will be required in 10.0.0.', E_USER_DEPRECATED);
+      $mediaStorage = \Drupal::entityTypeManager()->getStorage('media');
+    }
+    $this->mediaStorage = $mediaStorage;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function createInstance(ContainerInterface $container, EntityTypeInterface $entity_type) {
+    return new static(
+      $entity_type,
+      $container->get('entity_type.manager')->getStorage('media')
+    );
+  }
 
   /**
    * {@inheritdoc}
    */
   protected function checkAccess(EntityInterface $entity, $operation, AccountInterface $account) {
-    if ($account->hasPermission('administer media')) {
+    $administerPermission = $this->entityType->getAdminPermission();
+    /** @var \Drupal\media\MediaInterface $entity */
+    // Default revisions must be checked for 'view all revisions' operation,
+    // administer permission must not override it.
+    if ($operation !== 'view all revisions' && $account->hasPermission($administerPermission)) {
       return AccessResult::allowed()->cachePerPermissions();
     }
 
@@ -83,6 +125,32 @@ class MediaAccessControlHandler extends EntityAccessControlHandler {
         }
         return AccessResult::neutral("The following permissions are required: 'delete any media' OR 'delete own media' OR '$type: delete any media' OR '$type: delete own media'.")->cachePerPermissions();
 
+      case 'view all revisions':
+        // Perform basic permission checks first.
+        if (!$account->hasPermission('view all media revisions') && !$account->hasPermission($administerPermission)) {
+          return AccessResult::neutral(sprintf("The following permissions are required: 'view all media revisions' OR '%s'.", $administerPermission))->cachePerPermissions();
+        }
+
+        // There should be at least two revisions. If the revision ID of the
+        // given media item and the revision ID of the default revision differ,
+        // then we already have two different revisions so there is no need for
+        // a separate database check.
+        if ($entity->isDefaultRevision() && ($this->countDefaultLanguageRevisions($entity) == 1)) {
+          return AccessResult::forbidden('There must be at least two revisions.')->cachePerPermissions()->addCacheableDependency($entity);
+        }
+        elseif ($account->hasPermission($administerPermission)) {
+          return AccessResult::allowed()->cachePerPermissions()->addCacheableDependency($entity);
+        }
+        else {
+          // First check the access to the default revision and finally, if the
+          // media passed in is not the default revision then access to that,
+          // too.
+          return AccessResult::allowedIf(
+            $this->access($this->mediaStorage->load($entity->id()), 'view', $account) &&
+            ($entity->isDefaultRevision() || $this->access($entity, 'view', $account))
+          )->cachePerPermissions()->addCacheableDependency($entity);
+        }
+
       default:
         return AccessResult::neutral()->cachePerPermissions();
     }
@@ -98,6 +166,25 @@ class MediaAccessControlHandler extends EntityAccessControlHandler {
       'create ' . $entity_bundle . ' media',
     ];
     return AccessResult::allowedIfHasPermissions($account, $permissions, 'OR');
+  }
+
+  /**
+   * Counts the number of revisions in the default language.
+   *
+   * @param \Drupal\media\MediaInterface $media
+   *   The media item for which to to count the revisions.
+   *
+   * @return int
+   *   The number of revisions in the default language.
+   */
+  protected function countDefaultLanguageRevisions(MediaInterface $media) {
+    $count = $this->mediaStorage->getQuery()
+      ->allRevisions()
+      ->condition($this->entityType->getKey('id'), $media->id())
+      ->condition($this->entityType->getKey('default_langcode'), 1)
+      ->count()
+      ->execute();
+    return $count;
   }
 
 }

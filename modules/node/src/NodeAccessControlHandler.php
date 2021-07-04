@@ -5,6 +5,7 @@ namespace Drupal\node;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
 use Drupal\Core\Entity\EntityHandlerInterface;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
@@ -29,16 +30,52 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
   protected $grantStorage;
 
   /**
+   * Node entity storage.
+   *
+   * @var \Drupal\node\NodeStorageInterface
+   */
+  protected $nodeStorage;
+
+  /**
+   * Map of revision operations.
+   *
+   * Keys contain revision operations, where values are an array containing the
+   * permission operation and entity operation.
+   *
+   * Permission operation is used to build the required permission, e.g.
+   * 'permissionOperation all revisions', 'permissionOperation type revisions'.
+   *
+   * Entity operation is used to determine access, e.g for 'delete revision'
+   * operation, an account must also have access to 'delete' operation on an
+   * entity.
+   *
+   * @internal Only to be used internally by this class. Consider as protected.
+   */
+  const REVISION_OPERATION_MAP = [
+    'view all revisions' => ['view', 'view'],
+    'view revision' => ['view', 'view'],
+    'revert' => ['revert', 'update'],
+    'delete revision' => ['delete', 'delete'],
+  ];
+
+  /**
    * Constructs a NodeAccessControlHandler object.
    *
    * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
    *   The entity type definition.
    * @param \Drupal\node\NodeGrantDatabaseStorageInterface $grant_storage
    *   The node grant storage.
+   * @param \Drupal\Core\Entity\EntityStorageInterface|null $nodeStorage
+   *   Node entity storage.
    */
-  public function __construct(EntityTypeInterface $entity_type, NodeGrantDatabaseStorageInterface $grant_storage) {
+  public function __construct(EntityTypeInterface $entity_type, NodeGrantDatabaseStorageInterface $grant_storage, EntityStorageInterface $nodeStorage = NULL) {
     parent::__construct($entity_type);
     $this->grantStorage = $grant_storage;
+    if (!isset($nodeStorage)) {
+      @trigger_error('The $nodeStorage parameter is deprecated in Drupal 9.1.0 and will be required in 10.0.0.', E_USER_DEPRECATED);
+      $nodeStorage = \Drupal::entityTypeManager()->getStorage('node');
+    }
+    $this->nodeStorage = $nodeStorage;
   }
 
   /**
@@ -47,7 +84,8 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
   public static function createInstance(ContainerInterface $container, EntityTypeInterface $entity_type) {
     return new static(
       $entity_type,
-      $container->get('node.grant_storage')
+      $container->get('node.grant_storage'),
+      $container->get('entity_type.manager')->getStorage('node')
     );
   }
 
@@ -57,7 +95,8 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
   public function access(EntityInterface $entity, $operation, AccountInterface $account = NULL, $return_as_object = FALSE) {
     $account = $this->prepareUser($account);
 
-    if ($account->hasPermission('bypass node access')) {
+    // Only bypass if not a revision operation, to retain compatibility.
+    if ($account->hasPermission('bypass node access') && !isset(static::REVISION_OPERATION_MAP[$operation])) {
       $result = AccessResult::allowed()->cachePerPermissions();
       return $return_as_object ? $result : $result->isAllowed();
     }
@@ -102,6 +141,46 @@ class NodeAccessControlHandler extends EntityAccessControlHandler implements Nod
     // Check if authors can view their own unpublished nodes.
     if ($operation === 'view' && !$status && $account->hasPermission('view own unpublished content') && $account->isAuthenticated() && $account->id() == $uid) {
       return AccessResult::allowed()->cachePerPermissions()->cachePerUser()->addCacheableDependency($node);
+    }
+
+    [$revisionPermissionOperation, $entityOperation] = isset(static::REVISION_OPERATION_MAP[$operation])
+      ? static::REVISION_OPERATION_MAP[$operation]
+      : [NULL, NULL];
+
+    // Revision operations.
+    if ($revisionPermissionOperation) {
+      $bundle = $node->bundle();
+      // If user doesn't have any of these then quit.
+      if (!$account->hasPermission("$revisionPermissionOperation all revisions") && !$account->hasPermission("$revisionPermissionOperation $bundle revisions") && !$account->hasPermission('administer nodes')) {
+        return AccessResult::neutral()->cachePerPermissions();
+      }
+
+      // If the revisions checkbox is selected for the content type, display the
+      // revisions tab.
+      if ($operation === 'view all revisions' && $node->type->entity->shouldCreateNewRevision()) {
+        return AccessResult::allowed()->addCacheableDependency($node->type->entity);
+      }
+
+      // There should be at least two revisions. If the vid of the given node
+      // and the vid of the default revision differ, then we already have two
+      // different revisions so there is no need for a separate database
+      // check. Also, if you try to revert to or delete the default revision,
+      // that's not good.
+      if ($node->isDefaultRevision() && ($this->nodeStorage->countDefaultLanguageRevisions($node) == 1 || $entityOperation === 'update' || $entityOperation === 'delete')) {
+        return AccessResult::neutral()->addCacheableDependency($node);
+      }
+      elseif ($account->hasPermission('administer nodes')) {
+        return AccessResult::allowed()->cachePerPermissions();
+      }
+      else {
+        // First check the access to the default revision and finally, if the
+        // node passed in is not the default revision then check access to
+        // that, too.
+        return AccessResult::allowedIf(
+          $this->access($this->nodeStorage->load($node->id()), $entityOperation, $account) &&
+          ($node->isDefaultRevision() || $this->access($node, $entityOperation, $account))
+        );
+      }
     }
 
     // Evaluate node grants.
